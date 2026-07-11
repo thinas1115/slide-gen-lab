@@ -85,10 +85,40 @@ class Layout:
             lo, hi = x_range(ls)
             bands.append(dict(top=min(idx), bot=max(idx), x=(lo - pad_x, hi + pad_x),
                               band=pad + CONT_HEAD, bband=pad * 0.6))
-        top_stack = sum(b["band"] for b in bands if b["top"] == 0)
-        bot_stack = sum(b["bband"] for b in bands if b["bot"] == len(self.rows) - 1)
-        # 行ピッチ: 前行ラベル深さ + (横方向に重なるコンテナ帯) + アイコン上半分
-        pitches = []
+        # 入れ子コンテナの上下マージンは「1本のチェーン」だけを積算する。
+        # az_a/az_cのような兄弟コンテナを両方サムに含めると、実際には並んで
+        # いるだけの余白を二重に見積もってしまい、縦方向を不必要に圧迫する
+        # (実際に発生した不具合: 4行構成でこの過大見積もりが行間圧縮の
+        # トリガーになり、ラベルが次行アイコンに食い込んだ)。
+        band_by_name = {c["name"]: b for c, b in
+                        zip(self.spec.get("containers", []), bands)}
+        children = {}
+        for c in self.spec.get("containers", []):
+            for m in c["members"]:
+                if m.startswith("@"):
+                    children.setdefault(c["name"], []).append(m[1:])
+        parent_of = {ch: p for p, chs in children.items() for ch in chs}
+        roots = [c["name"] for c in self.spec.get("containers", [])
+                 if c["name"] not in parent_of]
+
+        def chain_stack(name, key, side):
+            b = band_by_name[name]
+            total = b[key] if b[side] == (0 if side == "top" else len(self.rows) - 1) \
+                else 0.0
+            if total == 0.0:
+                return 0.0
+            for ch in children.get(name, []):
+                if band_by_name[ch][side] == b[side]:
+                    return total + chain_stack(ch, key, side)
+            return total
+
+        top_stack = sum(chain_stack(r, "band", "top") for r in roots)
+        bot_stack = sum(chain_stack(r, "bband", "bot") for r in roots)
+        # 行ピッチ = 必須分(前行ラベル深さ+次行アイコン半径。重なり厳禁) +
+        #            裁量分(横方向に重なるコンテナ帯+GAP。収まらない時はここだけ圧縮)。
+        # 必須分まで圧縮すると「ラベルが次行アイコンに食い込む」実欠陥になる
+        # (実際に発生した不具合)ため、両者を分離して裁量分だけを縮める。
+        mandatory, discretionary = [], []
         for i in range(1, len(self.rows)):
             extra = 0.0
             prev = by_row[self.rows[i - 1]]
@@ -97,14 +127,22 @@ class Layout:
                        max(x_range([n])[0], b["x"][0]) > OVERLAP_MIN
                        for n in prev):        # ノード単位で重なり判定
                     extra += b["band"]
-            pitches.append(bot_ext(self.rows[i - 1]) + extra + ICON_R + GAP)
+            mandatory.append(bot_ext(self.rows[i - 1]) + ICON_R)
+            discretionary.append(extra + GAP)
         first = y0 + top_stack + ICON_R
         avail = y1 - first - bot_ext(self.rows[-1]) - bot_stack
-        need = sum(pitches)
-        if need > avail > 0:                     # 収まらなければ等比圧縮
-            pitches = [p * avail / need for p in pitches]
-        else:                                    # 余りは45%を上に配って重心を上げる
-            first += (avail - need) * 0.45
+        need_m, need_d = sum(mandatory), sum(discretionary)
+        avail_d = avail - need_m
+        if avail_d < 0:
+            raise ValueError(
+                "diagram_layout: 縦方向に収まりません(ラベル+アイコンの必須分だけで"
+                f"{need_m:.2f}in必要、利用可能領域は{avail:.2f}in)。行数を減らすか"
+                "AREAを広げてください。")
+        if need_d > avail_d:                      # 裁量分(余白)だけを圧縮
+            discretionary = [d * avail_d / need_d for d in discretionary]
+        else:                                      # 余りは45%を上に配って重心を上げる
+            first += (avail_d - need_d) * 0.45
+        pitches = [m + d for m, d in zip(mandatory, discretionary)]
         ys = [first]
         for p in pitches:
             ys.append(ys[-1] + p)

@@ -55,6 +55,9 @@ AWS_SIMPLE = {
 AWS_MULTIAZ = {
     "cols": ["user", "edge", "fg_a", "alb", "fg_c", "svc"],
     "rows": ["north", "web", "fg", "rds"],
+    # 4行×sub付きノード込みで既定領域(AREA)には収まらないため、この図解専用に
+    # 縦を広げる(ヘッダー罫線の直下から使い、下端も本文フッター罫線の手前まで)。
+    "area": (0.70, 1.60, 12.633, 6.88),
     "nodes": {
         "user": {"col": "user", "row": "web", "icon": "users.png",
                  "title": "社内ユーザー"},
