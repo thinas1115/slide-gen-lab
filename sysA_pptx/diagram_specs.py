@@ -80,21 +80,22 @@ AWS_MULTIAZ = {
                "title": "CloudWatch", "sub": "監視・ログ"},
     },
     "containers": [
-        # pad: Route53<->CloudFront間にMIN_SEG(可視コネクタの最短長)を必須で
-        # 確保するため、上下スタックの余白をここで切り詰めて捻出している
-        # (行間圧縮ではGAPがほぼ0まで潰れ、直結コネクタが事実上消えていた)。
+        # pad: Route53<->CloudFront間にDIRECT_GAP(直結コネクタ用の必須ギャップ、
+        # はっきり視認できる幅)を確保するため、上下スタックの余白をここで
+        # 切り詰めて捻出している(行間圧縮ではGAPがほぼ0まで潰れ、直結
+        # コネクタが事実上消えていた)。
         {"name": "cloud", "label": "AWS Cloud",
-         "members": ["@vpc", "r53", "cf", "s3", "cw"], "pad": 0.14},
+         "members": ["@vpc", "r53", "cf", "s3", "cw"], "pad": 0.08},
         {"name": "vpc", "label": "VPC (private subnets)",
          "members": ["alb", "@az_a", "@az_c"], "color": "navy",
-         "pad": 0.18, "pad_x": 0.44},  # pad_x: AZ間ループ配線+ラベルのクリアランス確保用
+         "pad": 0.04, "pad_x": 0.44},  # pad_x: AZ間ループ配線+ラベルのクリアランス確保用
         # pad_x: 縦長で窮屈に見えないよう横だけ広げる(手書き版は幅2.95inだった
         # のに対し、自動計算の素の幅は1.47inしかなく縦長すぎた。実際の指摘)。
         # pad(縦)は行間計算に響くため変えない。
         {"name": "az_a", "label": "AZ-a", "members": ["fg_a", "rds_a"],
-         "dash": "dash", "pad": 0.14, "pad_x": 0.28},
+         "dash": "dash", "pad": 0.10, "pad_x": 0.28},
         {"name": "az_c", "label": "AZ-c", "members": ["fg_c", "rds_c"],
-         "dash": "dash", "pad": 0.14, "pad_x": 0.28},
+         "dash": "dash", "pad": 0.10, "pad_x": 0.28},
     ],
     "channels": {
         "loop_a": ("outside_container", ("az_a", "left")),
@@ -126,13 +127,16 @@ AWS_MULTIAZ = {
          "via": ["loop_c"]},
         {"from": "rds_a", "to": "rds_c", "both": True, "dash": "dash",
          "label": "同期", "label_w": 0.8},
-        # exitはtopのまま(rds_cと辺を変える必要はなかった。根本原因は
-        # fg_c->rds_cと同じloop_cチャネルを共有し縦の通り道が一致して
-        # いたことだけだったので、s3_lane分離のみで解決する)。
+        # exit="right": Fargateの箱の右辺から出す(実際の指摘: topだと
+        # アイコン直上から出て不自然に見えた)。fg_c->rds_cも同じ右辺から
+        # 出るが、経由するチャネルがloop_c(az_cのすぐ外側)とs3_lane
+        # (vpcのすぐ外側、さらに外)で別レーン=別x座標なので混線しない。
+        # 同一辺からの複数エッジはroute_edges内でSLOT_PITCH自動オフセット
+        # されるため、出口の高さもずれて視覚的に分離される。
         # label_seg=0: 自動選択(最長区間=S3への垂直区間)だとS3自身の
         # サブラベル("成果物/静的配信")と重なるため、fg_c直近の短い
         # 区間に固定する(実際に発生した不具合)。
-        {"from": "fg_c", "to": "s3", "exit": "top", "via": ["s3_lane"],
+        {"from": "fg_c", "to": "s3", "exit": "right", "via": ["s3_lane"],
          "label": "成果物", "label_w": 0.9, "label_seg": 0},
         {"from": "@vpc", "to": "cw", "from_row": "rds", "dash": "dash"},
     ],

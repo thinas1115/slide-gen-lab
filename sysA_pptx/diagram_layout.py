@@ -23,6 +23,13 @@ BOTTOM_PORT_GAP = 0.03  # bottom側ポートがラベル下端からさらに離
 MIN_SEG = 0.12          # via指定後の最終進入区間の最短長。これより短い/逆走
                         # する場合はp1側にクランプする(実際に0.04inの逆走が
                         # 発生し、矢印の向きが逆に見える不具合になった)
+DIRECT_GAP = 0.30       # via無しで隣接行・同一列を直結するエッジ(例:
+                        # Route53<->CloudFront)に確保する行間の必須ギャップ。
+                        # MIN_SEGは「経路の最短長」の下限であって「視認できる
+                        # 長さ」ではない(0.12in=矢印の三角形ヘッドでほぼ埋まる
+                        # サイズしかなく、実際に「線が消えて見える」と指摘された)。
+                        # CONT_HEAD(コンテナラベル帯)と同程度の、それだけで
+                        # 明確に離れて見える値にしている
 MIN_SEG_CLAMP = {
     "left":   lambda c, p1: (min(c[0], p1[0] - MIN_SEG), c[1]),
     "right":  lambda c, p1: (max(c[0], p1[0] + MIN_SEG), c[1]),
@@ -71,10 +78,18 @@ class Layout:
         by_row = {r: [n for n, v in nodes.items() if v["row"] == r]
                   for r in self.rows}
 
-        def bot_ext(r):     # 行中心→ラベル下端(bottom発進ポート+次行top着信ポート
-                            # の両方の余白を含む必須値。片方だけだと、隣接行が
-                            # 近い時に発信ポートが着信ポートより下に来て矢印が
-                            # 逆走する不具合になる。実際に発生した)
+        def bot_ext(r):     # 行中心→ラベル下端(bottom発進ポート+次行
+                            # top着信ポートの両方の余白を含む必須値。片方だけだと、
+                            # 隣接行が近い時に発信ポートが着信ポートより下に来て
+                            # 矢印が逆走する不具合になる。実際に発生した)
+                            #
+                            # 列単位でSUB_H計上を省略する案も試したが、コンテナの
+                            # 上端算出(_resolve_containers)は行ピッチとは独立に
+                            # 「そのコンテナの最上段ノードの行」だけで決まるため、
+                            # ピッチを圧縮すると前の行のノードの出力ポートより
+                            # コンテナの上端が上に来てしまう(実際に発生:
+                            # az_aの上端がALBの下端ポートより上になった)。
+                            # 行全体のSUB_H無条件計上のままにしておく。
             return ICON_R + TITLE_H + (SUB_H if any(
                 nodes[n].get("sub") for n in by_row[r]) else 0) + BOTTOM_PORT_GAP + EDGE_GAP
 
@@ -134,12 +149,14 @@ class Layout:
         # 隣接行かつ同一列のノードをvia無しで直結するエッジがあるか(=途中に
         # 迂回を挟まない縦の直線コネクタ)を検出する。この種のエッジの可視長は
         # 「裁量分のGAP」そのものなので、行間圧縮でGAPがほぼ0まで潰れると
-        # 線がMIN_SEG未満(=事実上消える)になってしまう(実際にRoute53<->
-        # CloudFrontで発生: GAPが0.06→0.005まで圧縮され線が見えなくなった)。
-        # このペアが存在する行境界だけはMIN_SEGを必須分として確保する。
+        # 線が事実上消えてしまう(実際にRoute53<->CloudFrontで発生: GAPが
+        # 0.06→0.005まで圧縮された)。MIN_SEG(0.12in=8.64pt)を必須分として
+        # 確保する案も試したが、矢印の三角形ヘッドだけでほぼ埋まってしまい
+        # 「線として見える」には全く足りなかった(実際に指摘された不具合)。
+        # このペアが存在する行境界はDIRECT_GAPを必須分として確保する。
         edges = self.spec.get("edges", [])
 
-        def needs_min_seg(i):
+        def needs_direct_gap(i):
             r_prev, r_cur = self.rows[i - 1], self.rows[i]
             for e in edges:
                 f, t = e.get("from"), e.get("to")
@@ -167,8 +184,8 @@ class Layout:
                        for n in prev):        # ノード単位で重なり判定
                     extra += b["band"]
             base = bot_ext(self.rows[i - 1]) + ICON_R
-            if needs_min_seg(i):
-                mandatory.append(base + MIN_SEG)
+            if needs_direct_gap(i):
+                mandatory.append(base + DIRECT_GAP)
                 discretionary.append(extra)
             else:
                 mandatory.append(base)
