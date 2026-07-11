@@ -84,7 +84,7 @@ AWS_MULTIAZ = {
          "members": ["@vpc", "r53", "cf", "s3", "cw"], "pad": 0.22},
         {"name": "vpc", "label": "VPC (private subnets)",
          "members": ["alb", "@az_a", "@az_c"], "color": "navy",
-         "pad": 0.18, "pad_x": 0.34},  # pad_x: AZ間ループ配線のクリアランス確保用
+         "pad": 0.18, "pad_x": 0.44},  # pad_x: AZ間ループ配線+ラベルのクリアランス確保用
         # pad_x: 縦長で窮屈に見えないよう横だけ広げる(手書き版は幅2.95inだった
         # のに対し、自動計算の素の幅は1.47inしかなく縦長すぎた。実際の指摘)。
         # pad(縦)は行間計算に響くため変えない。
@@ -119,8 +119,11 @@ AWS_MULTIAZ = {
          "via": ["loop_c"]},
         {"from": "rds_a", "to": "rds_c", "both": True, "dash": "dash",
          "label": "同期", "label_w": 0.8},
-        {"from": "fg_c", "to": "s3", "exit": "top", "label": "成果物",
-         "label_seg": 0, "label_w": 0.9},
+        # exit="right"(rds_cと同じ辺)にする: 以前はtopを共有していたため、
+        # ALB→fg_cの着信ポートとfg_c→s3の発信点が完全に同じ座標になり、
+        # 別々の線が1点に収束して絡まって見えていた(実際の指摘)。
+        {"from": "fg_c", "to": "s3", "exit": "right", "via": ["loop_c"],
+         "label": "成果物", "label_w": 0.9},
         {"from": "@vpc", "to": "cw", "from_row": "rds", "dash": "dash"},
     ],
 }
