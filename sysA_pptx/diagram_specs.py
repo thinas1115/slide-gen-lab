@@ -57,7 +57,7 @@ AWS_MULTIAZ = {
     "rows": ["north", "web", "fg", "rds"],
     # 4行×sub付きノード込みで既定領域(AREA)には収まらないため、この図解専用に
     # 縦を広げる(ヘッダー罫線の直下から使い、下端も本文フッター罫線の手前まで)。
-    "area": (0.70, 1.58, 12.633, 6.96),
+    "area": (0.70, 1.50, 12.633, 7.04),
     "nodes": {
         "user": {"col": "user", "row": "web", "icon": "users.png",
                  "title": "社内ユーザー"},
@@ -96,6 +96,10 @@ AWS_MULTIAZ = {
     "channels": {
         "loop_a": ("outside_container", ("az_a", "left")),
         "loop_c": ("outside_container", ("az_c", "right")),
+        # fg_c->s3をloop_cと同じレーンに通すと、fg_c->rds_cのループと同じ
+        # x座標を共有し、別々の線が1本につながって見える(実際の指摘)。
+        # VPCのさらに外側に専用レーンを設けて視覚的に分離する。
+        "s3_lane": ("outside_container", ("vpc", "right")),
         # ALB→Fargateの横方向ジョグをAZコンテナのラベル帯のすぐ下(内側)で
         # 行い、ラベルの文字帯を横切らないようにする(自動Zルート任せだと
         # ジョグ位置がラベル帯の高さと重なることがあった。実際に発生した不具合)。
@@ -122,8 +126,11 @@ AWS_MULTIAZ = {
         # exit="right"(rds_cと同じ辺)にする: 以前はtopを共有していたため、
         # ALB→fg_cの着信ポートとfg_c→s3の発信点が完全に同じ座標になり、
         # 別々の線が1点に収束して絡まって見えていた(実際の指摘)。
-        {"from": "fg_c", "to": "s3", "exit": "right", "via": ["loop_c"],
-         "label": "成果物", "label_w": 0.9},
+        # label_seg=0: 自動選択(最長区間=S3への垂直区間)だとS3自身の
+        # サブラベル("成果物/静的配信")と重なるため、fg_c直近の短い
+        # 水平区間に固定する(実際に発生した不具合)。
+        {"from": "fg_c", "to": "s3", "exit": "right", "via": ["s3_lane"],
+         "label": "成果物", "label_w": 0.9, "label_seg": 0},
         {"from": "@vpc", "to": "cw", "from_row": "rds", "dash": "dash"},
     ],
 }

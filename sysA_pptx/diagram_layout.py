@@ -10,7 +10,7 @@ from diagrams import (ACCENT, EDGE_GAP, ICON_R, LINE, NAVY, add_arrow,
 from diagrams3 import route
 from textfit import line_height_in, text_width_in
 
-AREA = (MARGIN + 0.15, BODY_TOP + 0.28, MARGIN + BODY_W - 0.15, 6.78)
+AREA = (MARGIN + 0.15, BODY_TOP + 0.05, MARGIN + BODY_W - 0.15, 6.85)
 LABEL_W = 2.1          # icon_nodeのラベル幅
 TITLE_H = 0.33         # アイコン下端からタイトル行下端まで
 SUB_H = 0.26
@@ -71,9 +71,12 @@ class Layout:
         by_row = {r: [n for n, v in nodes.items() if v["row"] == r]
                   for r in self.rows}
 
-        def bot_ext(r):     # 行中心→ラベル下端(bottom発進ポートの余白を含む必須値)
+        def bot_ext(r):     # 行中心→ラベル下端(bottom発進ポート+次行top着信ポート
+                            # の両方の余白を含む必須値。片方だけだと、隣接行が
+                            # 近い時に発信ポートが着信ポートより下に来て矢印が
+                            # 逆走する不具合になる。実際に発生した)
             return ICON_R + TITLE_H + (SUB_H if any(
-                nodes[n].get("sub") for n in by_row[r]) else 0) + BOTTOM_PORT_GAP
+                nodes[n].get("sub") for n in by_row[r]) else 0) + BOTTOM_PORT_GAP + EDGE_GAP
 
         def x_range(names):
             lo = min(self.col_x[nodes[n]["col"]] - self._half_w(n) for n in names)
@@ -385,25 +388,39 @@ class Layout:
         self._validate_segment_lengths(edges, routed)
 
     def _validate_segment_lengths(self, edges, routed):
-        """複数区間に折れ曲がった経路の中間区間が極端に短くないか検証する。
+        """経路の中間区間が極端に短くないか、最終区間が逆走していないかを
+        検証する。
 
-        2点だけの直線(ノード同士がそもそも近い)は対象外。3点以上ある
-        経路の中間区間が短いのは、via/自動Zルートの計算ミスで一瞬だけ
-        逆走・迂回しているサインであることが多い(実際に0.04inの逆走が
-        発生し、矢印の向きが逆に見える不具合になった)。
+        中間区間の短さチェックは3点以上の経路が対象(via/自動Zルートの
+        計算ミスで一瞬だけ逆走・迂回しているサインになる。実際に0.04inの
+        逆走が発生した)。最終区間の向きチェックは2点だけの直線も含めた
+        **全エッジ**が対象: MIN_SEG_CLAMPはvia指定時にしか働かないため、
+        2点直線(ノード同士が隣接行で近い等)で行間の必須スペース計算が
+        僅かに不足すると、矢印が逆向きに描かれる不具合をすり抜けていた
+        (実際にRoute53<->CloudFrontで発生。指摘されるまで気づけなかった)。
         """
         errors = []
         for e, pts in zip(edges, routed):
-            if len(pts) < 3:
+            if len(pts) >= 3:
+                for (x1, y1), (x2, y2) in zip(pts[:-1], pts[1:]):
+                    length = abs(x2 - x1) + abs(y2 - y1)
+                    if length < MIN_SEG - 0.01:
+                        errors.append(
+                            f"edge {e['from']}->{e['to']}: segment "
+                            f"({x1:.3f},{y1:.3f})-({x2:.3f},{y2:.3f}) の長さ"
+                            f"{length:.3f}in はMIN_SEG({MIN_SEG})未満です。"
+                            f"via/exit/enterの組み合わせを見直してください。")
+            if e["from"].startswith("@") or e["to"].startswith("@"):
                 continue
-            for (x1, y1), (x2, y2) in zip(pts[:-1], pts[1:]):
-                length = abs(x2 - x1) + abs(y2 - y1)
-                if length < MIN_SEG - 0.01:
-                    errors.append(
-                        f"edge {e['from']}->{e['to']}: segment "
-                        f"({x1:.3f},{y1:.3f})-({x2:.3f},{y2:.3f}) の長さ"
-                        f"{length:.3f}in はMIN_SEG({MIN_SEG})未満です。"
-                        f"via/exit/enterの組み合わせを見直してください。")
+            _, enter_d = self._sides(e)
+            (x1, y1), (x2, y2) = pts[-2], pts[-1]
+            ok = {"top": y2 > y1, "bottom": y2 < y1,
+                 "left": x2 > x1, "right": x2 < x1}[enter_d]
+            if not ok:
+                errors.append(
+                    f"edge {e['from']}->{e['to']}: 最終区間が enter=\"{enter_d}\" "
+                    f"の向きと逆走しています({x1:.3f},{y1:.3f})->({x2:.3f},{y2:.3f})。"
+                    f"行/列の間隔が不足している可能性があります。")
         if errors:
             raise ValueError("diagram_layout: 経路に短すぎる区間があります:\n  "
                              + "\n  ".join(errors))
@@ -432,7 +449,11 @@ def render_diagram(slide, spec, note=None):
                     max(segs, key=lambda s: abs(s[1][0] - s[0][0])
                         + abs(s[1][1] - s[0][1])))
             mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
-            horizontal = abs(b[1] - a[1]) < 0.01
+            # dxとdyの大小で判定する(片方の絶対量だけでの閾値判定だと、
+            # 極端に短い垂直区間のdyが閾値未満になり「水平」と誤判定して
+            # 横並び用の描画分岐に入ってしまう。実際にr53<->cfの0.005in区間
+            # で発生し、ラベルが自ノードのタイトルと重なる不具合になった)。
+            horizontal = abs(b[1] - a[1]) < abs(b[0] - a[0])
             seg_len = abs(b[1] - a[1]) if not horizontal else abs(b[0] - a[0])
             label_h = line_height_in(8.5, 1.1) + 0.08
             if horizontal:
@@ -446,7 +467,15 @@ def render_diagram(slide, spec, note=None):
             else:
                 # 垂直セグメントが短すぎてラベルが収まらない(隣接行が近い等):
                 # マスクせず線の横に添える(実際に短いr53<->cfループで発生した不具合)。
-                # 両端のアイコン半径分は必ず避ける(実際にアイコンへ食い込んだ不具合)。
+                # yは接続線の(縮んだ)区間や両ノード中心の中点ではなく、
+                # 着信先ノードのアイコン中心を使う: 区間中点や中心間中点は
+                # 発信元ノードの直下タイトル文字の帯にかかることがある
+                # (実際にRoute53のタイトルと「名前解決」ラベルが重なった。
+                # r53<->cfは行間が極端に狭く、中点を使ってもr53側のタイトル
+                # 帯に入ってしまっていた)。着信先アイコンの高さ±ICON_R程度
+                # なら自ノードのタイトル(アイコンのさらに下)と衝突しない。
+                if len(pts) == 2 and not e["to"].startswith("@"):
+                    my = lay.node_center(e["to"])[1]
                 lw = min(e.get("label_w", 1.1), text_width_in(e["label"], 8.5) + 0.1)
                 cx = mx - ICON_R - EDGE_GAP - 0.04 - lw / 2
                 arrow_label(slide, cx, my, e["label"], w=lw, size=8.5)
