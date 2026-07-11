@@ -73,6 +73,8 @@ def container(slide, x, y, w, h, label, color=LINE, dash=None):
 
 # ---- AWS構成図(公式アイコン使用) ----
 ICON_DIR = Path(__file__).parent / "assets"
+ICON_R = 0.31        # アイコン半径(0.62角の半分)
+EDGE_GAP = 0.06      # 矢印端点とアイコン縁の隙間
 
 
 def icon_node(slide, cx, cy, img, title, sub=None, size=0.62):
@@ -86,30 +88,42 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62):
                  color=GRAY, align=PP_ALIGN.CENTER)
 
 
+def right_of(cx):
+    """アイコン右縁の矢印端点X。"""
+    return cx + ICON_R + EDGE_GAP
+
+
+def left_of(cx):
+    return cx - ICON_R - EDGE_GAP
+
+
 def s_aws(slide, spec, page):
     header(slide, spec["kicker"], spec["title"])
+    # レーン定義: 列X(処理の流れ順)・行Y(サービス段)
+    C = {"user": 1.35, "alb": 3.95, "ecs": 6.35, "svc": 9.55, "dept": 12.35}
+    R = {"bedrock": 2.85, "main": 4.2, "cw": 5.62}
     # コンテナ(AWS Cloud実線 / VPC点線)
     container(slide, 2.55, 2.0, 8.35, 4.6, "AWS Cloud", LINE)
     container(slide, 2.9, 3.3, 4.55, 2.55, "VPC (private)", ACCENT, dash="dash")
     # ノード
-    icon_node(slide, 1.35, 4.2, "users.png", "社内ユーザー", "ブラウザ")
-    icon_node(slide, 3.95, 4.2, "alb.png", "ALB", "内部LB")
-    icon_node(slide, 6.35, 4.2, "fargate.png", "ECS Fargate", "生成API (python-pptx)")
-    icon_node(slide, 9.55, 2.85, "bedrock.png", "Amazon Bedrock", "Claude (構成JSON生成)")
-    icon_node(slide, 9.55, 4.2, "s3.png", "Amazon S3", "テンプレート/成果物")
-    icon_node(slide, 9.55, 5.62, "cloudwatch.png", "CloudWatch", "ログ・監査証跡")
-    icon_node(slide, 12.35, 4.2, "user.png", "利用部門", "ダウンロード")
+    icon_node(slide, C["user"], R["main"], "users.png", "社内ユーザー", "ブラウザ")
+    icon_node(slide, C["alb"], R["main"], "alb.png", "ALB", "内部LB")
+    icon_node(slide, C["ecs"], R["main"], "fargate.png", "ECS Fargate", "生成API (python-pptx)")
+    icon_node(slide, C["svc"], R["bedrock"], "bedrock.png", "Amazon Bedrock", "Claude (構成JSON生成)")
+    icon_node(slide, C["svc"], R["main"], "s3.png", "Amazon S3", "テンプレート/成果物")
+    icon_node(slide, C["svc"], R["cw"], "cloudwatch.png", "CloudWatch", "ログ・監査証跡")
+    icon_node(slide, C["dept"], R["main"], "user.png", "利用部門", "ダウンロード")
     # 矢印(アイコンの縁から縁へ。同じ行のノードは水平に揃える)
-    add_arrow(slide, 1.72, 4.2, 3.58, 4.2)
-    arrow_label(slide, 2.65, 4.0, "HTTPS", w=1.0)
-    add_arrow(slide, 4.32, 4.2, 5.98, 4.2)
-    add_arrow(slide, 6.72, 4.05, 9.12, 2.95)
+    add_arrow(slide, right_of(C["user"]), R["main"], left_of(C["alb"]), R["main"])
+    arrow_label(slide, 2.65, R["main"] - 0.2, "HTTPS", w=1.0)
+    add_arrow(slide, right_of(C["alb"]), R["main"], left_of(C["ecs"]), R["main"])
+    add_arrow(slide, right_of(C["ecs"]), R["main"] - 0.15, left_of(C["svc"]) - 0.12, R["bedrock"] + 0.1)
     arrow_label(slide, 7.9, 3.3, "構成生成", w=1.1)
-    add_arrow(slide, 6.72, 4.2, 9.13, 4.2)
-    arrow_label(slide, 7.9, 4.42, "読み書き", w=1.1)
-    add_arrow(slide, 6.72, 4.35, 9.12, 5.5)
-    add_arrow(slide, 9.98, 4.2, 11.92, 4.2)
-    arrow_label(slide, 10.95, 4.0, "署名URL", w=1.0)
+    add_arrow(slide, right_of(C["ecs"]), R["main"], left_of(C["svc"]) - 0.11, R["main"])
+    arrow_label(slide, 7.9, R["main"] + 0.22, "読み書き", w=1.1)
+    add_arrow(slide, right_of(C["ecs"]), R["main"] + 0.15, left_of(C["svc"]) - 0.12, R["cw"] - 0.12)
+    add_arrow(slide, right_of(C["svc"]) + 0.06, R["main"], left_of(C["dept"]) - 0.06, R["main"])
+    arrow_label(slide, 10.95, R["main"] - 0.2, "署名URL", w=1.0)
     if spec.get("note"):
         note_line(slide, spec["note"])
 
