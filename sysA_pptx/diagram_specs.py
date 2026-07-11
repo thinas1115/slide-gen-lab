@@ -3,8 +3,15 @@
 書くのは:
   cols/rows   : グリッドの列・行の並び(名前だけ)
   nodes       : ノード = (列, 行, アイコン, ラベル)
-  containers  : メンバー列挙(外側から順に。@名前 で子コンテナ参照)
+  containers  : メンバー列挙(外側から順に。@名前 で子コンテナ参照)。
+                  "pad"は全辺の余白、"pad_x"を指定すると左右だけ上書きできる
+                  (上下[行間計算]を変えずに配線レーンのクリアランスだけ広げたい時に使う)
   channels    : 配線レーン = ("left_of_col"|"right_of_col"|"above_row"|"below_row", 基準セル)
+                  または ("outside_container", (コンテナ名, "left"|"right"|"top"|"bottom"))
+                  — 後者は「そのコンテナのすぐ外側」を指す。同じ列を共有するノード間の
+                  ローカルループ(例: 同一AZ内のFargate→RDS)は必ずこちらを使う。
+                  列基準のチャネルを流用すると、無関係な隣接列まで大回りして他コンテナの
+                  境界線を貫通する(実際に発生した不具合。要注意)。
   edges       : from/to(+必要なら exit/enter 辺, via チャネル, label)
 """
 
@@ -72,7 +79,8 @@ AWS_MULTIAZ = {
         {"name": "cloud", "label": "AWS Cloud",
          "members": ["@vpc", "r53", "cf", "s3", "cw"], "pad": 0.22},
         {"name": "vpc", "label": "VPC (private subnets)",
-         "members": ["alb", "@az_a", "@az_c"], "color": "navy", "pad": 0.18},
+         "members": ["alb", "@az_a", "@az_c"], "color": "navy",
+         "pad": 0.18, "pad_x": 0.34},  # pad_x: AZ間ループ配線のクリアランス確保用
         {"name": "az_a", "label": "AZ-a", "members": ["fg_a", "rds_a"],
          "dash": "dash", "pad": 0.14},
         {"name": "az_c", "label": "AZ-c", "members": ["fg_c", "rds_c"],
@@ -80,8 +88,8 @@ AWS_MULTIAZ = {
     ],
     "channels": {
         "far_west": ("left_of_col", "edge"),
-        "west": ("left_of_col", "fg_a"),
-        "east_c": ("right_of_col", "fg_c"),
+        "loop_a": ("outside_container", ("az_a", "left")),
+        "loop_c": ("outside_container", ("az_c", "right")),
     },
     "edges": [
         {"from": "user", "to": "cf"},
@@ -92,9 +100,9 @@ AWS_MULTIAZ = {
         {"from": "alb", "to": "fg_a", "enter": "top"},
         {"from": "alb", "to": "fg_c", "enter": "top"},
         {"from": "fg_a", "to": "rds_a", "exit": "left", "enter": "left",
-         "via": ["west"]},
+         "via": ["loop_a"]},
         {"from": "fg_c", "to": "rds_c", "exit": "right", "enter": "right",
-         "via": ["east_c"]},
+         "via": ["loop_c"]},
         {"from": "rds_a", "to": "rds_c", "both": True, "dash": "dash",
          "label": "同期", "label_w": 0.8},
         {"from": "fg_c", "to": "s3", "exit": "top", "label": "成果物",

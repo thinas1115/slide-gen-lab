@@ -81,8 +81,9 @@ class Layout:
             ls = leaves(c)
             idx = [self.rows.index(nodes[n]["row"]) for n in ls]
             pad = c.get("pad", 0.3)
+            pad_x = c.get("pad_x", pad)
             lo, hi = x_range(ls)
-            bands.append(dict(top=min(idx), bot=max(idx), x=(lo - pad, hi + pad),
+            bands.append(dict(top=min(idx), bot=max(idx), x=(lo - pad_x, hi + pad_x),
                               band=pad + CONT_HEAD, bband=pad * 0.6))
         top_stack = sum(b["band"] for b in bands if b["top"] == 0)
         bot_stack = sum(b["bband"] for b in bands if b["bot"] == len(self.rows) - 1)
@@ -142,15 +143,26 @@ class Layout:
             rects = [self.cont_rect[m[1:]] if m.startswith("@")
                      else self.node_box(m) for m in c["members"]]
             pad = c.get("pad", 0.3)
+            pad_x = c.get("pad_x", pad)   # 左右だけ広げたい時に上下(行間計算)を巻き込まない
             self.cont_rect[c["name"]] = (
-                min(r[0] for r in rects) - pad,
+                min(r[0] for r in rects) - pad_x,
                 min(r[1] for r in rects) - pad - CONT_HEAD,
-                max(r[2] for r in rects) + pad,
+                max(r[2] for r in rects) + pad_x,
                 max(r[3] for r in rects) + pad * 0.6)
 
     # ---- チャネル(配線レーン) ----
     def channel(self, name):
         kind, ref = self.spec["channels"][name]
+        if kind == "outside_container":
+            # 「列の隙間」ではなく「特定コンテナのすぐ外側」を指すレーン。
+            # 同じ列を共有するノード間のローカルループに使う
+            # (列基準のチャネルを流用すると、隣接する無関係な列まで大回りしてしまう)。
+            cont, side = ref
+            r = self.cont_rect[cont]
+            gap = 0.12
+            axis, pos = {"left": ("v", r[0] - gap), "right": ("v", r[2] + gap),
+                        "top": ("h", r[1] - gap), "bottom": ("h", r[3] + gap)}[side]
+            return axis, pos
         seq, pos = (self.cols, self.col_x) if "col" in kind else (self.rows, self.row_y)
         i = seq.index(ref)
         if kind in ("left_of_col", "above_row"):
