@@ -20,6 +20,15 @@ BOTTOM_PORT_GAP = 0.03  # bottom側ポートがラベル下端からさらに離
                         # (行間の必須スペース計算と必ず同じ値を使うこと。
                         # ずれると「必須分は確保したはずなのに実際は足りない」
                         # という不具合になる。実際に発生した)
+MIN_SEG = 0.12          # via指定後の最終進入区間の最短長。これより短い/逆走
+                        # する場合はp1側にクランプする(実際に0.04inの逆走が
+                        # 発生し、矢印の向きが逆に見える不具合になった)
+MIN_SEG_CLAMP = {
+    "left":   lambda c, p1: (min(c[0], p1[0] - MIN_SEG), c[1]),
+    "right":  lambda c, p1: (max(c[0], p1[0] + MIN_SEG), c[1]),
+    "top":    lambda c, p1: (c[0], min(c[1], p1[1] - MIN_SEG)),
+    "bottom": lambda c, p1: (c[0], max(c[1], p1[1] + MIN_SEG)),
+}
 COLORS = {"line": LINE, "navy": NAVY, "accent": ACCENT}
 
 
@@ -286,6 +295,15 @@ class Layout:
                 axis, v = self.channel(ch)
                 cur = (v, cur[1]) if axis == "v" else (cur[0], v)
                 pts.append(cur)
+            if e.get("via"):
+                # via指定後の最終進入区間が、enterの向きと逆走(または極端に
+                # 短い)にならないようクランプする。例えばenter="top"なら
+                # 「上から下へ」入るはずなので、直前の点はp1よりさらに上に
+                # ないといけない。channelの値がp1を行き過ぎると、矢印が
+                # 逆向きに描かれる/一瞬だけ戻る不自然な線になる
+                # (実際に発生した不具合: ALB→Fargateで0.04inだけ逆走していた)。
+                cur = MIN_SEG_CLAMP[enter_d](cur, p1)
+                pts[-1] = cur
             if enter_d in ("left", "right"):
                 if abs(cur[1] - p1[1]) > 0.01:
                     if not e.get("via") and abs(cur[0] - p1[0]) > 0.01:
@@ -363,6 +381,31 @@ class Layout:
                         f"via指定漏れを確認してください。")
         if errors:
             raise ValueError("diagram_layout: 配線がコンテナ境界を貫通しています:\n  "
+                             + "\n  ".join(errors))
+        self._validate_segment_lengths(edges, routed)
+
+    def _validate_segment_lengths(self, edges, routed):
+        """複数区間に折れ曲がった経路の中間区間が極端に短くないか検証する。
+
+        2点だけの直線(ノード同士がそもそも近い)は対象外。3点以上ある
+        経路の中間区間が短いのは、via/自動Zルートの計算ミスで一瞬だけ
+        逆走・迂回しているサインであることが多い(実際に0.04inの逆走が
+        発生し、矢印の向きが逆に見える不具合になった)。
+        """
+        errors = []
+        for e, pts in zip(edges, routed):
+            if len(pts) < 3:
+                continue
+            for (x1, y1), (x2, y2) in zip(pts[:-1], pts[1:]):
+                length = abs(x2 - x1) + abs(y2 - y1)
+                if length < MIN_SEG - 0.01:
+                    errors.append(
+                        f"edge {e['from']}->{e['to']}: segment "
+                        f"({x1:.3f},{y1:.3f})-({x2:.3f},{y2:.3f}) の長さ"
+                        f"{length:.3f}in はMIN_SEG({MIN_SEG})未満です。"
+                        f"via/exit/enterの組み合わせを見直してください。")
+        if errors:
+            raise ValueError("diagram_layout: 経路に短すぎる区間があります:\n  "
                              + "\n  ".join(errors))
 
 

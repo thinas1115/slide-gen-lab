@@ -85,10 +85,13 @@ AWS_MULTIAZ = {
         {"name": "vpc", "label": "VPC (private subnets)",
          "members": ["alb", "@az_a", "@az_c"], "color": "navy",
          "pad": 0.18, "pad_x": 0.34},  # pad_x: AZ間ループ配線のクリアランス確保用
+        # pad_x: 縦長で窮屈に見えないよう横だけ広げる(手書き版は幅2.95inだった
+        # のに対し、自動計算の素の幅は1.47inしかなく縦長すぎた。実際の指摘)。
+        # pad(縦)は行間計算に響くため変えない。
         {"name": "az_a", "label": "AZ-a", "members": ["fg_a", "rds_a"],
-         "dash": "dash", "pad": 0.14},
+         "dash": "dash", "pad": 0.14, "pad_x": 0.28},
         {"name": "az_c", "label": "AZ-c", "members": ["fg_c", "rds_c"],
-         "dash": "dash", "pad": 0.14},
+         "dash": "dash", "pad": 0.14, "pad_x": 0.28},
     ],
     "channels": {
         "loop_a": ("outside_container", ("az_a", "left")),
