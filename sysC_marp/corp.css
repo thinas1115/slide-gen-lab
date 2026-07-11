@@ -1,0 +1,161 @@
+/* @theme corp */
+/* 社内テンプレート様式(ネイビー/アクセントブルー)のMarpテーマ */
+@import 'default';
+
+:root {
+  --navy: #1f3864;
+  --accent: #2e75b6;
+  --light: #eaf1f8;
+  --zebra: #f2f6fb;
+  --text: #262626;
+  --gray: #7f7f7f;
+}
+
+section {
+  width: 1280px;
+  height: 720px;
+  padding: 34px 53px 56px;
+  font-family: 'Yu Gothic', 'Yu Gothic UI', sans-serif;
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--text);
+  background: #fff;
+  place-content: flex-start;
+  justify-content: flex-start !important;
+}
+
+section::after {  /* ページ番号 */
+  font-size: 11px;
+  color: var(--gray);
+  bottom: 14px;
+  right: 53px;
+}
+footer {
+  left: 53px;
+  bottom: 14px;
+  font-size: 11px;
+  color: var(--gray);
+  border-top: 1px solid #d9d9d9;
+  width: calc(100% - 106px);
+  padding-top: 6px;
+}
+
+.kicker {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+h1 {
+  color: var(--navy);
+  font-size: 27px;
+  margin: 0 0 12px;
+  padding-bottom: 14px;
+  border-bottom: 2.5px solid var(--accent);
+}
+h3 { color: var(--navy); font-size: 19px; margin: 0 0 8px; }
+
+ul { margin-top: 20px; }
+section > ul > li {
+  list-style: none;
+  margin: 0 0 22px 0;
+  padding-left: 28px;
+  position: relative;
+}
+section > ul > li::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 9px;
+  width: 12px; height: 12px;
+  background: var(--accent);
+}
+
+/* カード */
+.cards { display: flex; gap: 22px; margin-top: 34px; }
+.card {
+  flex: 1;
+  background: var(--light);
+  border-radius: 10px;
+  padding: 20px 22px;
+  font-size: 17px;
+}
+.card h3::before {
+  content: '';
+  display: block;
+  width: 30px; height: 4px;
+  background: var(--accent);
+  margin-bottom: 10px;
+}
+
+/* 2カラムパネル */
+.cols { display: flex; gap: 26px; margin-top: 26px; }
+.panel { flex: 1; }
+.panel h3 {
+  background: var(--navy);
+  color: #fff;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 18px;
+}
+.panel ul {
+  background: var(--light);
+  border-radius: 8px;
+  padding: 16px 18px 16px 18px;
+  margin: 0;
+  font-size: 15.5px;
+}
+.panel li {
+  list-style: none;
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 12px;
+}
+.panel li::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 7px;
+  width: 9px; height: 9px;
+  background: var(--accent);
+}
+
+/* 表 */
+table { margin-top: 26px; font-size: 15px; width: 100%; border-collapse: collapse; }
+th { background: var(--navy); color: #fff; padding: 8px 10px; border: none; text-align: left; }
+td { padding: 7px 10px; border: none; }
+tbody tr:nth-child(even) { background: var(--zebra); }
+
+/* CSS疑似グラフ */
+.chart { margin-top: 30px; font-size: 15px; }
+.chart .row { display: flex; align-items: center; margin-bottom: 7px; }
+.chart .cat { width: 300px; text-align: right; padding-right: 14px; color: var(--text); }
+.chart .bar {
+  height: 26px; border-radius: 3px; color: #fff;
+  font-size: 13px; line-height: 26px; padding-left: 8px;
+  white-space: nowrap;
+}
+.chart .conv { background: #bfbfbf; }
+.chart .ai { background: var(--accent); }
+.chart .gap { margin-bottom: 20px; }
+.legend { margin-top: 14px; padding-left: 314px; font-size: 13px; color: var(--text); }
+.legend .sw {
+  display: inline-block; width: 12px; height: 12px; margin: 0 6px -1px 18px;
+}
+
+.note {
+  position: absolute;
+  right: 53px; bottom: 62px;
+  font-size: 12px; color: var(--gray);
+}
+
+/* 表紙 */
+section.titlepage {
+  padding: 0;
+  justify-content: center;
+}
+section.titlepage::after, section.titlepage footer { display: none; }
+.tp-band { position: absolute; left: 0; width: 100%; height: 17px; background: var(--navy); }
+.tp-wrap { padding: 0 53px; }
+.tp-rule { width: 66px; height: 4.5px; background: var(--accent); margin-bottom: 22px; }
+.tp-title { color: var(--navy); font-size: 42px; font-weight: bold; margin: 0 0 14px; }
+.tp-sub { color: var(--gray); font-size: 21px; margin: 0; }
+.tp-meta { position: absolute; bottom: 90px; left: 53px; color: var(--gray); font-size: 15px; }
