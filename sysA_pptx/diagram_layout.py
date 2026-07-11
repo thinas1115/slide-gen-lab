@@ -8,7 +8,7 @@ from generate import BODY_TOP, BODY_W, MARGIN, note_line
 from diagrams import (ACCENT, EDGE_GAP, ICON_R, LINE, NAVY, add_arrow,
                       arrow_label, container, icon_node)
 from diagrams3 import route
-from textfit import text_width_in
+from textfit import line_height_in, text_width_in
 
 AREA = (MARGIN + 0.15, BODY_TOP + 0.28, MARGIN + BODY_W - 0.15, 6.78)
 LABEL_W = 2.1          # icon_nodeのラベル幅
@@ -16,6 +16,10 @@ TITLE_H = 0.33         # アイコン下端からタイトル行下端まで
 SUB_H = 0.26
 CONT_HEAD = 0.30       # コンテナラベルの余白(上辺に追加)
 SLOT_PITCH = 0.26      # 同一辺から複数エッジを出すときの間隔
+BOTTOM_PORT_GAP = 0.03  # bottom側ポートがラベル下端からさらに離す余白
+                        # (行間の必須スペース計算と必ず同じ値を使うこと。
+                        # ずれると「必須分は確保したはずなのに実際は足りない」
+                        # という不具合になる。実際に発生した)
 COLORS = {"line": LINE, "navy": NAVY, "accent": ACCENT}
 
 
@@ -58,9 +62,9 @@ class Layout:
         by_row = {r: [n for n, v in nodes.items() if v["row"] == r]
                   for r in self.rows}
 
-        def bot_ext(r):     # 行中心→ラベル下端
+        def bot_ext(r):     # 行中心→ラベル下端(bottom発進ポートの余白を含む必須値)
             return ICON_R + TITLE_H + (SUB_H if any(
-                nodes[n].get("sub") for n in by_row[r]) else 0)
+                nodes[n].get("sub") for n in by_row[r]) else 0) + BOTTOM_PORT_GAP
 
         def x_range(names):
             lo = min(self.col_x[nodes[n]["col"]] - self._half_w(n) for n in names)
@@ -173,7 +177,7 @@ class Layout:
             return (cx + ICON_R + EDGE_GAP, cy + offset)
         if side == "top":
             return (cx + offset, cy - ICON_R - EDGE_GAP)
-        return (cx + offset, self._label_bottom(name) + 0.03)
+        return (cx + offset, self._label_bottom(name) + BOTTOM_PORT_GAP)
 
     # ---- コンテナ ----
     def _resolve_containers(self):
@@ -205,6 +209,13 @@ class Layout:
             else:
                 r = self.cont_rect[ref_id]
             gap = 0.12
+            if side == "top_inside":
+                # コンテナの外側ではなく「ラベル帯のすぐ下・内側」を指す。
+                # ALB→Fargateのような「上のノードから、下のコンテナの中へ
+                # まっすぐ入る」配線で使う。外側(top)を使うと、コンテナの
+                # パディングが大きい場合に始点より上に出てしまい、線が
+                # 逆流して手前のノード自身のラベルを横切る(実際に発生)。
+                return "h", r[1] + CONT_HEAD + gap
             axis, pos = {"left": ("v", r[0] - gap), "right": ("v", r[2] + gap),
                         "top": ("h", r[1] - gap), "bottom": ("h", r[3] + gap)}[side]
             return axis, pos
@@ -246,9 +257,14 @@ class Layout:
         sides = [self._sides(e) for e in edges]
         usage = {}
         for e, (xd, ed) in zip(edges, sides):
-            if not e["from"].startswith("@"):
+            # top/bottomは意図的にオフセットしない: 分岐/合流は同一点から
+            # 出て横方向のジョグで分かれるのが自然で、細いアイコンの下で
+            # 左右にずらすとアイコンの縁に沿って平行に走る不自然な形になる
+            # (実際に発生した不具合)。ずらす必要があるのはleft/rightのみ。
+            if not e["from"].startswith("@") and xd not in ("top", "bottom"):
                 usage.setdefault((e["from"], xd, "out"), []).append(id(e))
-            usage.setdefault((e["to"], ed, "in"), []).append(id(e))
+            if ed not in ("top", "bottom"):
+                usage.setdefault((e["to"], ed, "in"), []).append(id(e))
 
         def off(key, eid):
             ids = usage.get(key, [])
@@ -372,10 +388,24 @@ def render_diagram(slide, spec, note=None):
             a, b = (segs[e["label_seg"]] if "label_seg" in e else
                     max(segs, key=lambda s: abs(s[1][0] - s[0][0])
                         + abs(s[1][1] - s[0][1])))
-            # 水平セグメントは線の上側にずらす(近接ノードとの干渉回避)。
-            # 垂直セグメントは線上に置き、白背景で線をマスクする。
-            dy = -0.17 if abs(b[1] - a[1]) < 0.01 else 0.0
-            arrow_label(slide, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + dy,
-                        e["label"], w=e.get("label_w", 1.1), size=8.5)
+            mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+            horizontal = abs(b[1] - a[1]) < 0.01
+            seg_len = abs(b[1] - a[1]) if not horizontal else abs(b[0] - a[0])
+            label_h = line_height_in(8.5, 1.1) + 0.08
+            if horizontal:
+                # 水平セグメント: 線の上側にずらす(近接ノードとの干渉回避)。
+                arrow_label(slide, mx, my - 0.17, e["label"],
+                           w=e.get("label_w", 1.1), size=8.5)
+            elif seg_len >= label_h + 0.06:
+                # 垂直セグメントが十分長い: 線上に置き、白背景で線をマスクする。
+                arrow_label(slide, mx, my, e["label"],
+                           w=e.get("label_w", 1.1), size=8.5)
+            else:
+                # 垂直セグメントが短すぎてラベルが収まらない(隣接行が近い等):
+                # マスクせず線の横に添える(実際に短いr53<->cfループで発生した不具合)。
+                # 両端のアイコン半径分は必ず避ける(実際にアイコンへ食い込んだ不具合)。
+                lw = min(e.get("label_w", 1.1), text_width_in(e["label"], 8.5) + 0.1)
+                cx = mx - ICON_R - EDGE_GAP - 0.04 - lw / 2
+                arrow_label(slide, cx, my, e["label"], w=lw, size=8.5)
     if note:
         note_line(slide, note)

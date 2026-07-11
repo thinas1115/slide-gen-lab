@@ -57,7 +57,7 @@ AWS_MULTIAZ = {
     "rows": ["north", "web", "fg", "rds"],
     # 4行×sub付きノード込みで既定領域(AREA)には収まらないため、この図解専用に
     # 縦を広げる(ヘッダー罫線の直下から使い、下端も本文フッター罫線の手前まで)。
-    "area": (0.70, 1.60, 12.633, 6.88),
+    "area": (0.70, 1.58, 12.633, 6.96),
     "nodes": {
         "user": {"col": "user", "row": "web", "icon": "users.png",
                  "title": "社内ユーザー"},
@@ -91,18 +91,25 @@ AWS_MULTIAZ = {
          "dash": "dash", "pad": 0.14},
     ],
     "channels": {
-        "far_west": ("outside_container", (["r53", "cf"], "left")),
         "loop_a": ("outside_container", ("az_a", "left")),
         "loop_c": ("outside_container", ("az_c", "right")),
+        # ALB→Fargateの横方向ジョグをAZコンテナのラベル帯のすぐ下(内側)で
+        # 行い、ラベルの文字帯を横切らないようにする(自動Zルート任せだと
+        # ジョグ位置がラベル帯の高さと重なることがあった。実際に発生した不具合)。
+        "above_az_a": ("outside_container", ("az_a", "top_inside")),
+        "above_az_c": ("outside_container", ("az_c", "top_inside")),
     },
     "edges": [
         {"from": "user", "to": "cf"},
-        {"from": "r53", "to": "cf", "exit": "left", "enter": "left",
-         "via": ["far_west"], "dash": "dash", "label": "名前解決",
+        # r53とcfは同じ列(edge)で真上・真下に並ぶので側面迂回させず素直に縦接続する
+        {"from": "r53", "to": "cf", "dash": "dash", "label": "名前解決",
          "label_w": 1.0},
         {"from": "cf", "to": "alb", "label": "HTTPS", "label_w": 1.0},
-        {"from": "alb", "to": "fg_a", "enter": "top"},
-        {"from": "alb", "to": "fg_c", "enter": "top"},
+        # ALBからは真下に分岐させる(HTTPSの着信ポート[左辺]と衝突させない)
+        {"from": "alb", "to": "fg_a", "exit": "bottom", "enter": "top",
+         "via": ["above_az_a"]},
+        {"from": "alb", "to": "fg_c", "exit": "bottom", "enter": "top",
+         "via": ["above_az_c"]},
         {"from": "fg_a", "to": "rds_a", "exit": "left", "enter": "left",
          "via": ["loop_a"]},
         {"from": "fg_c", "to": "rds_c", "exit": "right", "enter": "right",
