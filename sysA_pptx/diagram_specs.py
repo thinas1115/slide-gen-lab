@@ -80,8 +80,11 @@ AWS_MULTIAZ = {
                "title": "CloudWatch", "sub": "監視・ログ"},
     },
     "containers": [
+        # pad: Route53<->CloudFront間にMIN_SEG(可視コネクタの最短長)を必須で
+        # 確保するため、上下スタックの余白をここで切り詰めて捻出している
+        # (行間圧縮ではGAPがほぼ0まで潰れ、直結コネクタが事実上消えていた)。
         {"name": "cloud", "label": "AWS Cloud",
-         "members": ["@vpc", "r53", "cf", "s3", "cw"], "pad": 0.22},
+         "members": ["@vpc", "r53", "cf", "s3", "cw"], "pad": 0.14},
         {"name": "vpc", "label": "VPC (private subnets)",
          "members": ["alb", "@az_a", "@az_c"], "color": "navy",
          "pad": 0.18, "pad_x": 0.44},  # pad_x: AZ間ループ配線+ラベルのクリアランス確保用
@@ -123,13 +126,13 @@ AWS_MULTIAZ = {
          "via": ["loop_c"]},
         {"from": "rds_a", "to": "rds_c", "both": True, "dash": "dash",
          "label": "同期", "label_w": 0.8},
-        # exit="right"(rds_cと同じ辺)にする: 以前はtopを共有していたため、
-        # ALB→fg_cの着信ポートとfg_c→s3の発信点が完全に同じ座標になり、
-        # 別々の線が1点に収束して絡まって見えていた(実際の指摘)。
+        # exitはtopのまま(rds_cと辺を変える必要はなかった。根本原因は
+        # fg_c->rds_cと同じloop_cチャネルを共有し縦の通り道が一致して
+        # いたことだけだったので、s3_lane分離のみで解決する)。
         # label_seg=0: 自動選択(最長区間=S3への垂直区間)だとS3自身の
         # サブラベル("成果物/静的配信")と重なるため、fg_c直近の短い
-        # 水平区間に固定する(実際に発生した不具合)。
-        {"from": "fg_c", "to": "s3", "exit": "right", "via": ["s3_lane"],
+        # 区間に固定する(実際に発生した不具合)。
+        {"from": "fg_c", "to": "s3", "exit": "top", "via": ["s3_lane"],
          "label": "成果物", "label_w": 0.9, "label_seg": 0},
         {"from": "@vpc", "to": "cw", "from_row": "rds", "dash": "dash"},
     ],

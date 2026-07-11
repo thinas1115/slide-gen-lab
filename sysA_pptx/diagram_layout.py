@@ -130,6 +130,29 @@ class Layout:
 
         top_stack = sum(chain_stack(r, "band", "top") for r in roots)
         bot_stack = sum(chain_stack(r, "bband", "bot") for r in roots)
+
+        # 隣接行かつ同一列のノードをvia無しで直結するエッジがあるか(=途中に
+        # 迂回を挟まない縦の直線コネクタ)を検出する。この種のエッジの可視長は
+        # 「裁量分のGAP」そのものなので、行間圧縮でGAPがほぼ0まで潰れると
+        # 線がMIN_SEG未満(=事実上消える)になってしまう(実際にRoute53<->
+        # CloudFrontで発生: GAPが0.06→0.005まで圧縮され線が見えなくなった)。
+        # このペアが存在する行境界だけはMIN_SEGを必須分として確保する。
+        edges = self.spec.get("edges", [])
+
+        def needs_min_seg(i):
+            r_prev, r_cur = self.rows[i - 1], self.rows[i]
+            for e in edges:
+                f, t = e.get("from"), e.get("to")
+                if e.get("via") or f.startswith("@") or t.startswith("@"):
+                    continue
+                if f not in nodes or t not in nodes:
+                    continue
+                if nodes[f]["col"] != nodes[t]["col"]:
+                    continue
+                if {nodes[f]["row"], nodes[t]["row"]} == {r_prev, r_cur}:
+                    return True
+            return False
+
         # 行ピッチ = 必須分(前行ラベル深さ+次行アイコン半径。重なり厳禁) +
         #            裁量分(横方向に重なるコンテナ帯+GAP。収まらない時はここだけ圧縮)。
         # 必須分まで圧縮すると「ラベルが次行アイコンに食い込む」実欠陥になる
@@ -143,8 +166,13 @@ class Layout:
                        max(x_range([n])[0], b["x"][0]) > OVERLAP_MIN
                        for n in prev):        # ノード単位で重なり判定
                     extra += b["band"]
-            mandatory.append(bot_ext(self.rows[i - 1]) + ICON_R)
-            discretionary.append(extra + GAP)
+            base = bot_ext(self.rows[i - 1]) + ICON_R
+            if needs_min_seg(i):
+                mandatory.append(base + MIN_SEG)
+                discretionary.append(extra)
+            else:
+                mandatory.append(base)
+                discretionary.append(extra + GAP)
         first = y0 + top_stack + ICON_R
         avail = y1 - first - bot_ext(self.rows[-1]) - bot_stack
         need_m, need_d = sum(mandatory), sum(discretionary)
@@ -421,6 +449,15 @@ class Layout:
                     f"edge {e['from']}->{e['to']}: 最終区間が enter=\"{enter_d}\" "
                     f"の向きと逆走しています({x1:.3f},{y1:.3f})->({x2:.3f},{y2:.3f})。"
                     f"行/列の間隔が不足している可能性があります。")
+            if len(pts) == 2:
+                # via無しの直結2点エッジも中間区間チェックと同じ基準で見る
+                # (これが漏れていたためRoute53<->CloudFrontが0.005inまで
+                # 潰れて事実上消えても検知できなかった)。
+                length = abs(x2 - x1) + abs(y2 - y1)
+                if length < MIN_SEG - 0.01:
+                    errors.append(
+                        f"edge {e['from']}->{e['to']}: 直結区間の長さ{length:.3f}in "
+                        f"はMIN_SEG({MIN_SEG})未満です。行/列の間隔が不足しています。")
         if errors:
             raise ValueError("diagram_layout: 経路に短すぎる区間があります:\n  "
                              + "\n  ".join(errors))
@@ -460,20 +497,21 @@ def render_diagram(slide, spec, note=None):
                 # 水平セグメント: 線の上側にずらす(近接ノードとの干渉回避)。
                 arrow_label(slide, mx, my - 0.17, e["label"],
                            w=e.get("label_w", 1.1), size=8.5)
-            elif seg_len >= label_h + 0.06:
+            elif seg_len >= MIN_SEG - 0.02:
                 # 垂直セグメントが十分長い: 線上に置き、白背景で線をマスクする。
+                # しきい値はMIN_SEGに合わせてある: エンジンがvia無しの直結
+                # 縦エッジにMIN_SEGを必須確保するようになったため(行間圧縮で
+                # 消えていたRoute53<->CloudFrontの修正)、マスクが前後の
+                # ノードのタイトル/アイコン領域にはみ出しても数百分の1inで
+                # 実害がない。側面配置(のちの分岐)だと、この程度の行間しか
+                # ない場所ではラベルがコンテナ境界の外にはみ出す
+                # (実際にr53<->cfで発生: 側面オフセットがcloud枠の外に出た)。
                 arrow_label(slide, mx, my, e["label"],
                            w=e.get("label_w", 1.1), size=8.5)
             else:
-                # 垂直セグメントが短すぎてラベルが収まらない(隣接行が近い等):
-                # マスクせず線の横に添える(実際に短いr53<->cfループで発生した不具合)。
-                # yは接続線の(縮んだ)区間や両ノード中心の中点ではなく、
-                # 着信先ノードのアイコン中心を使う: 区間中点や中心間中点は
-                # 発信元ノードの直下タイトル文字の帯にかかることがある
-                # (実際にRoute53のタイトルと「名前解決」ラベルが重なった。
-                # r53<->cfは行間が極端に狭く、中点を使ってもr53側のタイトル
-                # 帯に入ってしまっていた)。着信先アイコンの高さ±ICON_R程度
-                # なら自ノードのタイトル(アイコンのさらに下)と衝突しない。
+                # 垂直セグメントが短すぎてラベルが収まらない: マスクせず
+                # 線の横に添える(現状これに該当するエッジはない。将来
+                # MIN_SEGを下回る垂直ラベルが出た場合のフォールバック)。
                 if len(pts) == 2 and not e["to"].startswith("@"):
                     my = lay.node_center(e["to"])[1]
                 lw = min(e.get("label_w", 1.1), text_width_in(e["label"], 8.5) + 0.1)
