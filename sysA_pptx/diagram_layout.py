@@ -154,11 +154,18 @@ class Layout:
     def channel(self, name):
         kind, ref = self.spec["channels"][name]
         if kind == "outside_container":
-            # 「列の隙間」ではなく「特定コンテナのすぐ外側」を指すレーン。
-            # 同じ列を共有するノード間のローカルループに使う
-            # (列基準のチャネルを流用すると、隣接する無関係な列まで大回りしてしまう)。
-            cont, side = ref
-            r = self.cont_rect[cont]
+            # 「列の隙間」ではなく「特定コンテナ(またはノード群)のすぐ外側」を
+            # 指すレーン。同じ列を共有するノード間のローカルループに使う
+            # (列基準のチャネルを流用すると、隣接する無関係な列まで大回りして
+            # 他コンテナの境界線を貫通する。実際に2箇所で発生した不具合)。
+            ref_id, side = ref
+            if isinstance(ref_id, (list, tuple)):
+                # コンテナ化されていないノード群: 自前で外接矩形を計算
+                boxes = [self.node_box(n) for n in ref_id]
+                r = (min(b[0] for b in boxes), min(b[1] for b in boxes),
+                     max(b[2] for b in boxes), max(b[3] for b in boxes))
+            else:
+                r = self.cont_rect[ref_id]
             gap = 0.12
             axis, pos = {"left": ("v", r[0] - gap), "right": ("v", r[2] + gap),
                         "top": ("h", r[1] - gap), "bottom": ("h", r[3] + gap)}[side]
@@ -191,13 +198,19 @@ class Layout:
         return exit_d, enter_d
 
     def route_edges(self, edges):
-        """全エッジの経路を計算。同一辺の多重エッジはスロットでずらす。"""
+        """全エッジの経路を計算。同一辺・同一方向の多重エッジのみスロットでずらす。
+
+        (node, side)だけをキーにすると、あるノードに「その辺から入るエッジ」と
+        「その辺から出るエッジ」がたまたま1本ずつあるだけの場合まで同じグループに
+        入り、無関係な2本を不要にオフセットしてジグザグな経路を作ってしまう
+        (実際に発生した不具合)。in/outを区別してキーに含める。
+        """
         sides = [self._sides(e) for e in edges]
         usage = {}
         for e, (xd, ed) in zip(edges, sides):
             if not e["from"].startswith("@"):
-                usage.setdefault((e["from"], xd), []).append(id(e))
-            usage.setdefault((e["to"], ed), []).append(id(e))
+                usage.setdefault((e["from"], xd, "out"), []).append(id(e))
+            usage.setdefault((e["to"], ed, "in"), []).append(id(e))
 
         def off(key, eid):
             ids = usage.get(key, [])
@@ -212,8 +225,8 @@ class Layout:
                 p0 = (r[2] if exit_d == "right" else r[0],
                       self.row_y[e["from_row"]])
             else:
-                p0 = self.port(src, exit_d, off((src, exit_d), id(e)))
-            p1 = self.port(dst, enter_d, off((dst, enter_d), id(e)))
+                p0 = self.port(src, exit_d, off((src, exit_d, "out"), id(e)))
+            p1 = self.port(dst, enter_d, off((dst, enter_d, "in"), id(e)))
             pts, cur = [p0], p0
             for ch in e.get("via", []):
                 axis, v = self.channel(ch)
@@ -236,9 +249,74 @@ class Layout:
                            if i == 0 or p != pts[i - 1]])
         return result
 
+    # ---- 意味情報を使った自己検証(check_layout.pyでは検出不可能な領域) ----
+    def _container_leaves(self):
+        conts = {c["name"]: c for c in self.spec.get("containers", [])}
+
+        def leaves(c):
+            out = []
+            for m in c["members"]:
+                out += leaves(conts[m[1:]]) if m.startswith("@") else [m]
+            return out
+        return {name: set(leaves(c)) for name, c in conts.items()}
+
+    @staticmethod
+    def _crossings(pts, rect):
+        """折れ線ptsが矩形rectの境界を横切った回数。"""
+        def inside(p):
+            return rect[0] < p[0] < rect[2] and rect[1] < p[1] < rect[3]
+        states = [inside(p) for p in pts]
+        return sum(a != b for a, b in zip(states, states[1:]))
+
+    def _exempt_containers(self, e):
+        """このエッジのviaが outside_container(コンテナ名, ...) を明示的に
+        経由している場合、そのコンテナは「意図的な迂回」として境界越境を許可する。
+        (ノード群指定 [..] は実コンテナではないので対象外)
+        """
+        out = set()
+        for ch in e.get("via", []):
+            kind, ref = self.spec["channels"][ch]
+            if kind == "outside_container" and not isinstance(ref[0], (list, tuple)):
+                out.add(ref[0])
+        return out
+
+    def validate_edges(self, edges, routed):
+        """コンテナ所属が同じノード同士のエッジが、そのコンテナの境界を
+        不要に横切っていないかを検証する。列基準のチャネルを性質の違う
+        配線(ローカルループ等)に流用すると起きる不具合(過去に2回発生)を、
+        画像を見なくても生成時点で検出するための仕組み。
+        via で outside_container(そのコンテナ, ...) を明示的に使っている
+        エッジは、意図的な迂回として2回分の越境まで許可する。
+        """
+        leaves = self._container_leaves()
+        errors = []
+        for e, pts in zip(edges, routed):
+            src, dst = e["from"], e["to"]
+            if src.startswith("@") or dst.startswith("@"):
+                continue
+            exempt = self._exempt_containers(e)
+            for cname, members in leaves.items():
+                s_in, d_in = src in members, dst in members
+                expected = 0 if s_in == d_in else 1
+                if cname in exempt:
+                    expected += 2
+                actual = self._crossings(pts, self.cont_rect[cname])
+                if actual > expected:
+                    errors.append(
+                        f"edge {src}->{dst} crosses container '{cname}' boundary "
+                        f"{actual} time(s) (expected <= {expected}). "
+                        f"列基準チャネルを流用していないか、またはoutside_containerの"
+                        f"via指定漏れを確認してください。")
+        if errors:
+            raise ValueError("diagram_layout: 配線がコンテナ境界を貫通しています:\n  "
+                             + "\n  ".join(errors))
+
 
 def render_diagram(slide, spec, note=None):
     lay = Layout(spec, reserve_note=bool(note))
+    edges = spec.get("edges", [])
+    routed = lay.route_edges(edges)
+    lay.validate_edges(edges, routed)
     for c in spec.get("containers", []):
         r = lay.cont_rect[c["name"]]
         container(slide, r[0], r[1], r[2] - r[0], r[3] - r[1], c["label"],
@@ -246,8 +324,7 @@ def render_diagram(slide, spec, note=None):
     for name, n in spec["nodes"].items():
         cx, cy = lay.node_center(name)
         icon_node(slide, cx, cy, n["icon"], n["title"], n.get("sub"))
-    edges = spec.get("edges", [])
-    for e, pts in zip(edges, lay.route_edges(edges)):
+    for e, pts in zip(edges, routed):
         if len(pts) == 2 and e.get("both"):
             add_arrow(slide, *pts[0], *pts[1], dash=e.get("dash"), both=True)
         else:

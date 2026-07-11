@@ -7,11 +7,12 @@
                   "pad"は全辺の余白、"pad_x"を指定すると左右だけ上書きできる
                   (上下[行間計算]を変えずに配線レーンのクリアランスだけ広げたい時に使う)
   channels    : 配線レーン = ("left_of_col"|"right_of_col"|"above_row"|"below_row", 基準セル)
-                  または ("outside_container", (コンテナ名, "left"|"right"|"top"|"bottom"))
-                  — 後者は「そのコンテナのすぐ外側」を指す。同じ列を共有するノード間の
-                  ローカルループ(例: 同一AZ内のFargate→RDS)は必ずこちらを使う。
+                  または ("outside_container", (コンテナ名 または [ノード名,...], "left"|"right"|"top"|"bottom"))
+                  — 後者は「そのコンテナ(またはノード群)のすぐ外側」を指す。同じ列/近い位置を
+                  共有するノード間のローカルループ(例: 同一AZ内のFargate→RDS、隣接する
+                  Route53↔CloudFrontの折り返し)は必ずこちらを使う。
                   列基準のチャネルを流用すると、無関係な隣接列まで大回りして他コンテナの
-                  境界線を貫通する(実際に発生した不具合。要注意)。
+                  境界線を貫通する(実際に2箇所で発生した不具合。要注意)。
   edges       : from/to(+必要なら exit/enter 辺, via チャネル, label)
 """
 
@@ -87,7 +88,7 @@ AWS_MULTIAZ = {
          "dash": "dash", "pad": 0.14},
     ],
     "channels": {
-        "far_west": ("left_of_col", "edge"),
+        "far_west": ("outside_container", (["r53", "cf"], "left")),
         "loop_a": ("outside_container", ("az_a", "left")),
         "loop_c": ("outside_container", ("az_c", "right")),
     },
