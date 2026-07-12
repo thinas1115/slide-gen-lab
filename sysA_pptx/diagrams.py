@@ -10,6 +10,7 @@ from pptx.util import Inches, Pt
 from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, GRAY, LIGHT,
                       MARGIN, NAVY, TEXT, WHITE, add_rect, add_text, header,
                       note_line)
+from textfit import line_height_in, text_width_in
 
 ORANGE = RGBColor(0xE8, 0x7B, 0x1E)   # compute
 GREEN = RGBColor(0x3F, 0x86, 0x24)    # storage
@@ -37,8 +38,12 @@ def add_arrow(slide, x1, y1, x2, y2, *, color=LINE, width=1.5, both=False,
 
 
 def arrow_label(slide, cx, cy, text, w=1.6, size=9):
-    tb = add_text(slide, cx - w / 2, cy - 0.13, w, 0.26, text, size, color=TEXT,
-                  align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    """線をまたぐラベル。白背景マスクは実測テキスト幅に合わせる。"""
+    actual_w = min(w, text_width_in(text, size) + 0.14)
+    actual_h = line_height_in(size, 1.1) + 0.08
+    tb = add_text(slide, cx - actual_w / 2, cy - actual_h / 2, actual_w, actual_h,
+                  text, size, color=TEXT, align=PP_ALIGN.CENTER,
+                  anchor=MSO_ANCHOR.MIDDLE)
     tb.fill.solid()
     tb.fill.fore_color.rgb = WHITE
     return tb

@@ -7,7 +7,7 @@ from pptx.util import Inches, Pt
 from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, GRAY, LIGHT,
                       MARGIN, NAVY, TEXT, WHITE, ZEBRA, add_rect, add_text,
                       header, note_line)
-from diagrams import LINE, add_arrow
+from diagrams import LINE, add_arrow, arrow_label
 from textfit import fit_font_size
 
 MID = RGBColor(0x9D, 0xC3, 0xE6)
@@ -61,6 +61,13 @@ def s_roadmap(slide, spec, page):
         add_rect(slide, grid_x + j * mw, top, mw - 0.02, hdr_h, NAVY)
         add_text(slide, grid_x + j * mw, top + 0.07, mw - 0.02, 0.3, m, 10.5,
                  bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+    # 縦グリッド線はバー・ラベルより先に描いて背面に置く。
+    for j in range(1, len(months)):
+        ln = add_arrow(slide, grid_x + j * mw, top + hdr_h,
+                       grid_x + j * mw, top + grid_h, width=0.5)
+        ln.line.color.rgb = RGBColor(0xD9, 0xD9, 0xD9)
+        ln.line._get_or_add_ln().remove(ln.line._get_or_add_ln().find(
+            "{http://schemas.openxmlformats.org/drawingml/2006/main}tailEnd"))
     # 行と帯
     for i, ph in enumerate(rows):
         ry = top + hdr_h + i * row_h
@@ -76,13 +83,6 @@ def s_roadmap(slide, spec, page):
                  round_=True)
         add_text(slide, x1 + 0.12, ry + 0.32, x2 - x1 - 0.24, 0.32, ph["bar"], 9.5,
                  bold=True, color=WHITE)
-    # 縦グリッド線
-    for j in range(1, len(months)):
-        ln = add_arrow(slide, grid_x + j * mw, top + hdr_h,
-                       grid_x + j * mw, top + grid_h, width=0.5)
-        ln.line.color.rgb = RGBColor(0xD9, 0xD9, 0xD9)
-        ln.line._get_or_add_ln().remove(ln.line._get_or_add_ln().find(
-            "{http://schemas.openxmlformats.org/drawingml/2006/main}tailEnd"))
     # マイルストーン(菱形)
     for ms in spec["milestones"]:
         mx = grid_x + ms["at"] * mw
@@ -94,9 +94,8 @@ def s_roadmap(slide, spec, page):
         sp.fill.fore_color.rgb = RGBColor(0xC0, 0x50, 0x4D)
         sp.line.fill.background()
         sp.shadow.inherit = False
-        lx = min(mx - 0.9, MARGIN + BODY_W - 1.8)  # 右マージンをはみ出さない
-        add_text(slide, lx, my + 0.27, 1.8, 0.26, ms["label"], 8.5,
-                 color=TEXT, align=PP_ALIGN.CENTER)  # バーの下段に置く
+        lcx = min(mx, MARGIN + BODY_W - 0.9)  # 右マージンをはみ出さない
+        arrow_label(slide, lcx, my + 0.4, ms["label"], w=1.8, size=8.5)
     if spec.get("note"):
         note_line(slide, spec["note"])
 

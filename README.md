@@ -13,6 +13,8 @@
 | `sysB_pptxgenjs/` | システムB: Node + PptxGenJS。全角1em/半角0.53emのヒューリスティック+PPT側autofit保険 |
 | `sysC_marp/` | システムC: Marp。content.json→Markdown変換(md_gen.py)+自作テーマ(corp.css) |
 | `render.ps1` | PPTX→PNG書き出し(PowerPoint COM)。品質検証ループ用 |
+| `contact_sheet.py` | PNG化した全スライドを一覧画像に合成。レビューの初手で使う |
+| `sysA_pptx/check_layout.py` | 生成済みPPTXの重なり・はみ出しを機械検知する品質ゲート |
 | `out/` | 生成物。`sysA_deck.pptx`/`sysB_deck.pptx`=初版(9枚・保存版)、`sysA_deck2.pptx`=拡張版(15枚)、`sysC_deck.html/.pptx`=Marp版 |
 
 ## 使い方
@@ -28,6 +30,8 @@ node gen.js
 
 # 品質検証: PNGに書き出して目視 (要: PowerPoint)
 powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\sysA_deck.pptx -OutDir out\pngA
+python contact_sheet.py out\pngA
+python sysA_pptx\check_layout.py out\sysA_deck.pptx
 ```
 
 内容を変えるときは `sysA_pptx/content.py` を編集し、`python export_content.py` で content.json を再生成する。
@@ -51,6 +55,20 @@ powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\sysA_deck.pptx
 3. `render.ps1` でPNG化 → 目視(またはマルチモーダルAIに検査させる) → 問題があればcontent.pyを直して再生成
 
 **新しいレイアウト種別が必要な場合のみ** renderer関数のコーディングが発生する(CLAUDE.mdの設計原則を参照)。
+
+## 社内テンプレート化の方針
+
+このリポジトリでは、全スライドを万能の宣言レイアウトエンジンに寄せるより、
+提出品質まで詰めた **renderer カタログ** を増やす方針を優先する。
+
+- LLMの役割: `content.py` / `content_ext.py` の既存スキーマに沿って、文言・項目・強調を構造化する。
+- Python rendererの役割: スライド種別ごとの余白、文字実測、配線、注記、描画順を決定論的に保証する。
+- 共通化するもの: テキスト実測、自然高さパッキング、ラベルマスク、表・カード・ロードマップなどの小さな配置ヘルパー。
+- 共通化しすぎないもの: 高密度な構成図の最終的な絵作り。必要なら renderer 内に座標を閉じ込めて手で詰める。
+
+増やす優先度の高いパターンは、タイトル/目次/章扉、カード、2カラム比較、Before/After、
+KPI、プロセス、タイムライン/ロードマップ、表、ランキング、調査結果、2軸マップ、
+体制図、ステークホルダー図、シンプル構成図、高密度構成図。
 
 **モデル依存度の目安**: 文言作成=低(主要LLMなら可) / 既存種別での再生成=ゼロ(決定論的) /
 新レイアウト実装=中 / レンダ画像を見た欠陥検出=高(マルチモーダル必須。人間が目視して
