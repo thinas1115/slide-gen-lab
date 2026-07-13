@@ -98,6 +98,10 @@ python contact_sheet.py out\png_from_json
 5. AWS図解を使う場合: [AWS公式アイコンデッキ(PPTX)](https://aws.amazon.com/jp/architecture/icons/) を入手し、
    `extract_aws_icons.py` の SRC 定数をそのパスに変えて実行 → `sysA_pptx/assets/` にアイコンが生成される
    (アイコンはライセンス配慮のためリポジトリに含めていない)
+6. 汎用アイコン(サーバ・ルータ・人・建物など)を使う場合: `pip install svglib reportlab rlPyCairo` のうえ
+   `python sysA_pptx/fetch_fluent_icons.py` を実行 → [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)
+   (MIT。PowerPointの「挿入 > アイコン」と同じデザイン体系)が `sysA_pptx/assets/fluent/` にPNG化される。
+   diagram仕様からは `"icon": "fluent/server.png"` で参照する
 
 **新しいスライドを作る(定常運用)**
 

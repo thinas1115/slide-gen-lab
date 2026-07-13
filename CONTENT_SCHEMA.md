@@ -452,7 +452,9 @@ python sysA_pptx/validate_content.py content.json
   - `col` / `row`: 所属セル(cols/rowsの名前)
   - `title`: 表示名
   - `sub`: 補足ラベル(任意)
-  - `icon`: `sysA_pptx/assets/` のPNGファイル名(任意)。**省略すると汎用図形ノード**(角丸四角+カラーバー)になるので、アイコン素材がないテーマでもそのまま描ける
+  - `icon`: `sysA_pptx/assets/` からの相対PNGパス(任意)。**省略すると汎用図形ノード**(角丸四角+カラーバー)になるので、アイコン素材がないテーマでもそのまま描ける
+    - 汎用アイコン(`fluent/server.png` / `fluent/router.png` / `fluent/shield.png` / `fluent/database.png` / `fluent/globe.png` / `fluent/switch.png` / `fluent/monitor.png` / `fluent/branch.png` 等19種): 事前に `python sysA_pptx/fetch_fluent_icons.py` で取得しておく(一覧はスクリプトの `ICONS`)
+    - AWSアイコン(`alb.png` 等): 事前に `extract_aws_icons.py` で取得しておく
   - `color`: `"accent"`(既定) / `"navy"` / `"line"`(汎用図形ノードの枠色)
 - `diagram.edges`: object の配列
   - `from` / `to`: ノード名(または `@コンテナ名`)

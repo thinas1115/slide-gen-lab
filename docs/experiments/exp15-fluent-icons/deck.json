@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "title": "本社ネットワーク構成 説明資料 (Fluentアイコン版)",
+    "footer": "本社ネットワーク構成(Fluentアイコン検証 #15)",
+    "date": "2026年7月",
+    "author": "情報システム部"
+  },
+  "slides": [
+    {
+      "type": "diagram",
+      "kicker": "現行構成",
+      "title": "本社NWはFW二重化とVPN集約、サーバ室セグメント分離で構成する",
+      "note": "アイコン: Fluent UI System Icons (MIT) を fetch_fluent_icons.py で取得。",
+      "diagram": {
+        "cols": ["ext", "edge", "core", "srv"],
+        "rows": ["north", "mid", "south"],
+        "nodes": {
+          "internet": {"col": "ext", "row": "north", "title": "インターネット",
+                       "icon": "fluent/globe.png"},
+          "fw": {"col": "edge", "row": "north", "title": "FW (冗長)",
+                 "icon": "fluent/shield.png"},
+          "branch": {"col": "ext", "row": "mid", "title": "拠点網",
+                     "sub": "IPsec VPN", "icon": "fluent/branch.png"},
+          "rtr": {"col": "edge", "row": "mid", "title": "VPNルータ",
+                  "icon": "fluent/router.png"},
+          "core": {"col": "core", "row": "mid", "title": "コアL3SW",
+                   "icon": "fluent/switch.png"},
+          "ap": {"col": "srv", "row": "mid", "title": "業務APサーバ",
+                 "sub": "社内システム", "icon": "fluent/server.png"},
+          "mon": {"col": "core", "row": "south", "title": "監視サーバ",
+                  "icon": "fluent/monitor.png"},
+          "db": {"col": "srv", "row": "south", "title": "DBサーバ",
+                 "icon": "fluent/database.png"}
+        },
+        "containers": [
+          {"name": "dc", "label": "本社データセンター",
+           "members": ["fw", "rtr", "core", "mon", "@srvroom"]},
+          {"name": "srvroom", "label": "サーバ室セグメント",
+           "members": ["ap", "db"], "dash": "dash"}
+        ],
+        "channels": {
+          "mgmt_lane": ["outside_container", ["dc", "left"]]
+        },
+        "edges": [
+          {"from": "internet", "to": "fw", "label": "HTTPS", "label_w": 1.0},
+          {"from": "fw", "to": "core"},
+          {"from": "branch", "to": "rtr", "label": "拠点VPN", "label_w": 1.0},
+          {"from": "rtr", "to": "core"},
+          {"from": "core", "to": "ap"},
+          {"from": "ap", "to": "db", "label": "SQL", "label_w": 0.8},
+          {"from": "core", "to": "mon", "dash": "dash"},
+          {"from": "mon", "to": "fw", "dash": "dash", "label": "監視",
+           "label_w": 0.8, "exit": "left", "enter": "left", "via": ["mgmt_lane"]}
+        ]
+      }
+    }
+  ]
+}
