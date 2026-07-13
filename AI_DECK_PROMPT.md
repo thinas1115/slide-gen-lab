@@ -23,7 +23,7 @@
 2. `meta.title`, `meta.footer`, `slides[*].title`, `slides[*].kicker`, 本文はすべて今回のテーマに合わせて新規作成する。
 3. 既存サンプルの題材・文言・固有名詞・数値を流用しない。
 4. 実在の構成・組織・数値が分からない場合は、勝手に具体化しない。代わりに「要確認」または一般的な概念説明にする。
-5. 構成図は、対象システムの実構成が提供されている場合だけ使う。実構成がない場合は、`cards`, `bullets`, `twocol`, `table`, `process`, `roadmap`, `matrix`, `hub`, `org` から選ぶ。
+5. 新規資料では `aws` / `aws2` を使わない。これらはサンプル固定図であり、任意テーマの構成図生成には対応していない。構成説明が必要な場合は、`cards`, `bullets`, `twocol`, `table`, `process`, `roadmap`, `matrix`, `hub`, `org` から選ぶ。
 6. `type` は `CONTENT_SCHEMA.md` に載っているものだけ使う。
 7. JSON以外の説明文を付けない。
 
@@ -40,7 +40,6 @@
 - `matrix`
 - `hub`
 - `org`
-- `aws` / `aws2`: 実構成が提供されている場合だけ使う
 
 ## 実行コマンド
 
