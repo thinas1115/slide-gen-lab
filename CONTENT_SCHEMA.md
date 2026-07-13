@@ -6,6 +6,18 @@
 
 既存の `content.json` と `sysA_pptx/content.py` はサンプルデッキ。新規資料の題材作成には使わない。
 
+## 機械検証
+
+このschemaの必須フィールドと件数制約は `sysA_pptx/validate_content.py` が機械的に検証する。
+`generate_from_json.py` は生成前に自動で検証し、NGなら生成せずエラー一覧を出す。
+単体で検証だけ行う場合:
+
+```powershell
+python sysA_pptx/validate_content.py content.json
+```
+
+エラーメッセージは `slides[番号] (type=種別): 内容` の形式。生成AIにそのまま渡して直させる。
+
 ## Top Level
 
 必須:
@@ -33,7 +45,8 @@
 - `slides[*].type` は必須。
 - `type: "title"` 以外は `kicker` と `title` が必須。
 - JSONなので、Pythonのタプルではなく配列を使う。
-- 新規資料では `aws` / `aws2` を使わない。現状は固定サンプル図で、任意テーマの構成図rendererではない。
+- `note` (右下の注記) が描画されるのは `table` / `chart` / `process` / `roadmap` / `matrix` / `hub` / `org` のみ。それ以外のtypeに書いても無視される(validatorがエラーにする)。
+- `aws` / `aws2` は使えない。固定サンプル図であり、`generate_from_json.py` は受け付けない(validatorが拒否する)。
 
 ## Supported Types
 
@@ -68,8 +81,8 @@
 
 制約:
 
-- `bullets` は3〜5件程度が安全。
-- 2要素目は現状未使用。`null` にする。
+- `bullets` は3〜5件程度が安全(validatorの上限は6件)。
+- 各要素は `["本文", null]` の2要素配列。2要素目は旧強調フラグの名残で現状未使用。`null` 固定にする(文字列だけを直接並べるとエラーになる)。
 
 ```json
 {
@@ -96,7 +109,7 @@
 
 制約:
 
-- `cards` は3〜4件程度が安全。
+- `cards` は3〜4件が安全(validatorの範囲は2〜4件)。
 - 件数に応じて横並び幅が自動計算される。
 
 ```json
@@ -130,9 +143,9 @@
 
 制約:
 
-- `columns`, `col_widths`, 各 `rows[*]` の要素数は同じにする。
-- `col_widths` の合計はおおむね `11.8` inch。厳密には `BODY_W` との差が `0.6` 未満なら通る。
-- 行数は3〜6行程度が安全。
+- `columns`, `col_widths`, 各 `rows[*]` の要素数は同じにする(2〜8列)。
+- `col_widths` の合計はおおむね `12.2` inch(本文幅 `BODY_W` = 12.23。差が `0.6` 未満なら通る)。
+- 行数は3〜6行程度が安全(validatorの上限は8行)。
 
 ```json
 {
@@ -202,7 +215,7 @@
 制約:
 
 - 各 `values` の長さは `categories` と同じにする。
-- 系列は1〜2件、カテゴリは3〜5件程度が安全。
+- 系列は1〜2件(validator強制)、カテゴリは3〜5件程度が安全(validatorの上限は6件)。
 
 ```json
 {
@@ -240,7 +253,7 @@
 
 制約:
 
-- `steps` は4〜5件が安全。
+- `steps` は4〜5件が安全(validatorの範囲は3〜6件)。
 
 ```json
 {
@@ -277,10 +290,10 @@
 
 制約:
 
-- `months` は6件が最も安定。
-- `phases` は3件が前提に近い。
-- `start`, `end`, `at` は月列のindex基準。6か月なら `0` から `6` の範囲。
-- `milestones[*].row` は対応する `phases` の0始まりindex。
+- `months` は6件が最も安定(validatorの範囲は4〜8件)。
+- `phases` は最大3件(validator強制。4件は行の高さが本文下端を超える)。
+- `start`, `end`, `at` は月列のindex基準。6か月なら `0` から `6` の範囲(validator強制)。
+- `milestones[*].row` は対応する `phases` の0始まりindex。不要なら `"milestones": []`。
 
 ```json
 {
@@ -323,9 +336,9 @@
 
 制約:
 
-- `x`, `y` は `0.0` から `1.0`。
-- 点は4〜7件程度が安全。
-- ラベルが重なる場合は `lx` / `ly` で位置を調整する。
+- `x`, `y` は `0.0` から `1.0` の比率(validator強制)。
+- 点は4〜7件程度が安全(validatorの上限は8件)。
+- ラベルが重なる場合は `lx` / `ly` で位置を調整する。**単位はインチ**(x/yと違い比率ではない)。点の中心からのオフセットで、`lx` 正=右、`ly` 正=下。省略時は点の上 (`ly=-0.36`) に出る。
 
 ```json
 {
@@ -363,7 +376,7 @@
 
 制約:
 
-- `ring` は6件。rendererの配置が6件前提。
+- `ring` はちょうど6件(validator強制)。rendererの周辺ノード配置が6件固定のため、5件では欠け、7件では黙って切り捨てられる。
 
 ```json
 {
@@ -404,8 +417,8 @@
 
 制約:
 
-- `teams` は3件が最も安定。
-- `members` は各チーム0〜3件程度が安全。
+- `teams` は3件が最も安定(validatorの範囲は1〜3件。4件は横幅が本文を超える)。
+- `members` は各チーム0〜3件(validator強制。4件目はフッター線に重なる)。
 
 ```json
 {
@@ -425,6 +438,8 @@
 
 ### aws / aws2
 
-`aws` と `aws2` は固定サンプル図。`content.json` のノード・矢印から任意の構成図を作るrendererではない。
+`aws` と `aws2` は固定サンプル図。図のノード・ラベル・矢印はすべてコード内に固定されており、`content.json` から差し替えられない(タイトルだけ新規テーマで、中身は既存サンプルのAWS構成図になる)。
 
-新規資料では使わない。
+**`generate_from_json.py` はこの2つのtypeを受け付けない**(validate_content.py が生成前に拒否する)。ドキュメント上の禁止ではなく機械的に通らない。
+
+構成の説明が必要な場合は `cards` / `process` / `hub` / `org` などで代替する。任意テーマの構成図rendererは現状存在しない。サンプル図自体の再生成は `generate2.py` / `generate_patterns.py` を使う。
