@@ -10,12 +10,13 @@
 | `content.json` | デッキ内容(スライド構造の共有データ。sysA の content.py から生成) |
 | `CONTENT_SCHEMA.md` | 新規デッキ用の中立schema。生成AIにはこちらを渡す |
 | `AI_DECK_PROMPT.md` | 生成AIに新規 `content.json` を作らせるための依頼テンプレート |
+| `EXTENDING.md` | AI向け拡張ガイド(新しいtype・エンジン機能を追加するときの不変条件と手順) |
 | `sysA_pptx/` | システムA: Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
 | `sysA_pptx/diagrams*.py` | 表現力検証: AWS構成図・関係者調整図・体制図・チェブロンフロー・ロードマップ・2軸マップ |
 | `sysA_pptx/generate_from_json.py` | `content.json` を直接入力にしてPPTXを生成(生成前にschema検証を自動実行) |
 | `sysA_pptx/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・サンプル専用typeの拒否) |
-| `sysB_pptxgenjs/` | システムB: Node + PptxGenJS。全角1em/半角0.53emのヒューリスティック+PPT側autofit保険 |
-| `sysC_marp/` | システムC: Marp。content.json→Markdown変換(md_gen.py)+自作テーマ(corp.css) |
+| `sysB_pptxgenjs/` | システムB: Node + PptxGenJS(**凍結**: 比較検証を終えたアーカイブ。sysAと同じ content.json を読む) |
+| `sysC_marp/` | システムC: Marp(**凍結**: 同上。PPTX出力が画像埋め込みになる制約で不採用) |
 | `render.ps1` | PPTX→PNG書き出し(PowerPoint COM)。品質検証ループ用 |
 | `contact_sheet.py` | PNG化した全スライドを一覧画像に合成。レビューの初手で使う |
 | `sysA_pptx/check_layout.py` | 生成済みPPTXの重なり・はみ出しを機械検知する品質ゲート |
@@ -111,11 +112,15 @@ python contact_sheet.py out\png_from_json
 
 このリポジトリでは、全スライドを万能の宣言レイアウトエンジンに寄せるより、
 提出品質まで詰めた **renderer カタログ** を増やす方針を優先する。
+カタログの品目は「renderer関数」ではなく「**ジャンル別レイアウタ**」と考える
+(詳細は `EXTENDING.md` のレイヤーモデル)。
 
-- LLMの役割: `content.py` / `content_ext.py` の既存スキーマに沿って、文言・項目・強調を構造化する。
-- Python rendererの役割: スライド種別ごとの余白、文字実測、配線、注記、描画順を決定論的に保証する。
-- 共通化するもの: テキスト実測、自然高さパッキング、ラベルマスク、表・カード・ロードマップなどの小さな配置ヘルパー。
-- 共通化しすぎないもの: 高密度な構成図の最終的な絵作り。必要なら renderer 内に座標を閉じ込めて手で詰める。
+- LLMの役割: content スキーマに沿って、文言・項目・構造(グリッド仕様のセル名等)を構造化する。
+- Python レイアウタの役割: スライド種別ごとの余白、文字実測、配線、注記、描画順を決定論的に保証する。
+- 共通化するもの: テキスト実測、描画部品(箱・矢印・ラベルマスク)、schema検証、品質ゲート。
+- 共通化しないもの: **レイアウト計算そのもの**。グリッド図解(diagram_layout)・ガント・散布・
+  縦詰め・ツリーは別々の制約システムなので、ジャンルごとに小さなレイアウタを持つ。
+  1つのエンジンに寄せると前提が壊れて複雑化だけが進む。
 
 増やす優先度の高いパターンは、タイトル/目次/章扉、カード、2カラム比較、Before/After、
 KPI、プロセス、タイムライン/ロードマップ、表、ランキング、調査結果、2軸マップ、
