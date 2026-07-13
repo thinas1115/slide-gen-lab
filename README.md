@@ -10,6 +10,7 @@
 | `content.json` | デッキ内容(スライド構造の共有データ。sysA の content.py から生成) |
 | `sysA_pptx/` | システムA: Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
 | `sysA_pptx/diagrams*.py` | 表現力検証: AWS構成図・関係者調整図・体制図・チェブロンフロー・ロードマップ・2軸マップ |
+| `sysA_pptx/generate_from_json.py` | `content.json` を直接入力にしてPPTXを生成 |
 | `sysB_pptxgenjs/` | システムB: Node + PptxGenJS。全角1em/半角0.53emのヒューリスティック+PPT側autofit保険 |
 | `sysC_marp/` | システムC: Marp。content.json→Markdown変換(md_gen.py)+自作テーマ(corp.css) |
 | `render.ps1` | PPTX→PNG書き出し(PowerPoint COM)。品質検証ループ用 |
@@ -35,6 +36,44 @@ python sysA_pptx\check_layout.py out\sysA_deck.pptx
 ```
 
 内容を変えるときは `sysA_pptx/content.py` を編集し、`python export_content.py` で content.json を再生成する。
+
+## 実行手順
+
+ここで使う構造化データは `content.json`。`context.json` ではない。
+
+**生成AIに実行させるパターン**
+
+1. AIに `sysA_pptx/content.py` または `content.json` の既存形式に沿って、スライド内容を作らせる。
+2. `content.py` を更新した場合は `python sysA_pptx/export_content.py` で `content.json` を同期する。
+3. AIに次のコマンドを実行させる。
+
+```powershell
+python sysA_pptx/generate_from_json.py content.json out\deck_from_json.pptx
+powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\deck_from_json.pptx -OutDir out\png_from_json
+python contact_sheet.py out\png_from_json
+python sysA_pptx\check_layout.py out\deck_from_json.pptx
+```
+
+4. `check_layout.py` がNG、またはPNG目視で崩れがある場合は、AIに `content.py` / `content.json` を直させて再実行する。
+
+**人間が手動実行するパターン**
+
+1. `content.json` を用意する。既存の `content.json` をコピーして、`meta` と `slides` だけ差し替えるのが最短。
+2. AWS構成図を含む場合は、先に `sysA_pptx/assets/` にアイコンを用意する。
+3. 次のコマンドを実行する。
+
+```powershell
+python sysA_pptx/generate_from_json.py content.json out\deck_from_json.pptx
+python sysA_pptx\check_layout.py out\deck_from_json.pptx
+powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\deck_from_json.pptx -OutDir out\png_from_json
+python contact_sheet.py out\png_from_json
+```
+
+4. 最後に `out\png_from_json\sheet.png` を見て、テキスト溢れ・要素重なり・行頭禁則・線とラベルの衝突を確認する。
+
+既存デッキをそのまま作るだけなら、従来どおり `python sysA_pptx/generate.py out\sysA_deck.pptx`
+または `python sysA_pptx/generate2.py out\sysA_deck2.pptx` でもよい。新しい内容を外から渡す運用では
+`generate_from_json.py` を使う。
 
 ## 別PC・別AIでの利用手順
 
