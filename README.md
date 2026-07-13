@@ -10,6 +10,7 @@
 | `content.json` | デッキ内容(スライド構造の共有データ。sysA の content.py から生成) |
 | `CONTENT_SCHEMA.md` | 新規デッキ用の中立schema。生成AIにはこちらを渡す |
 | `AI_DECK_PROMPT.md` | 生成AIに新規 `content.json` を作らせるための依頼テンプレート |
+| `EXTENDING.md` | AI向け拡張ガイド(新しいtype・エンジン機能を追加するときの不変条件と手順) |
 | `sysA_pptx/` | システムA: Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
 | `sysA_pptx/diagrams*.py` | 表現力検証: AWS構成図・関係者調整図・体制図・チェブロンフロー・ロードマップ・2軸マップ |
 | `sysA_pptx/generate_from_json.py` | `content.json` を直接入力にしてPPTXを生成(生成前にschema検証を自動実行) |
