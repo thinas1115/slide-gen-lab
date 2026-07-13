@@ -1,0 +1,146 @@
+{
+  "meta": {
+    "title": "業務システムAWS移行 ハイブリッド構成",
+    "footer": "ハイブリッド構成(アイコン混在デモ #17)",
+    "date": "2026年7月",
+    "author": "情報システム部"
+  },
+  "slides": [
+    {
+      "type": "diagram",
+      "kicker": "移行後構成",
+      "title": "社内拠点からは専用線でAWS上の業務システムに接続する",
+      "note": "アイコン: AWS Architecture Icons + Fluent UI System Icons (assets/CREDITS.md)。",
+      "diagram": {
+        "cols": [
+          "user",
+          "gw",
+          "entry",
+          "app",
+          "store"
+        ],
+        "rows": [
+          "top",
+          "bot"
+        ],
+        "nodes": {
+          "users": {
+            "col": "user",
+            "row": "top",
+            "title": "社内ユーザー",
+            "icon": "fluent/people.png"
+          },
+          "rtr": {
+            "col": "gw",
+            "row": "top",
+            "title": "拠点ルータ",
+            "icon": "fluent/router.png"
+          },
+          "alb": {
+            "col": "entry",
+            "row": "top",
+            "title": "ALB",
+            "icon": "alb.png"
+          },
+          "fg": {
+            "col": "app",
+            "row": "top",
+            "title": "Fargate",
+            "sub": "業務API",
+            "icon": "fargate.png"
+          },
+          "s3": {
+            "col": "store",
+            "row": "top",
+            "title": "Amazon S3",
+            "sub": "帳票/成果物",
+            "icon": "s3.png"
+          },
+          "rds": {
+            "col": "app",
+            "row": "bot",
+            "title": "RDS",
+            "icon": "rds.png"
+          },
+          "cw": {
+            "col": "store",
+            "row": "bot",
+            "title": "CloudWatch",
+            "sub": "監視・ログ",
+            "icon": "cloudwatch.png"
+          }
+        },
+        "containers": [
+          {
+            "name": "office",
+            "label": "社内拠点",
+            "members": [
+              "users",
+              "rtr"
+            ],
+            "dash": "dash",
+            "pad": 0.12
+          },
+          {
+            "name": "cloud",
+            "label": "AWS Cloud",
+            "members": [
+              "@vpc",
+              "s3",
+              "cw"
+            ],
+            "pad": 0.16
+          },
+          {
+            "name": "vpc",
+            "label": "VPC (private)",
+            "members": [
+              "alb",
+              "fg",
+              "rds"
+            ],
+            "color": "navy",
+            "dash": "dash",
+            "pad": 0.14
+          }
+        ],
+        "channels": {},
+        "edges": [
+          {
+            "from": "users",
+            "to": "rtr"
+          },
+          {
+            "from": "rtr",
+            "to": "alb",
+            "label": "専用線",
+            "label_w": 0.9
+          },
+          {
+            "from": "alb",
+            "to": "fg",
+            "label": "HTTPS",
+            "label_w": 1.0
+          },
+          {
+            "from": "fg",
+            "to": "rds",
+            "label": "SQL",
+            "label_w": 0.8
+          },
+          {
+            "from": "fg",
+            "to": "s3",
+            "label": "帳票",
+            "label_w": 0.8
+          },
+          {
+            "from": "rds",
+            "to": "cw",
+            "dash": "dash"
+          }
+        ]
+      }
+    }
+  ]
+}
