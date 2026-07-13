@@ -8,6 +8,8 @@
 | パス | 内容 |
 |---|---|
 | `content.json` | デッキ内容(スライド構造の共有データ。sysA の content.py から生成) |
+| `CONTENT_SCHEMA.md` | 新規デッキ用の中立schema。生成AIにはこちらを渡す |
+| `AI_DECK_PROMPT.md` | 生成AIに新規 `content.json` を作らせるための依頼テンプレート |
 | `sysA_pptx/` | システムA: Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
 | `sysA_pptx/diagrams*.py` | 表現力検証: AWS構成図・関係者調整図・体制図・チェブロンフロー・ロードマップ・2軸マップ |
 | `sysA_pptx/generate_from_json.py` | `content.json` を直接入力にしてPPTXを生成 |
@@ -41,8 +43,8 @@ python sysA_pptx\check_layout.py out\sysA_deck.pptx
 
 **生成AIに実行させるパターン**
 
-1. AIに `sysA_pptx/content.py` または `content.json` の既存形式に沿って、スライド内容を作らせる。
-2. `content.py` を更新した場合は `python sysA_pptx/export_content.py` で `content.json` を同期する。
+1. AIに `AI_DECK_PROMPT.md` と `CONTENT_SCHEMA.md` を渡し、新しい `content.json` を作らせる。
+2. 生成された `content.json` をプロジェクト直下に置く。
 3. 生成・検証コマンドを実行する。
 
 ```powershell
@@ -52,11 +54,11 @@ python contact_sheet.py out\png_from_json
 python sysA_pptx\check_layout.py out\deck_from_json.pptx
 ```
 
-4. `check_layout.py` がNG、またはPNG目視で崩れがある場合は、AIに `content.py` / `content.json` を直させて再実行する。
+4. `check_layout.py` がNG、またはPNG目視で崩れがある場合は、AIに `content.json` を直させて再実行する。
 
 **人間が手動実行するパターン**
 
-1. `content.json` を用意する。既存の `content.json` をコピーして、`meta` と `slides` だけ差し替えるのが最短。
+1. `CONTENT_SCHEMA.md` に沿って `content.json` を用意する。
 2. AWS構成図を含む場合は、先に `sysA_pptx/assets/` にアイコンを用意する。
 3. 次のコマンドを実行する。
 
