@@ -1,0 +1,155 @@
+{
+  "meta": {
+    "title": "本社ネットワーク構成 説明資料",
+    "footer": "本社ネットワーク構成(実証実験 #11)",
+    "date": "2026年7月",
+    "author": "情報システム部"
+  },
+  "slides": [
+    {
+      "type": "diagram",
+      "kicker": "現行構成",
+      "title": "本社NWはFW二重化とVPN集約、サーバ室セグメント分離で構成する",
+      "note": "diagram_layout 汎用性実証実験(Issue #11)のサンプル。",
+      "diagram": {
+        "cols": [
+          "ext",
+          "edge",
+          "core",
+          "srv"
+        ],
+        "rows": [
+          "north",
+          "mid",
+          "south"
+        ],
+        "nodes": {
+          "internet": {
+            "col": "ext",
+            "row": "north",
+            "title": "インターネット"
+          },
+          "fw": {
+            "col": "edge",
+            "row": "north",
+            "title": "FW (冗長)",
+            "color": "navy"
+          },
+          "branch": {
+            "col": "ext",
+            "row": "mid",
+            "title": "拠点網",
+            "sub": "IPsec VPN"
+          },
+          "rtr": {
+            "col": "edge",
+            "row": "mid",
+            "title": "VPNルータ"
+          },
+          "core": {
+            "col": "core",
+            "row": "mid",
+            "title": "コアL3SW",
+            "color": "navy"
+          },
+          "ap": {
+            "col": "srv",
+            "row": "mid",
+            "title": "業務APサーバ",
+            "sub": "社内システム"
+          },
+          "mon": {
+            "col": "core",
+            "row": "south",
+            "title": "監視サーバ"
+          },
+          "db": {
+            "col": "srv",
+            "row": "south",
+            "title": "DBサーバ"
+          }
+        },
+        "containers": [
+          {
+            "name": "dc",
+            "label": "本社データセンター",
+            "members": [
+              "fw",
+              "rtr",
+              "core",
+              "mon",
+              "@srvroom"
+            ]
+          },
+          {
+            "name": "srvroom",
+            "label": "サーバ室セグメント",
+            "members": [
+              "ap",
+              "db"
+            ],
+            "dash": "dash"
+          }
+        ],
+        "channels": {
+          "mgmt_lane": [
+            "outside_container",
+            [
+              "dc",
+              "left"
+            ]
+          ]
+        },
+        "edges": [
+          {
+            "from": "internet",
+            "to": "fw",
+            "label": "HTTPS",
+            "label_w": 1.0
+          },
+          {
+            "from": "fw",
+            "to": "core"
+          },
+          {
+            "from": "branch",
+            "to": "rtr",
+            "label": "拠点VPN",
+            "label_w": 1.0
+          },
+          {
+            "from": "rtr",
+            "to": "core"
+          },
+          {
+            "from": "core",
+            "to": "ap"
+          },
+          {
+            "from": "ap",
+            "to": "db",
+            "label": "SQL",
+            "label_w": 0.8
+          },
+          {
+            "from": "core",
+            "to": "mon",
+            "dash": "dash"
+          },
+          {
+            "from": "mon",
+            "to": "fw",
+            "dash": "dash",
+            "label": "監視",
+            "label_w": 0.8,
+            "exit": "left",
+            "enter": "left",
+            "via": [
+              "mgmt_lane"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
