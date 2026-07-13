@@ -10,6 +10,31 @@
 
 拡張するときもこの線を動かさない。「contentに数値を書けば解決する」拡張は必ず設計ミス。
 
+## レイヤーモデル — 何が再利用でき、何がジャンル専用か
+
+拡張の設計判断はこの4層で考える。**再利用資産はL0/L2/L3であって、L1ではない。**
+
+| レイヤー | 中身 | 再利用性 |
+|---|---|---|
+| L0 測定・描画プリミティブ | textfit(実測) / add_text / add_rect / box_node / add_arrow / arrow_label / container / route | ◎ 全typeで共有 |
+| L1 レイアウト計算 | diagram_layout(グリッド図解) / roadmap(ガント) / matrix(散布) / bullets・cards・twocol(縦詰め) / org(ツリー) / hub(放射) | **△ ジャンル内のみ** |
+| L2 AI境界 | content.jsonスキーマ + validate_content + AI_DECK_PROMPT | ◎ typeが増えても同じ仕組み |
+| L3 品質ゲート | check_layout + render.ps1 + contact_sheet + 目視ループ | ◎ 何を作っても同じゲート |
+
+**L1に関する鉄則: レイアウトは1つの問題ではない。** グリッド配置・ツリー・放射・ガント・縦詰めは
+別々の制約システムであり(graphviz/ELK/d3がジャンル別アルゴリズムの集合体なのと同じ理由)、
+1つのエンジンに寄せようとするとエンジンの前提が壊れて複雑化だけが進む。
+
+- **やること**: 新しいジャンルが必要になったら、L0部品の上に**小さな専用レイアウタ**を書く
+  (ツリーなら50〜100行で足りる)。カタログの品目は「renderer関数」ではなく
+  「ジャンル別レイアウタ」と考える。
+- **やらないこと**: 既存レイアウタに別ジャンルを混ぜる拡張。例えば diagram_layout の機構
+  (ポート計算・行間のラベル深さ・コンテナ外接)は「正方形アイコン+下ラベルのノードを
+  グリッドに置く」前提に張り付いており、幅広ボックスや放射配置を入れるのは汎用化ではなく
+  前提破壊になる(体制図・ハブ図をdiagram_layoutに統合しない判断の理由。#8参照)。
+- **判断に迷ったら**: そのジャンルのレイアウトを2〜3枚、既存レイアウタの仕様語彙だけで
+  書けるか試す。書けないものが多ければ別レイアウタ(#11 の実証実験方式)。
+
 ## アーキテクチャ
 
 ```
@@ -171,7 +196,8 @@ python contact_sheet.py out\png_pg                                      # → sh
 CLAUDE.md の Issue駆動フローに従う: Issue作成 → `feature/<内容>` ブランチ → 7点セット実装 →
 品質ゲート → PR(`Closes #N`)。コミットに `Co-Authored-By` は付けない。
 
-個別エンジンの汎用化バックログ(着手時はこのガイドとIssue本文を読んでから):
+レイアウタ関連のバックログ(着手時はこのガイドとIssue本文を読んでから):
 
-- [#8 体制図(org)・ハブ図(hub)の固定形式をdiagramエンジンで汎用化する](https://github.com/thinas1115/slide-gen-lab/issues/8)
-- [#9 layout type: ページ構成プリミティブをAIに開放する](https://github.com/thinas1115/slide-gen-lab/issues/9)
+- [#8 体制図・ハブ図を小さな専用レイアウタとして再実装](https://github.com/thinas1115/slide-gen-lab/issues/8)
+- [#9 縦詰めパッキングの共有部品化 → layout type](https://github.com/thinas1115/slide-gen-lab/issues/9)
+- [#11 実証実験: 第3のグリッド図解でdiagram_layoutの汎用性を検証](https://github.com/thinas1115/slide-gen-lab/issues/11)
