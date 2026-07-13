@@ -453,8 +453,8 @@ python sysA_pptx/validate_content.py content.json
   - `title`: 表示名
   - `sub`: 補足ラベル(任意)
   - `icon`: `sysA_pptx/assets/` からの相対PNGパス(任意)。**省略すると汎用図形ノード**(角丸四角+カラーバー)になるので、アイコン素材がないテーマでもそのまま描ける
-    - 汎用アイコン(`fluent/<名前>.png`): 事前に `python sysA_pptx/fetch_fluent_icons.py` で取得しておく。使える名前は次の19種のみ(これ以外のファイル名を発明しない): `server` `router` `shield`(FW) `database` `desktop` `laptop` `people` `person` `building` `branch`(拠点) `cloud` `globe`(インターネット) `alert` `mail` `phone` `wrench`(保守) `lock` `switch`(L2/L3SW) `monitor`(監視)
-    - AWSアイコン(`alb.png` 等): 事前に `extract_aws_icons.py` で取得しておく
+    - 汎用アイコン(`fluent/<名前>.png`、同梱済み): 使える名前は次の19種のみ(これ以外のファイル名を発明しない): `server` `router` `shield`(FW) `database` `desktop` `laptop` `people` `person` `building` `branch`(拠点) `cloud` `globe`(インターネット) `alert` `mail` `phone` `wrench`(保守) `lock` `switch`(L2/L3SW) `monitor`(監視)
+    - AWSアイコン(同梱済み): `alb.png` `bedrock.png` `cloudfront.png` `cloudwatch.png` `dynamodb.png` `ecr.png` `fargate.png` `rds.png` `route53.png` `s3.png` `sqs.png` `user.png` `users.png` のみ。増やす場合は `extract_aws_icons.py`
   - `color`: `"accent"`(既定) / `"navy"` / `"line"`(汎用図形ノードの枠色)
 - `diagram.edges`: object の配列
   - `from` / `to`: ノード名(または `@コンテナ名`)

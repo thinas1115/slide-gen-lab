@@ -9,8 +9,8 @@
 - python-pptx はSVGを挿入できない(PIL依存)ため、svglib+reportlab でPNG化する。
   依存: pip install svglib reportlab rlPyCairo
   (rlPyCairo は reportlab 4.x のPNG描画バックエンド。無いと RenderPMError になる)
-- AWSアイコン(extract_aws_icons.py)と同じ方針で、生成物はコミットしない
-  (.gitignore の sysA_pptx/assets/ 配下)。取得スクリプトだけをコミットする。
+- 生成したPNGは assets/CREDITS.md のクレジット表記とともにリポジトリに同梱する
+  (MITライセンス。リカラー等の改変も許諾範囲内)。
 - diagram仕様からは "icon": "fluent/server.png" のように参照する。
 
 アイコンを増やしたいときは ICONS に 出力名: リポジトリのassetsフォルダ名 を
