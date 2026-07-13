@@ -2,8 +2,8 @@
 out/
 sysC_marp/deck.md
 
-# AWS公式アイコン (extract_aws_icons.py でローカル再生成する。再配布しない)
-sysA_pptx/assets/
+# アイコン素材 (sysA_pptx/assets/) は CREDITS.md のクレジット表記とともにコミットする
+# (AWS: 無改変・技術資料用途の許諾範囲内 / Fluent: MIT)
 
 # 調査・テストの一時レポート
 sysA_pptx/*_report.txt

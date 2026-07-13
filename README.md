@@ -3,6 +3,13 @@
 「生成→そのまま提出」レベルのスライドを決定論的に出力するパイプラインの検証プロジェクト。
 2つの独立したシステムで同一の9枚デッキ(調査報告)を生成し、PowerPoint実レンダリングで品質を検証済み。
 
+![パイプライン全体像](docs/pipeline-overview.png)
+
+AIはスキーマに沿って `content.json` を書くだけ。座標・余白・フォントはコード側(renderer/レイアウトエンジン)が
+実測ベースで決定し、schema検証 → エンジン自己検証 → 機械検知 → 実レンダリング目視の多段ゲートで
+「そのまま提出」品質を担保する。NGはどの段からも `content.json` の修正に差し戻される
+(表現力が足りない場合のみ `extend`: EXTENDING.md に従うエンジン拡張ループ)。
+
 ## 構成
 
 | パス | 内容 |
@@ -95,13 +102,14 @@ python contact_sheet.py out\png_from_json
 2. `pip install python-pptx pillow` (Python 3.10+)
 3. 前提: Windows + 游ゴシック(`textfit.py` が `C:\Windows\Fonts\YuGoth*.ttc` を参照。別OSはこの2〜3行を変更)
 4. 品質検証用にPowerPoint(render.ps1が使用。生成自体には不要)
-5. AWS図解を使う場合: [AWS公式アイコンデッキ(PPTX)](https://aws.amazon.com/jp/architecture/icons/) を入手し、
-   `extract_aws_icons.py` の SRC 定数をそのパスに変えて実行 → `sysA_pptx/assets/` にアイコンが生成される
-   (アイコンはライセンス配慮のためリポジトリに含めていない)
-6. 汎用アイコン(サーバ・ルータ・人・建物など)を使う場合: `pip install svglib reportlab rlPyCairo` のうえ
-   `python sysA_pptx/fetch_fluent_icons.py` を実行 → [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)
-   (MIT。PowerPointの「挿入 > アイコン」と同じデザイン体系)が `sysA_pptx/assets/fluent/` にPNG化される。
-   diagram仕様からは `"icon": "fluent/server.png"` で参照する
+5. アイコン素材(AWS 13種 + Fluent汎用19種)は `sysA_pptx/assets/` に**同梱済み**(出典・条件は
+   [assets/CREDITS.md](sysA_pptx/assets/CREDITS.md))。追加セットアップ不要
+   - AWSアイコンを増やす場合のみ: [AWS公式アイコンデッキ(PPTX)](https://aws.amazon.com/jp/architecture/icons/) を入手し、
+     `extract_aws_icons.py` の SRC 定数をそのパスに変えて実行
+   - Fluent汎用アイコン([Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)、MIT。
+     PowerPointの「挿入 > アイコン」と同じデザイン体系)を増やす場合のみ:
+     `pip install svglib reportlab rlPyCairo` のうえ `fetch_fluent_icons.py` の ICONS に追記して実行。
+     diagram仕様からは `"icon": "fluent/server.png"` で参照する
 
 **新しいスライドを作る(定常運用)**
 
