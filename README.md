@@ -39,13 +39,11 @@ python sysA_pptx\check_layout.py out\sysA_deck.pptx
 
 ## 実行手順
 
-ここで使う構造化データは `content.json`。`context.json` ではない。
-
 **生成AIに実行させるパターン**
 
 1. AIに `sysA_pptx/content.py` または `content.json` の既存形式に沿って、スライド内容を作らせる。
 2. `content.py` を更新した場合は `python sysA_pptx/export_content.py` で `content.json` を同期する。
-3. AIに次のコマンドを実行させる。
+3. 生成・検証コマンドを実行する。
 
 ```powershell
 python sysA_pptx/generate_from_json.py content.json out\deck_from_json.pptx
