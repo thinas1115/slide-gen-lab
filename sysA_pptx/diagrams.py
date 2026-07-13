@@ -87,8 +87,37 @@ EDGE_GAP = 0.06      # 矢印端点とアイコン縁の隙間
 
 def icon_node(slide, cx, cy, img, title, sub=None, size=0.62):
     """AWS公式スタイル: アイコン+直下にサービス名ラベル。"""
-    slide.shapes.add_picture(str(ICON_DIR / img), Inches(cx - size / 2),
+    p = ICON_DIR / img
+    if not p.exists():
+        raise FileNotFoundError(
+            f"アイコン {img} が {ICON_DIR} にありません。extract_aws_icons.py で"
+            f"生成するか、ノードの icon を外して汎用図形ノードにしてください。")
+    slide.shapes.add_picture(str(p), Inches(cx - size / 2),
                              Inches(cy - size / 2), Inches(size), Inches(size))
+    add_text(slide, cx - 1.05, cy + size / 2 + 0.05, 2.1, 0.28, title, 10.5,
+             bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+    if sub:
+        add_text(slide, cx - 1.05, cy + size / 2 + 0.33, 2.1, 0.26, sub, 8.5,
+                 color=GRAY, align=PP_ALIGN.CENTER)
+
+
+def box_node(slide, cx, cy, title, sub=None, size=0.62, color=ACCENT):
+    """アイコン画像を使わない汎用ノード: 角丸四角+上部カラーバー。
+    icon_node と同じ外形寸法・ラベル位置なので、diagram_layout の座標計算
+    (ICON_R 基準のポート・コンテナ外接)がそのまま成立する。
+    アイコン素材が用意できないテーマ(オンプレNW・業務システム等)用。
+    """
+    sp = slide.shapes.add_shape(
+        MSO_SHAPE.ROUNDED_RECTANGLE, Inches(cx - size / 2), Inches(cy - size / 2),
+        Inches(size), Inches(size))
+    sp.adjustments[0] = 0.12
+    sp.fill.solid()
+    sp.fill.fore_color.rgb = WHITE
+    sp.line.color.rgb = color
+    sp.line.width = Pt(1.5)
+    sp.shadow.inherit = False
+    add_rect(slide, cx - size / 2 + 0.08, cy - size / 2 + 0.08,
+             size - 0.16, 0.07, color)
     add_text(slide, cx - 1.05, cy + size / 2 + 0.05, 2.1, 0.28, title, 10.5,
              bold=True, color=NAVY, align=PP_ALIGN.CENTER)
     if sub:

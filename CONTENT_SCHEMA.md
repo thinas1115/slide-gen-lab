@@ -45,7 +45,8 @@ python sysA_pptx/validate_content.py content.json
 - `slides[*].type` は必須。
 - `type: "title"` 以外は `kicker` と `title` が必須。
 - JSONなので、Pythonのタプルではなく配列を使う。
-- `note` (右下の注記) が描画されるのは `table` / `chart` / `process` / `roadmap` / `matrix` / `hub` / `org` のみ。それ以外のtypeに書いても無視される(validatorがエラーにする)。
+- `note` (右下の注記) が描画されるのは `table` / `chart` / `process` / `roadmap` / `matrix` / `hub` / `org` / `diagram` のみ。それ以外のtypeに書いても無視される(validatorがエラーにする)。
+- 構成図は `diagram` type で書く(グリッド仕様のみ、座標の数値は書かない)。
 - `aws` / `aws2` は使えない。固定サンプル図であり、`generate_from_json.py` は受け付けない(validatorが拒否する)。
 
 ## Supported Types
@@ -434,6 +435,75 @@ python sysA_pptx/validate_content.py content.json
 }
 ```
 
+### diagram
+
+用途: システム構成図・ネットワーク構成図など、ノードと配線の図。
+
+**座標・サイズの数値は一切書かない。** グリッド仕様(列・行・メンバー列挙)だけを書き、座標は `diagram_layout.py` エンジンが決定論的に計算する。「9.55のような数値を書きたくなったら仕様の書き方が間違っている」が設計思想。
+
+必須:
+
+- `type`: `"diagram"`
+- `kicker`: string
+- `title`: string
+- `diagram.cols`: 列名の配列(左から順)
+- `diagram.rows`: 行名の配列(上から順)
+- `diagram.nodes`: ノード名 → object
+  - `col` / `row`: 所属セル(cols/rowsの名前)
+  - `title`: 表示名
+  - `sub`: 補足ラベル(任意)
+  - `icon`: `sysA_pptx/assets/` のPNGファイル名(任意)。**省略すると汎用図形ノード**(角丸四角+カラーバー)になるので、アイコン素材がないテーマでもそのまま描ける
+  - `color`: `"accent"`(既定) / `"navy"` / `"line"`(汎用図形ノードの枠色)
+- `diagram.edges`: object の配列
+  - `from` / `to`: ノード名(または `@コンテナ名`)
+  - `label` / `label_w`: 線上ラベルと幅(任意)
+  - `exit` / `enter`: 発着辺 `"left" | "right" | "top" | "bottom"`(任意。省略時は位置関係から自動)
+  - `via`: 経由チャネル名の配列(任意)
+  - `dash`: `"dash"` で点線、`both`: true で双方向(任意)
+
+任意:
+
+- `diagram.containers`: 外接枠。object の配列(外側から順)
+  - `name` / `label` / `members`(ノード名または `@子コンテナ名` の列挙)
+  - `color` / `dash` / `pad` / `pad_x`
+- `diagram.channels`: 配線レーン。`名前: [種類, 基準]` のobject
+  - 種類: `"left_of_col"` / `"right_of_col"` / `"above_row"` / `"below_row"` / `"outside_container"`
+  - `outside_container` の基準は `[コンテナ名, "left"|"right"|"top"|"bottom"|"top_inside"]`
+  - 同じ列を共有するノード間のローカルループ(折り返し)には必ず `outside_container` を使う
+- `note`: string
+
+```json
+{
+  "type": "diagram",
+  "kicker": "新構成",
+  "title": "新基盤の構成",
+  "diagram": {
+    "cols": ["user", "gw", "app"],
+    "rows": ["main"],
+    "nodes": {
+      "pc": {"col": "user", "row": "main", "title": "利用者端末"},
+      "fw": {"col": "gw", "row": "main", "title": "ファイアウォール", "color": "navy"},
+      "web": {"col": "app", "row": "main", "title": "業務サーバ", "sub": "アプリ本体"}
+    },
+    "containers": [
+      {"name": "dc", "label": "データセンター", "members": ["fw", "web"]}
+    ],
+    "channels": {},
+    "edges": [
+      {"from": "pc", "to": "fw", "label": "HTTPS", "label_w": 1.0},
+      {"from": "fw", "to": "web"}
+    ]
+  }
+}
+```
+
+制約:
+
+- 参照整合(col/rowの存在、edges/membersのノード参照、viaのチャネル参照)はvalidatorが検証する。
+- 行間に収まるか・配線がコンテナを貫通しないか等は、生成時にエンジン自身が対処方法つきのエラーで検出する(収まらない場合は行数・sub・ラベルを減らす)。
+- ノードは10個程度・4行程度までが安全(それ以上は縦に収まらずエラーになる)。
+- `diagram_specs.py` のサンプル名参照(`"spec": "aws_multiaz"` など)は**使えない**。仕様は必ずインラインで書く。
+
 ## Not Supported For New Decks
 
 ### aws / aws2
@@ -442,4 +512,4 @@ python sysA_pptx/validate_content.py content.json
 
 **`generate_from_json.py` はこの2つのtypeを受け付けない**(validate_content.py が生成前に拒否する)。ドキュメント上の禁止ではなく機械的に通らない。
 
-構成の説明が必要な場合は `cards` / `process` / `hub` / `org` などで代替する。任意テーマの構成図rendererは現状存在しない。サンプル図自体の再生成は `generate2.py` / `generate_patterns.py` を使う。
+構成図が必要な場合は `diagram` type でグリッド仕様を新規に書く。サンプル図自体の再生成は `generate2.py` / `generate_patterns.py` を使う。

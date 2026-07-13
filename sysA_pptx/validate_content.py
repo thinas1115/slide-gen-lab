@@ -25,7 +25,8 @@ from generate import BODY_W
 SAMPLE_ONLY = {"aws", "aws2"}
 
 # noteを実際に描画するtype。それ以外に書いても黙って無視される。
-NOTE_TYPES = {"table", "chart", "process", "roadmap", "matrix", "hub", "org"}
+NOTE_TYPES = {"table", "chart", "process", "roadmap", "matrix", "hub", "org",
+              "diagram"}
 
 
 def _is_str(v):
@@ -236,11 +237,108 @@ def _v_org(s):
         s.err('"external" には name / sub / label (文字列) が必要です')
 
 
+_EDGE_SIDES = {"left", "right", "top", "bottom"}
+_CHANNEL_KINDS = {"left_of_col", "right_of_col", "above_row", "below_row",
+                  "outside_container"}
+
+
+def _v_diagram(s):
+    """構成図のグリッド仕様の構造検証。
+
+    ここで見るのはJSONとしての整合(参照切れ・型違い)まで。行間に収まるか・
+    配線がコンテナを貫通しないか等の実現可能性は、レンダリング時に
+    diagram_layout.py エンジン自身が対処方法つきのエラーで検出する。
+    """
+    d = s.spec.get("diagram")
+    if not isinstance(d, dict):
+        s.err('"diagram" (cols/rows/nodes/edges を持つオブジェクト) が必要です。'
+              '座標は書かない(グリッド仕様のみ)')
+        return
+    if "spec" in s.spec or "spec" in d:
+        s.err('"spec" (サンプル図の名前参照) は使えません。diagram の中に'
+              'グリッド仕様をインラインで書いてください')
+    cols, rows = d.get("cols"), d.get("rows")
+    for key, v in (("cols", cols), ("rows", rows)):
+        if not (isinstance(v, list) and v and all(_is_str(c) for c in v)):
+            s.err(f"diagram.{key} は文字列の配列 (1件以上) が必要です")
+    nodes = d.get("nodes")
+    if not (isinstance(nodes, dict) and nodes):
+        s.err("diagram.nodes (ノード名 → {col, row, title} のオブジェクト) が"
+              "必要です")
+        return
+    for name, n in nodes.items():
+        if not isinstance(n, dict):
+            s.err(f"nodes.{name} はオブジェクトにしてください")
+            continue
+        if not _is_str(n.get("title")):
+            s.err(f"nodes.{name}.title (文字列) が必要です")
+        if isinstance(cols, list) and n.get("col") not in cols:
+            s.err(f"nodes.{name}.col={n.get('col')!r} が diagram.cols に"
+                  f"ありません")
+        if isinstance(rows, list) and n.get("row") not in rows:
+            s.err(f"nodes.{name}.row={n.get('row')!r} が diagram.rows に"
+                  f"ありません")
+        if "icon" in n and not _is_str(n["icon"]):
+            s.err(f"nodes.{name}.icon は文字列 (省略可。省略時は汎用図形ノード)"
+                  f" にしてください")
+    cont_names = set()
+    containers = d.get("containers", [])
+    if not isinstance(containers, list):
+        s.err("diagram.containers は配列にしてください")
+        containers = []
+    for i, c in enumerate(containers):
+        if not (isinstance(c, dict) and _is_str(c.get("name"))
+                and _is_str(c.get("label")) and isinstance(c.get("members"), list)):
+            s.err(f"containers[{i}] には name / label (文字列) と members (配列)"
+                  f" が必要です")
+            continue
+        cont_names.add(c["name"])
+    for i, c in enumerate(containers):
+        for m in c.get("members", []):
+            ref_ok = (m[1:] in cont_names if isinstance(m, str) and m.startswith("@")
+                      else m in nodes)
+            if not ref_ok:
+                s.err(f"containers[{i}].members の {m!r} が nodes / @コンテナ名 "
+                      f"に見つかりません")
+    channels = d.get("channels", {})
+    if not isinstance(channels, dict):
+        s.err("diagram.channels はオブジェクトにしてください")
+        channels = {}
+    for name, ch in channels.items():
+        if not (isinstance(ch, list) and len(ch) == 2
+                and ch[0] in _CHANNEL_KINDS):
+            s.err(f"channels.{name} は [種類, 基準] の2要素配列にしてください "
+                  f"(種類: {', '.join(sorted(_CHANNEL_KINDS))})")
+    edges = d.get("edges")
+    if not (isinstance(edges, list) and edges):
+        s.err("diagram.edges ({from, to} の配列、1件以上) が必要です")
+        return
+    for i, e in enumerate(edges):
+        if not isinstance(e, dict):
+            s.err(f"edges[{i}] はオブジェクトにしてください")
+            continue
+        for key in ("from", "to"):
+            v = e.get(key)
+            ref_ok = (v[1:] in cont_names if isinstance(v, str) and v.startswith("@")
+                      else v in nodes)
+            if not ref_ok:
+                s.err(f"edges[{i}].{key}={v!r} が nodes / @コンテナ名 に"
+                      f"見つかりません")
+        for key in ("exit", "enter"):
+            if key in e and e[key] not in _EDGE_SIDES:
+                s.err(f"edges[{i}].{key} は {', '.join(sorted(_EDGE_SIDES))} の"
+                      f"いずれかにしてください")
+        for v in e.get("via", []):
+            if v not in channels:
+                s.err(f"edges[{i}].via の {v!r} が diagram.channels に"
+                      f"ありません")
+
+
 VALIDATORS = {
     "title": _v_title, "bullets": _v_bullets, "cards": _v_cards,
     "table": _v_table, "twocol": _v_twocol, "chart": _v_chart,
     "process": _v_process, "roadmap": _v_roadmap, "matrix": _v_matrix,
-    "hub": _v_hub, "org": _v_org,
+    "hub": _v_hub, "org": _v_org, "diagram": _v_diagram,
 }
 
 
@@ -265,9 +363,9 @@ def validate(deck):
         s = _Slide(idx, spec, errors)
         t = spec.get("type")
         if t in SAMPLE_ONLY:
-            s.err("サンプル専用typeです。図の中身がコード内固定のため、新規"
-                  "資料のテーマには差し替わりません。構成の説明が必要な場合は"
-                  " cards / process / hub / org などで代替してください")
+            s.err('サンプル専用typeです。図の中身がコード内固定のため、新規'
+                  '資料のテーマには差し替わりません。構成図は type: "diagram" '
+                  'でグリッド仕様(座標なし)を書いてください')
             continue
         if t not in VALIDATORS:
             s.err(f"未対応のtypeです。使用可能: {', '.join(sorted(VALIDATORS))}")

@@ -61,8 +61,11 @@ python sysA_pptx\check_layout.py out\deck_from_json.pptx
    (`generate_from_json.py` も生成前に同じ検証を自動実行する)。
    `check_layout.py` がNG、またはPNG目視で崩れがある場合も同様に直させて再実行する。
 
-**注意: 構成図(`aws` / `aws2`)は新規資料では使えない。** 固定サンプル図のため
-`generate_from_json.py` が機械的に拒否する。構成説明は `cards` / `process` / `hub` / `org` で代替する。
+**構成図は `diagram` type で描く。** グリッド仕様(列・行・ノード・エッジ。座標の数値は書かない)を
+JSONで渡すと、レイアウトエンジン(`diagram_layout.py`)が座標・配線を決定論的に計算する。
+ノードの `icon` を省略すると汎用図形ノードになるため、AWSアイコンがないテーマ・環境でも描ける。
+`aws` / `aws2` はサンプル固定図のため `generate_from_json.py` が機械的に拒否する
+(既存サンプル図が新規資料に混入した事故への対策)。
 
 **人間が手動実行するパターン**
 
