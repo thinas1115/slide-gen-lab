@@ -61,7 +61,8 @@ def s_roadmap(slide, spec, page):
         add_rect(slide, grid_x + j * mw, top, mw - 0.02, hdr_h, NAVY)
         add_text(slide, grid_x + j * mw, top + 0.07, mw - 0.02, 0.3, m, 10.5,
                  bold=True, color=WHITE, align=PP_ALIGN.CENTER)
-    # 縦グリッド線はバー・ラベルより先に描いて背面に置く。
+    # 縦グリッド線(バー・ラベルより先に描いて背面に置く)
+    grid_h = hdr_h + len(rows) * row_h
     for j in range(1, len(months)):
         ln = add_arrow(slide, grid_x + j * mw, top + hdr_h,
                        grid_x + j * mw, top + grid_h, width=0.5)
@@ -95,6 +96,7 @@ def s_roadmap(slide, spec, page):
         sp.line.fill.background()
         sp.shadow.inherit = False
         lcx = min(mx, MARGIN + BODY_W - 0.9)  # 右マージンをはみ出さない
+        # バーの下段に白背景マスク付きで置く(背面のグリッド線を隠す)
         arrow_label(slide, lcx, my + 0.4, ms["label"], w=1.8, size=8.5)
     if spec.get("note"):
         note_line(slide, spec["note"])

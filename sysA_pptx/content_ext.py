@@ -15,7 +15,8 @@ EXTRA_SLIDES = [
         "emph": [4],
     },
     {
-        "type": "aws",
+        "type": "diagram",
+        "spec": "aws_simple",
         "kicker": "参考: システム構成(表現力検証)",
         "title": "全社展開時はAWS上にAPI化し、Bedrock経由で構成JSONを生成する",
         "note": "図は簡略化。実装時はIAM・ネットワーク設計を別途詳細化する。",
@@ -51,7 +52,8 @@ EXTRA_SLIDES = [
         "external": {"name": "外部ベンダー", "sub": "技術支援(準委任)", "label": "支援 / 助言"},
     },
     {
-        "type": "aws2",
+        "type": "diagram",
+        "spec": "aws_multiaz",
         "kicker": "参考: 本番構成(高密度検証)",
         "title": "本番はマルチAZ冗長構成。CloudFront配信とRDS同期まで含めて表現できるか検証",
     },
