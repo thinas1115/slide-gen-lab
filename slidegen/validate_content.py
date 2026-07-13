@@ -1,7 +1,7 @@
 """content.json をレンダリング前に機械検証する。
 
 使い方:
-  python sysA_pptx/validate_content.py content.json
+  python slidegen/validate_content.py content.json
 
 generate_from_json.py が生成前に自動で呼ぶため、通常は単体実行しなくてよい。
 エラーメッセージは「slides[i] (type=xxx): 内容」の形式で、生成AIにそのまま
