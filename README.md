@@ -12,7 +12,8 @@
 | `AI_DECK_PROMPT.md` | 生成AIに新規 `content.json` を作らせるための依頼テンプレート |
 | `sysA_pptx/` | システムA: Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
 | `sysA_pptx/diagrams*.py` | 表現力検証: AWS構成図・関係者調整図・体制図・チェブロンフロー・ロードマップ・2軸マップ |
-| `sysA_pptx/generate_from_json.py` | `content.json` を直接入力にしてPPTXを生成 |
+| `sysA_pptx/generate_from_json.py` | `content.json` を直接入力にしてPPTXを生成(生成前にschema検証を自動実行) |
+| `sysA_pptx/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・サンプル専用typeの拒否) |
 | `sysB_pptxgenjs/` | システムB: Node + PptxGenJS。全角1em/半角0.53emのヒューリスティック+PPT側autofit保険 |
 | `sysC_marp/` | システムC: Marp。content.json→Markdown変換(md_gen.py)+自作テーマ(corp.css) |
 | `render.ps1` | PPTX→PNG書き出し(PowerPoint COM)。品質検証ループ用 |
@@ -44,17 +45,27 @@ python sysA_pptx\check_layout.py out\sysA_deck.pptx
 **生成AIに実行させるパターン**
 
 1. AIに `AI_DECK_PROMPT.md` と `CONTENT_SCHEMA.md` を渡し、新しい `content.json` を作らせる。
+   既存の `content.json` / `content.py` はサンプルなので参照させない。
 2. 生成された `content.json` をプロジェクト直下に置く。
 3. 生成・検証コマンドを実行する。
 
 ```powershell
+python sysA_pptx/validate_content.py content.json
 python sysA_pptx/generate_from_json.py content.json out\deck_from_json.pptx
 powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\deck_from_json.pptx -OutDir out\png_from_json
 python contact_sheet.py out\png_from_json
 python sysA_pptx\check_layout.py out\deck_from_json.pptx
 ```
 
-4. `check_layout.py` がNG、またはPNG目視で崩れがある場合は、AIに `content.json` を直させて再実行する。
+4. `validate_content.py` がNGの場合はエラー一覧をそのままAIに渡して `content.json` を直させる
+   (`generate_from_json.py` も生成前に同じ検証を自動実行する)。
+   `check_layout.py` がNG、またはPNG目視で崩れがある場合も同様に直させて再実行する。
+
+**構成図は `diagram` type で描く。** グリッド仕様(列・行・ノード・エッジ。座標の数値は書かない)を
+JSONで渡すと、レイアウトエンジン(`diagram_layout.py`)が座標・配線を決定論的に計算する。
+ノードの `icon` を省略すると汎用図形ノードになるため、AWSアイコンがないテーマ・環境でも描ける。
+`aws` / `aws2` はサンプル固定図のため `generate_from_json.py` が機械的に拒否する
+(既存サンプル図が新規資料に混入した事故への対策)。
 
 **人間が手動実行するパターン**
 
@@ -89,11 +100,12 @@ python contact_sheet.py out\png_from_json
 
 **新しいスライドを作る(定常運用)**
 
-1. AI(どのLLMでも可)に `content.py` の既存形式でスライドの文言を書かせる — AIの仕事はここだけ
-2. `python generate.py` (基本) / `python generate2.py` (図解入り拡張) で生成
-3. `render.ps1` でPNG化 → 目視(またはマルチモーダルAIに検査させる) → 問題があればcontent.pyを直して再生成
+1. AI(どのLLMでも可)に `AI_DECK_PROMPT.md` + `CONTENT_SCHEMA.md` を渡して新しい `content.json` を書かせる — AIの仕事はここだけ。既存サンプル(`content.py` / 既存 `content.json`)は見せない
+2. `python sysA_pptx/generate_from_json.py content.json out\deck.pptx` で生成(schema検証は生成前に自動実行される)
+3. `render.ps1` でPNG化 → 目視(またはマルチモーダルAIに検査させる) → 問題があればcontent.jsonを直して再生成
 
 **新しいレイアウト種別が必要な場合のみ** renderer関数のコーディングが発生する(CLAUDE.mdの設計原則を参照)。
+`generate.py` / `generate2.py` は既存サンプルデッキの再生成専用。
 
 ## 社内テンプレート化の方針
 

@@ -38,8 +38,11 @@ def add_arrow(slide, x1, y1, x2, y2, *, color=LINE, width=1.5, both=False,
 
 
 def arrow_label(slide, cx, cy, text, w=1.6, size=9):
-    """線をまたぐラベル。白背景マスクは実測テキスト幅に合わせる。"""
-    actual_w = min(w, text_width_in(text, size) + 0.14)
+    """線をまたぐラベル。白背景マスクは実測テキスト幅に合わせ、wは上限として扱う
+    (固定幅だと短い文字列ほど余計な範囲まで線を隠してしまうため)。
+    """
+    pad = 0.14
+    actual_w = min(w, text_width_in(text, size) + pad)
     actual_h = line_height_in(size, 1.1) + 0.08
     tb = add_text(slide, cx - actual_w / 2, cy - actual_h / 2, actual_w, actual_h,
                   text, size, color=TEXT, align=PP_ALIGN.CENTER,
@@ -78,11 +81,18 @@ def container(slide, x, y, w, h, label, color=LINE, dash=None):
 
 # ---- AWS構成図(公式アイコン使用) ----
 ICON_DIR = Path(__file__).parent / "assets"
+ICON_R = 0.31        # アイコン半径(0.62角の半分)
+EDGE_GAP = 0.06      # 矢印端点とアイコン縁の隙間
 
 
 def icon_node(slide, cx, cy, img, title, sub=None, size=0.62):
     """AWS公式スタイル: アイコン+直下にサービス名ラベル。"""
-    slide.shapes.add_picture(str(ICON_DIR / img), Inches(cx - size / 2),
+    p = ICON_DIR / img
+    if not p.exists():
+        raise FileNotFoundError(
+            f"アイコン {img} が {ICON_DIR} にありません。extract_aws_icons.py で"
+            f"生成するか、ノードの icon を外して汎用図形ノードにしてください。")
+    slide.shapes.add_picture(str(p), Inches(cx - size / 2),
                              Inches(cy - size / 2), Inches(size), Inches(size))
     add_text(slide, cx - 1.05, cy + size / 2 + 0.05, 2.1, 0.28, title, 10.5,
              bold=True, color=NAVY, align=PP_ALIGN.CENTER)
@@ -91,32 +101,40 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62):
                  color=GRAY, align=PP_ALIGN.CENTER)
 
 
-def s_aws(slide, spec, page):
-    header(slide, spec["kicker"], spec["title"])
-    # コンテナ(AWS Cloud実線 / VPC点線)
-    container(slide, 2.55, 2.0, 8.35, 4.6, "AWS Cloud", LINE)
-    container(slide, 2.9, 3.3, 4.55, 2.55, "VPC (private)", ACCENT, dash="dash")
-    # ノード
-    icon_node(slide, 1.35, 4.2, "users.png", "社内ユーザー", "ブラウザ")
-    icon_node(slide, 3.95, 4.2, "alb.png", "ALB", "内部LB")
-    icon_node(slide, 6.35, 4.2, "fargate.png", "ECS Fargate", "生成API (python-pptx)")
-    icon_node(slide, 9.55, 2.85, "bedrock.png", "Amazon Bedrock", "Claude (構成JSON生成)")
-    icon_node(slide, 9.55, 4.2, "s3.png", "Amazon S3", "テンプレート/成果物")
-    icon_node(slide, 9.55, 5.62, "cloudwatch.png", "CloudWatch", "ログ・監査証跡")
-    icon_node(slide, 12.35, 4.2, "user.png", "利用部門", "ダウンロード")
-    # 矢印(アイコンの縁から縁へ。同じ行のノードは水平に揃える)
-    add_arrow(slide, 1.72, 4.2, 3.58, 4.2)
-    arrow_label(slide, 2.65, 4.0, "HTTPS", w=1.0)
-    add_arrow(slide, 4.32, 4.2, 5.98, 4.2)
-    add_arrow(slide, 6.72, 4.05, 9.12, 2.95)
-    arrow_label(slide, 7.9, 3.3, "構成生成", w=1.1)
-    add_arrow(slide, 6.72, 4.2, 9.13, 4.2)
-    arrow_label(slide, 7.9, 4.42, "読み書き", w=1.1)
-    add_arrow(slide, 6.72, 4.35, 9.12, 5.5)
-    add_arrow(slide, 9.98, 4.2, 11.92, 4.2)
-    arrow_label(slide, 10.95, 4.0, "署名URL", w=1.0)
-    if spec.get("note"):
-        note_line(slide, spec["note"])
+def box_node(slide, cx, cy, title, sub=None, size=0.62, color=ACCENT):
+    """アイコン画像を使わない汎用ノード: 角丸四角+上部カラーバー。
+    icon_node と同じ外形寸法・ラベル位置なので、diagram_layout の座標計算
+    (ICON_R 基準のポート・コンテナ外接)がそのまま成立する。
+    アイコン素材が用意できないテーマ(オンプレNW・業務システム等)用。
+    """
+    sp = slide.shapes.add_shape(
+        MSO_SHAPE.ROUNDED_RECTANGLE, Inches(cx - size / 2), Inches(cy - size / 2),
+        Inches(size), Inches(size))
+    sp.adjustments[0] = 0.12
+    sp.fill.solid()
+    sp.fill.fore_color.rgb = WHITE
+    sp.line.color.rgb = color
+    sp.line.width = Pt(1.5)
+    sp.shadow.inherit = False
+    add_rect(slide, cx - size / 2 + 0.08, cy - size / 2 + 0.08,
+             size - 0.16, 0.07, color)
+    add_text(slide, cx - 1.05, cy + size / 2 + 0.05, 2.1, 0.28, title, 10.5,
+             bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+    if sub:
+        add_text(slide, cx - 1.05, cy + size / 2 + 0.33, 2.1, 0.26, sub, 8.5,
+                 color=GRAY, align=PP_ALIGN.CENTER)
+
+
+def right_of(cx):
+    """アイコン右縁の矢印端点X。"""
+    return cx + ICON_R + EDGE_GAP
+
+
+def left_of(cx):
+    return cx - ICON_R - EDGE_GAP
+
+
+# (旧ハンドコード版 s_aws は diagram_layout.py + diagram_specs.py に移行済み)
 
 
 # ---- ステークホルダー調整図(ハブ型) ----

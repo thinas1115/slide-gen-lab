@@ -23,9 +23,10 @@
 2. `meta.title`, `meta.footer`, `slides[*].title`, `slides[*].kicker`, 本文はすべて今回のテーマに合わせて新規作成する。
 3. 既存サンプルの題材・文言・固有名詞・数値を流用しない。
 4. 実在の構成・組織・数値が分からない場合は、勝手に具体化しない。代わりに「要確認」または一般的な概念説明にする。
-5. 新規資料では `aws` / `aws2` を使わない。これらはサンプル固定図であり、任意テーマの構成図生成には対応していない。構成説明が必要な場合は、`cards`, `bullets`, `twocol`, `table`, `process`, `roadmap`, `matrix`, `hub`, `org` から選ぶ。
-6. `type` は `CONTENT_SCHEMA.md` に載っているものだけ使う。
-7. JSON以外の説明文を付けない。
+5. 構成図(システム構成・ネットワーク構成など)は `diagram` type を使い、`CONTENT_SCHEMA.md` のグリッド仕様(列・行・ノード・エッジ)を**今回のテーマに合わせて新規に**書く。**座標やサイズの数値は一切書かない**(レイアウトエンジンが計算する)。ノードの `icon` は省略してよい(汎用図形ノードになる)。
+6. `aws` / `aws2` は使わない。サンプル固定図のため `generate_from_json.py` が機械的に拒否する。
+7. `type` は `CONTENT_SCHEMA.md` に載っているものだけ使う。件数制約(hubのring 6件、roadmapのphases 最大3件など)も `validate_content.py` が機械検証する。
+8. JSON以外の説明文を付けない。
 
 対応済み `type`:
 
@@ -40,16 +41,21 @@
 - `matrix`
 - `hub`
 - `org`
+- `diagram` (構成図。グリッド仕様から自動レイアウト、座標記述は禁止)
 
 ## 実行コマンド
 
 生成されたJSONを `content.json` として保存してから実行する。
 
 ```powershell
+python sysA_pptx/validate_content.py content.json
 python sysA_pptx/generate_from_json.py content.json out\deck_from_json.pptx
 python sysA_pptx\check_layout.py out\deck_from_json.pptx
 powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\deck_from_json.pptx -OutDir out\png_from_json
 python contact_sheet.py out\png_from_json
 ```
+
+1行目の検証は `generate_from_json.py` も生成前に自動実行する(NGなら生成されない)。
+検証エラーが出たら、エラーメッセージ(`slides[番号] (type=種別): 内容` 形式)をそのままAIに渡して `content.json` を直させる。
 
 `out\png_from_json\sheet.png` を確認し、内容がテーマから逸れていないか、既存サンプルの題材が混ざっていないか、文字溢れや重なりがないかを見る。

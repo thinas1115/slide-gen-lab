@@ -2,6 +2,9 @@
 
 使い方:
   python sysA_pptx/generate_from_json.py content.json out/from_json.pptx
+
+生成前に validate_content.py の検証を通す。エラーがあればレンダリングせず、
+生成AIにそのまま渡して直させられる粒度のメッセージを出して終了する。
 """
 import json
 import sys
@@ -11,19 +14,43 @@ from pptx import Presentation
 from pptx.util import Inches
 
 import generate
-from diagrams import s_aws, s_hub, s_org
+from diagrams import s_hub, s_org
 from diagrams2 import s_matrix, s_process, s_roadmap
-from diagrams3 import s_aws2
+from diagram_layout import render_diagram
+from validate_content import validate
 
 
+def s_diagram(slide, spec, page):
+    """構成図: グリッド仕様(spec["diagram"])から座標ゼロで自動レイアウト。
+
+    仕様はスライド内にインラインで書く(diagram_specs.py のサンプル名指定は
+    受け付けない。名前参照を許すと既存サンプル図の流用経路が復活するため)。
+    """
+    generate.header(slide, spec["kicker"], spec["title"])
+    render_diagram(slide, spec["diagram"], note=spec.get("note"))
+
+
+# aws / aws2 は意図的に登録しない: 図の中身がコード内固定のサンプル専用
+# rendererで、content.json からは差し替えられない。登録したままにすると
+# 「タイトルだけ新規テーマ、中身は既存サンプルのAWS構成図」の資料が
+# エラーなく生成されてしまう(実際に別環境の生成AIで発生した事故)。
+# 任意テーマの構成図は diagram type(宣言的レイアウトエンジン)を使う。
+# サンプルデッキの再生成は generate2.py / generate_patterns.py を使う。
 RENDER = dict(generate.RENDER,
-              aws=s_aws, hub=s_hub, org=s_org,
+              hub=s_hub, org=s_org,
               process=s_process, roadmap=s_roadmap, matrix=s_matrix,
-              aws2=s_aws2)
+              diagram=s_diagram)
 
 
 def main(json_path, out_path):
     deck = json.loads(Path(json_path).read_text(encoding="utf-8"))
+    errors = validate(deck)
+    if errors:
+        print(f"NG: {json_path} に {len(errors)} 件の問題 (生成を中止):",
+              file=sys.stderr)
+        for e in errors:
+            print(f"  - {e}", file=sys.stderr)
+        raise SystemExit(1)
     generate.DECK = deck
 
     prs = Presentation()
@@ -37,7 +64,15 @@ def main(json_path, out_path):
         except KeyError as e:
             known = ", ".join(sorted(RENDER))
             raise SystemExit(f"unknown slide type: {spec['type']!r}. known: {known}") from e
-        renderer(slide, spec, idx)
+        try:
+            renderer(slide, spec, idx)
+        except (ValueError, FileNotFoundError) as e:
+            # diagram type のレイアウトエンジンは、収まらない/配線が壊れる場合に
+            # 対処方法つきの日本語 ValueError を投げる。スタックトレースではなく
+            # スライド番号+メッセージにして、生成AIにそのまま直させる。
+            raise SystemExit(
+                f"NG: slides[{idx - 1}] (type={spec['type']}) の生成に失敗:\n"
+                f"  {e}") from e
         if spec["type"] != "title":
             generate.footer(slide, idx)
     prs.save(out_path)

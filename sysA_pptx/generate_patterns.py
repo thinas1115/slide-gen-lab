@@ -6,15 +6,26 @@ from pptx.util import Inches
 
 import generate
 from content_patterns import PATTERN_DECK
-from diagrams import s_aws, s_hub, s_org
+from diagrams import s_hub, s_org
 from diagrams2 import s_matrix, s_process, s_roadmap
-from diagrams3 import s_aws2
+from diagram_layout import render_diagram
+from diagram_specs import DIAGRAMS
+
+
+def s_diagram(slide, spec, page):
+    """構成図(宣言的エンジン)。ギャラリーではインライン仕様("diagram")と
+    サンプル仕様の名前参照("spec"、diagram_specs.py)の両方を許す。
+    ※新規資料用の generate_from_json.py はインラインのみ(サンプル流用防止)。
+    """
+    generate.header(slide, spec["kicker"], spec["title"])
+    d = spec["diagram"] if "diagram" in spec else DIAGRAMS[spec["spec"]]
+    render_diagram(slide, d, note=spec.get("note"))
 
 
 RENDER = dict(generate.RENDER,
-              aws=s_aws, hub=s_hub, org=s_org,
+              hub=s_hub, org=s_org,
               process=s_process, roadmap=s_roadmap, matrix=s_matrix,
-              aws2=s_aws2)
+              diagram=s_diagram)
 
 
 def main(out_path):

@@ -1,4 +1,7 @@
-"""スライドPNG群を1枚のコンタクトシートに合成する。
+"""スライドPNG群を1枚のコンタクトシート(グリッド画像)に合成する。
+
+AI目視のToken節約用: 全枚を1回のReadで俯瞰し、怪しいスライドだけ
+render.ps1 -Slides で高解像度に出し直して確認する。
 
 使い方: python contact_sheet.py out\\pngA2 [列数=4] [タイル幅=400]
 出力:   <dir>\\sheet.png
@@ -7,7 +10,6 @@ import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw
-
 
 def main(png_dir, cols=4, tile_w=400):
     d = Path(png_dir)
@@ -25,12 +27,11 @@ def main(png_dir, cols=4, tile_w=400):
         y = (i // cols) * (tile_h + label_h)
         sheet.paste(img, (x, y + label_h))
         draw.text((x + 4, y + 2), f.stem, fill="black")
-        draw.rectangle([x, y + label_h, x + tile_w - 1,
-                        y + label_h + tile_h - 1], outline="#cccccc")
+        draw.rectangle([x, y + label_h, x + tile_w - 1, y + label_h + tile_h - 1],
+                       outline="#cccccc")
     out = d / "sheet.png"
     sheet.save(out)
     print(f"wrote {out} ({sheet.width}x{sheet.height}, {len(files)} slides)")
-
 
 if __name__ == "__main__":
     main(sys.argv[1],

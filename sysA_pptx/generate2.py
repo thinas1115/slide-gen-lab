@@ -10,14 +10,22 @@ from pptx.util import Inches
 import generate
 from content import DECK
 from content_ext import EXTRA_SLIDES
-from diagrams import s_aws, s_hub, s_org
+from diagrams import s_hub, s_org
 from diagrams2 import s_matrix, s_process, s_roadmap
-from diagrams3 import s_aws2
+from diagram_layout import render_diagram
+from diagram_specs import DIAGRAMS
+
+
+def s_diagram(slide, spec, page):
+    """宣言的仕様(diagram_specs.py)による図解スライド。"""
+    generate.header(slide, spec["kicker"], spec["title"])
+    render_diagram(slide, DIAGRAMS[spec["spec"]], note=spec.get("note"))
+
 
 RENDER2 = dict(generate.RENDER,
-               aws=s_aws, hub=s_hub, org=s_org,
+               hub=s_hub, org=s_org,
                process=s_process, roadmap=s_roadmap, matrix=s_matrix,
-               aws2=s_aws2)
+               diagram=s_diagram)
 
 
 def main(out_path):

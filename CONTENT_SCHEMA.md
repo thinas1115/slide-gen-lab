@@ -6,6 +6,18 @@
 
 既存の `content.json` と `sysA_pptx/content.py` はサンプルデッキ。新規資料の題材作成には使わない。
 
+## 機械検証
+
+このschemaの必須フィールドと件数制約は `sysA_pptx/validate_content.py` が機械的に検証する。
+`generate_from_json.py` は生成前に自動で検証し、NGなら生成せずエラー一覧を出す。
+単体で検証だけ行う場合:
+
+```powershell
+python sysA_pptx/validate_content.py content.json
+```
+
+エラーメッセージは `slides[番号] (type=種別): 内容` の形式。生成AIにそのまま渡して直させる。
+
 ## Top Level
 
 必須:
@@ -33,7 +45,9 @@
 - `slides[*].type` は必須。
 - `type: "title"` 以外は `kicker` と `title` が必須。
 - JSONなので、Pythonのタプルではなく配列を使う。
-- 新規資料では `aws` / `aws2` を使わない。現状は固定サンプル図で、任意テーマの構成図rendererではない。
+- `note` (右下の注記) が描画されるのは `table` / `chart` / `process` / `roadmap` / `matrix` / `hub` / `org` / `diagram` のみ。それ以外のtypeに書いても無視される(validatorがエラーにする)。
+- 構成図は `diagram` type で書く(グリッド仕様のみ、座標の数値は書かない)。
+- `aws` / `aws2` は使えない。固定サンプル図であり、`generate_from_json.py` は受け付けない(validatorが拒否する)。
 
 ## Supported Types
 
@@ -68,8 +82,8 @@
 
 制約:
 
-- `bullets` は3〜5件程度が安全。
-- 2要素目は現状未使用。`null` にする。
+- `bullets` は3〜5件程度が安全(validatorの上限は6件)。
+- 各要素は `["本文", null]` の2要素配列。2要素目は旧強調フラグの名残で現状未使用。`null` 固定にする(文字列だけを直接並べるとエラーになる)。
 
 ```json
 {
@@ -96,7 +110,7 @@
 
 制約:
 
-- `cards` は3〜4件程度が安全。
+- `cards` は3〜4件が安全(validatorの範囲は2〜4件)。
 - 件数に応じて横並び幅が自動計算される。
 
 ```json
@@ -130,9 +144,9 @@
 
 制約:
 
-- `columns`, `col_widths`, 各 `rows[*]` の要素数は同じにする。
-- `col_widths` の合計はおおむね `11.8` inch。厳密には `BODY_W` との差が `0.6` 未満なら通る。
-- 行数は3〜6行程度が安全。
+- `columns`, `col_widths`, 各 `rows[*]` の要素数は同じにする(2〜8列)。
+- `col_widths` の合計はおおむね `12.2` inch(本文幅 `BODY_W` = 12.23。差が `0.6` 未満なら通る)。
+- 行数は3〜6行程度が安全(validatorの上限は8行)。
 
 ```json
 {
@@ -202,7 +216,7 @@
 制約:
 
 - 各 `values` の長さは `categories` と同じにする。
-- 系列は1〜2件、カテゴリは3〜5件程度が安全。
+- 系列は1〜2件(validator強制)、カテゴリは3〜5件程度が安全(validatorの上限は6件)。
 
 ```json
 {
@@ -240,7 +254,7 @@
 
 制約:
 
-- `steps` は4〜5件が安全。
+- `steps` は4〜5件が安全(validatorの範囲は3〜6件)。
 
 ```json
 {
@@ -277,10 +291,10 @@
 
 制約:
 
-- `months` は6件が最も安定。
-- `phases` は3件が前提に近い。
-- `start`, `end`, `at` は月列のindex基準。6か月なら `0` から `6` の範囲。
-- `milestones[*].row` は対応する `phases` の0始まりindex。
+- `months` は6件が最も安定(validatorの範囲は4〜8件)。
+- `phases` は最大3件(validator強制。4件は行の高さが本文下端を超える)。
+- `start`, `end`, `at` は月列のindex基準。6か月なら `0` から `6` の範囲(validator強制)。
+- `milestones[*].row` は対応する `phases` の0始まりindex。不要なら `"milestones": []`。
 
 ```json
 {
@@ -323,9 +337,9 @@
 
 制約:
 
-- `x`, `y` は `0.0` から `1.0`。
-- 点は4〜7件程度が安全。
-- ラベルが重なる場合は `lx` / `ly` で位置を調整する。
+- `x`, `y` は `0.0` から `1.0` の比率(validator強制)。
+- 点は4〜7件程度が安全(validatorの上限は8件)。
+- ラベルが重なる場合は `lx` / `ly` で位置を調整する。**単位はインチ**(x/yと違い比率ではない)。点の中心からのオフセットで、`lx` 正=右、`ly` 正=下。省略時は点の上 (`ly=-0.36`) に出る。
 
 ```json
 {
@@ -363,7 +377,7 @@
 
 制約:
 
-- `ring` は6件。rendererの配置が6件前提。
+- `ring` はちょうど6件(validator強制)。rendererの周辺ノード配置が6件固定のため、5件では欠け、7件では黙って切り捨てられる。
 
 ```json
 {
@@ -404,8 +418,8 @@
 
 制約:
 
-- `teams` は3件が最も安定。
-- `members` は各チーム0〜3件程度が安全。
+- `teams` は3件が最も安定(validatorの範囲は1〜3件。4件は横幅が本文を超える)。
+- `members` は各チーム0〜3件(validator強制。4件目はフッター線に重なる)。
 
 ```json
 {
@@ -421,10 +435,81 @@
 }
 ```
 
+### diagram
+
+用途: システム構成図・ネットワーク構成図など、ノードと配線の図。
+
+**座標・サイズの数値は一切書かない。** グリッド仕様(列・行・メンバー列挙)だけを書き、座標は `diagram_layout.py` エンジンが決定論的に計算する。「9.55のような数値を書きたくなったら仕様の書き方が間違っている」が設計思想。
+
+必須:
+
+- `type`: `"diagram"`
+- `kicker`: string
+- `title`: string
+- `diagram.cols`: 列名の配列(左から順)
+- `diagram.rows`: 行名の配列(上から順)
+- `diagram.nodes`: ノード名 → object
+  - `col` / `row`: 所属セル(cols/rowsの名前)
+  - `title`: 表示名
+  - `sub`: 補足ラベル(任意)
+  - `icon`: `sysA_pptx/assets/` のPNGファイル名(任意)。**省略すると汎用図形ノード**(角丸四角+カラーバー)になるので、アイコン素材がないテーマでもそのまま描ける
+  - `color`: `"accent"`(既定) / `"navy"` / `"line"`(汎用図形ノードの枠色)
+- `diagram.edges`: object の配列
+  - `from` / `to`: ノード名(または `@コンテナ名`)
+  - `label` / `label_w`: 線上ラベルと幅(任意)
+  - `exit` / `enter`: 発着辺 `"left" | "right" | "top" | "bottom"`(任意。省略時は位置関係から自動)
+  - `via`: 経由チャネル名の配列(任意)
+  - `dash`: `"dash"` で点線、`both`: true で双方向(任意)
+
+任意:
+
+- `diagram.containers`: 外接枠。object の配列(外側から順)
+  - `name` / `label` / `members`(ノード名または `@子コンテナ名` の列挙)
+  - `color` / `dash` / `pad` / `pad_x`
+- `diagram.channels`: 配線レーン。`名前: [種類, 基準]` のobject
+  - 種類: `"left_of_col"` / `"right_of_col"` / `"above_row"` / `"below_row"` / `"outside_container"`
+  - `outside_container` の基準は `[コンテナ名, "left"|"right"|"top"|"bottom"|"top_inside"]`
+  - 同じ列を共有するノード間のローカルループ(折り返し)には必ず `outside_container` を使う
+- `note`: string
+
+```json
+{
+  "type": "diagram",
+  "kicker": "新構成",
+  "title": "新基盤の構成",
+  "diagram": {
+    "cols": ["user", "gw", "app"],
+    "rows": ["main"],
+    "nodes": {
+      "pc": {"col": "user", "row": "main", "title": "利用者端末"},
+      "fw": {"col": "gw", "row": "main", "title": "ファイアウォール", "color": "navy"},
+      "web": {"col": "app", "row": "main", "title": "業務サーバ", "sub": "アプリ本体"}
+    },
+    "containers": [
+      {"name": "dc", "label": "データセンター", "members": ["fw", "web"]}
+    ],
+    "channels": {},
+    "edges": [
+      {"from": "pc", "to": "fw", "label": "HTTPS", "label_w": 1.0},
+      {"from": "fw", "to": "web"}
+    ]
+  }
+}
+```
+
+制約:
+
+- 参照整合(col/rowの存在、edges/membersのノード参照、viaのチャネル参照)はvalidatorが検証する。
+- 行間に収まるか・配線がコンテナを貫通しないか等は、生成時にエンジン自身が対処方法つきのエラーで検出する(収まらない場合は行数・sub・ラベルを減らす)。
+- ノードは10個程度・4行程度までが安全(それ以上は縦に収まらずエラーになる)。
+- `diagram_specs.py` のサンプル名参照(`"spec": "aws_multiaz"` など)は**使えない**。仕様は必ずインラインで書く。
+
 ## Not Supported For New Decks
 
 ### aws / aws2
 
-`aws` と `aws2` は固定サンプル図。`content.json` のノード・矢印から任意の構成図を作るrendererではない。
+`aws` と `aws2` は固定サンプル図。図のノード・ラベル・矢印はすべてコード内に固定されており、`content.json` から差し替えられない(タイトルだけ新規テーマで、中身は既存サンプルのAWS構成図になる)。
 
-新規資料では使わない。
+**`generate_from_json.py` はこの2つのtypeを受け付けない**(validate_content.py が生成前に拒否する)。ドキュメント上の禁止ではなく機械的に通らない。
+
+構成図が必要な場合は `diagram` type でグリッド仕様を新規に書く。サンプル図自体の再生成は `generate2.py` / `generate_patterns.py` を使う。

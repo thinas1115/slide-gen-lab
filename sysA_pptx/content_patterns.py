@@ -179,17 +179,57 @@ PATTERN_DECK = {
             "external": {"name": "外部ベンダー", "sub": "技術支援", "label": "助言"},
         },
         {
-            "type": "aws",
-            "pattern": "simple architecture",
+            "type": "diagram",
+            "spec": "aws_simple",
+            "pattern": "simple architecture (spec-driven)",
             "kicker": "構成図",
             "title": "シンプル構成図は、主要コンポーネントとデータの流れを短く説明できる",
             "note": "AWSアイコンはローカル assets/ から読み込む。",
         },
         {
-            "type": "aws2",
-            "pattern": "dense architecture",
+            "type": "diagram",
+            "spec": "aws_multiaz",
+            "pattern": "dense architecture (spec-driven)",
             "kicker": "高密度構成図",
-            "title": "高密度構成図は、手打ち座標で絵としての納まりを優先する",
+            "title": "高密度構成図も、グリッド仕様から座標ゼロで自動レイアウトできる",
+        },
+        {
+            # アイコン素材なしの汎用構成図: 新規テーマがJSONだけで構成図を
+            # 描けることの検証パターン(generate_from_json.py と同じインライン
+            # 仕様形式。iconを省略すると汎用図形ノードになる)
+            "type": "diagram",
+            "pattern": "generic diagram (no icons)",
+            "kicker": "汎用構成図",
+            "title": "アイコン素材がないテーマでも、汎用図形ノードで構成図を描ける",
+            "note": "ノードのiconを省略すると角丸図形+カラーバーで描画される。",
+            "diagram": {
+                "cols": ["user", "gw", "app", "db"],
+                "rows": ["main", "sub"],
+                "nodes": {
+                    "client": {"col": "user", "row": "main",
+                               "title": "利用者端末", "sub": "社内LAN"},
+                    "fw": {"col": "gw", "row": "main",
+                           "title": "ファイアウォール", "color": "navy"},
+                    "web": {"col": "app", "row": "main",
+                            "title": "業務Webサーバ", "sub": "アプリ本体"},
+                    "db": {"col": "db", "row": "main",
+                           "title": "DBサーバ", "color": "navy"},
+                    "log": {"col": "app", "row": "sub",
+                            "title": "ログ収集", "sub": "監査用"},
+                },
+                "containers": [
+                    {"name": "dc", "label": "データセンター",
+                     "members": ["fw", "web", "db", "log"]},
+                ],
+                "channels": {},
+                "edges": [
+                    {"from": "client", "to": "fw", "label": "HTTPS",
+                     "label_w": 1.0},
+                    {"from": "fw", "to": "web"},
+                    {"from": "web", "to": "db", "label": "SQL", "label_w": 0.8},
+                    {"from": "web", "to": "log", "dash": "dash"},
+                ],
+            },
         },
     ],
 }

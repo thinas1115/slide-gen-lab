@@ -1,13 +1,12 @@
 """生成済みPPTXのレイアウト衝突を機械検知する品質ゲート。
 
 使い方: python check_layout.py ..\\out\\sysA_deck2.pptx
-検知対象:
+検知対象(これまでの全実欠陥をカバー):
   T-T: テキストグリフ同士の交差
   T-P: テキストグリフ×画像(アイコン)
-  T-S: テキストグリフ×塗り図形の部分重なり(完全内包は許可)
+  T-S: テキストグリフ×塗り図形の「部分重なり」(完全内包=意図的デザインは許可)
   T-F: テキストグリフがコンテナ枠線をまたぐ
   L-T: 矢印・線×テキストグリフ(白塗りマスクラベルは除外)
-  L-P: 矢印・線×画像(アイコン)
   OOB: スライド境界からのはみ出し
 """
 import sys
@@ -15,14 +14,15 @@ import sys
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+from pptx.util import Emu
 
 from textfit import line_height_in, wrap_text
 
 EMU = 914400
 SLIDE_W, SLIDE_H = 13.333, 7.5
-EDGE = 0.03
-SEG_TRIM = 0.08
-EPS = 0.03
+EDGE = 0.03          # 枠線の当たり判定幅
+SEG_TRIM = 0.08      # 線分端はノード接続なので判定から除外する長さ
+EPS = 0.03           # 視認できない接触(スリバー)を無視する許容量
 
 
 def rect_of(sh):
@@ -45,7 +45,7 @@ def glyph_rect(sh):
     tf = sh.text_frame
     box = rect_of(sh)
     bw = box[2] - box[0]
-    lines = []
+    lines, sizes = [], []
     align = PP_ALIGN.LEFT
     for p in tf.paragraphs:
         if not p.runs:
@@ -56,6 +56,7 @@ def glyph_rect(sh):
         weight = "bold" if bold else "regular"
         for ln in wrap_text(text, bw, size, weight):
             lines.append((ln, size, weight))
+            sizes.append(size)
         if p.alignment is not None:
             align = p.alignment
     if not lines:
@@ -79,6 +80,7 @@ def glyph_rect(sh):
 def seg_of(sh):
     """コネクタの線分端点(flipで向きを解決)。"""
     x1, y1, x2, y2 = rect_of(sh)
+    fh = getattr(sh, "rotation", 0)  # dummy no-op
     el = sh._element
     flip_h = el.spPr.xfrm.get("flipH") == "1" if el.spPr.xfrm is not None else False
     flip_v = el.spPr.xfrm.get("flipV") == "1" if el.spPr.xfrm is not None else False
@@ -91,13 +93,14 @@ def seg_hits_rect(seg, r):
     """線分と矩形の交差(端をSEG_TRIMだけ縮めて接続点は無視)。"""
     x1, y1, x2, y2 = seg
     import math
-    length = math.hypot(x2 - x1, y2 - y1)
-    if length < SEG_TRIM * 2:
+    L = math.hypot(x2 - x1, y2 - y1)
+    if L < SEG_TRIM * 2:
         return False
-    ux, uy = (x2 - x1) / length, (y2 - y1) / length
+    ux, uy = (x2 - x1) / L, (y2 - y1) / L
     x1, y1 = x1 + ux * SEG_TRIM, y1 + uy * SEG_TRIM
     x2, y2 = x2 - ux * SEG_TRIM, y2 - uy * SEG_TRIM
-    steps = max(2, int(length / 0.05))
+    # 双方の投影が重なるかをサンプリングで簡易判定
+    steps = max(2, int(L / 0.05))
     for i in range(steps + 1):
         t = i / steps
         px, py = x1 + (x2 - x1) * t, y1 + (y2 - y1) * t
@@ -123,11 +126,11 @@ def check(path):
     findings = []
     for si, slide in enumerate(prs.slides, 1):
         texts, pics, solids, frames, segs = [], [], [], [], []
-        for z, sh in enumerate(slide.shapes):
+        for z, sh in enumerate(slide.shapes):  # zは描画順(後勝ち)
             st = sh.shape_type
             if st == MSO_SHAPE_TYPE.PICTURE:
                 pics.append((rect_of(sh), sh.name))
-            elif st == MSO_SHAPE_TYPE.AUTO_SHAPE:
+            elif st in (MSO_SHAPE_TYPE.AUTO_SHAPE,):
                 (solids if has_solid_fill(sh) else frames).append(
                     (rect_of(sh), sh.name, z))
             elif st == MSO_SHAPE_TYPE.LINE:
@@ -135,45 +138,47 @@ def check(path):
             elif sh.has_text_frame and sh.text_frame.text.strip():
                 g = glyph_rect(sh)
                 if g:
-                    texts.append((g, snippet(sh.text_frame.text), has_solid_fill(sh)))
-
+                    texts.append((g, snippet(sh.text_frame.text),
+                                  has_solid_fill(sh)))
+        # T-T
         for i in range(len(texts)):
             for j in range(i + 1, len(texts)):
                 if intersects(texts[i][0], texts[j][0]):
                     findings.append((si, "T-T", texts[i][1], texts[j][1]))
-
+        # T-P
         for g, t, _ in texts:
             for r, name in pics:
                 if intersects(g, r):
                     findings.append((si, "T-P", t, name))
-
+        # T-S: 部分重なりのみ(内包は許可)
         for g, t, _ in texts:
             for r, name, _z in solids:
                 if intersects(g, r) and not contains(r, g):
                     findings.append((si, "T-S", t, name))
-
+        # T-F: 枠線またぎ(内包/完全外は許可。白塗りマスクラベルは枠線を隠すので許可)
         for g, t, masked in texts:
             if masked:
                 continue
             for r, name, _z in frames:
-                inner = (r[0] + EDGE, r[1] + EDGE, r[2] - EDGE, r[3] - EDGE)
-                if intersects(g, r, eps=-EDGE) and not contains(inner, g) \
+                if intersects(g, r, eps=-EDGE) and not contains(
+                        (r[0] + EDGE, r[1] + EDGE, r[2] - EDGE, r[3] - EDGE), g) \
                         and intersects(g, r):
                     findings.append((si, "T-F", t, name))
-
+        # L-T (マスクラベルと、線より後に描かれた塗り図形上のテキストは除外)
         for seg, name, lz in segs:
             for g, t, masked in texts:
                 if masked or not seg_hits_rect(seg, g):
                     continue
-                covered = any(contains(r, g) and sz > lz for r, _n, sz in solids)
+                covered = any(contains(r, g) and sz > lz
+                              for r, _n, sz in solids)
                 if not covered:
                     findings.append((si, "L-T", name, t))
-
+        # L-P
         for seg, name, _lz in segs:
             for r, pname in pics:
                 if seg_hits_rect(seg, r):
                     findings.append((si, "L-P", name, pname))
-
+        # OOB
         for g, t, _ in texts:
             if g[0] < 0 or g[1] < 0 or g[2] > SLIDE_W or g[3] > SLIDE_H:
                 findings.append((si, "OOB", t, ""))
@@ -181,11 +186,12 @@ def check(path):
 
 
 if __name__ == "__main__":
-    fs = check(sys.argv[1])
+    path = sys.argv[1]
+    fs = check(path)
     if not fs:
-        print(f"OK: no layout collisions in {sys.argv[1]}")
+        print(f"OK: no layout collisions in {path}")
         sys.exit(0)
-    print(f"NG: {len(fs)} finding(s) in {sys.argv[1]}")
+    print(f"NG: {len(fs)} finding(s) in {path}")
     for si, kind, a, b in fs:
         print(f"  slide{si:02d} [{kind}] {a!r} x {b!r}")
     sys.exit(1)
