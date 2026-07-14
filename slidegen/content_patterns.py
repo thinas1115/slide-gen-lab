@@ -99,7 +99,7 @@ PATTERN_DECK = {
         },
         {
             "type": "process",
-            "pattern": "process / chevron",
+            "pattern": "process / timeline",
             "kicker": "標準プロセス",
             "title": "プロセス図は、資料生成を誰がどこで確認するかまで含めて表せる",
             "steps": [

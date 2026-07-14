@@ -7,15 +7,15 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
-from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, GRAY, LIGHT,
-                      MARGIN, NAVY, TEXT, WHITE, add_rect, add_text, header,
-                      note_line)
+from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, CORAL, GRAY,
+                      LIGHT, MARGIN, NAVY, TEXT, WHITE, add_rect, add_text,
+                      header, note_line)
 from textfit import line_height_in, text_width_in
 
 ORANGE = RGBColor(0xE8, 0x7B, 0x1E)   # compute
 GREEN = RGBColor(0x3F, 0x86, 0x24)    # storage
 PURPLE = RGBColor(0x7D, 0x3F, 0x98)   # ML
-LINE = RGBColor(0x59, 0x59, 0x59)
+LINE = RGBColor(0x6C, 0x73, 0x72)
 
 
 def add_arrow(slide, x1, y1, x2, y2, *, color=LINE, width=1.5, both=False,
@@ -148,8 +148,9 @@ def s_hub(slide, spec, page):
            (cx - 4.6, cy + 1.25), (cx + 2.3, cy + 1.25),
            (cx - 1.15, cy - 2.55), (cx - 1.15, cy + 1.65)]
     bw, bh = 2.3, 0.85
-    for (bx, by), item in zip(pos, ring):
-        node(slide, bx, by, bw, bh, item["name"], item.get("sub"), bar=ACCENT)
+    for i, ((bx, by), item) in enumerate(zip(pos, ring)):
+        node(slide, bx, by, bw, bh, item["name"], item.get("sub"),
+             bar=CORAL if i in (0, 3) else ACCENT)
         # 中心との接続(端点をノード側/ハブ側の縁に寄せる)
         ex = bx + bw / 2 + (0.0 if abs(bx + bw / 2 - cx) < 1 else (0.9 if bx < cx else -0.9))
         sx = bx + bw / 2
