@@ -182,7 +182,7 @@ def s_bullets(slide, spec, page):
 
 
 def s_cards(slide, spec, page):
-    """Render editorial key-point columns without decorative card containers."""
+    """Render flat editorial cards for independent, comparable content units."""
     header(slide, spec["kicker"], spec["title"])
     cards = spec["cards"]
     n = len(cards)

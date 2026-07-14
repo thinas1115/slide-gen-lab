@@ -1,11 +1,13 @@
 """図解系スライド第2弾: プロセスタイムライン・ロードマップ・2軸マップ。"""
+import re
+
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
 
-from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, CORAL, GRAY,
-                      LIGHT, MARGIN, NAVY, RULE, TEXT, WHITE, ZEBRA, add_rect,
+from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, CANVAS, CORAL, GRAY,
+                      LIGHT, MARGIN, NAVY, RULE, TEXT, WHITE, add_rect,
                       add_text, header, note_line)
 from diagrams import LINE, add_arrow, arrow_label
 from textfit import fit_font_size
@@ -55,7 +57,7 @@ def s_process(slide, spec, page):
 def s_roadmap(slide, spec, page):
     header(slide, spec["kicker"], spec["title"])
     months = spec["months"]
-    label_w = 2.6
+    label_w = 2.62
     grid_x = MARGIN + label_w
     grid_w = BODY_W - label_w
     mw = grid_w / len(months)
@@ -77,17 +79,24 @@ def s_roadmap(slide, spec, page):
         ln.line.color.rgb = RULE
         ln.line._get_or_add_ln().remove(ln.line._get_or_add_ln().find(
             "{http://schemas.openxmlformats.org/drawingml/2006/main}tailEnd"))
-    # 行と帯
+    # フェーズ見出しと期間帯
     for i, ph in enumerate(rows):
         ry = top + hdr_h + i * row_h
-        add_rect(slide, MARGIN, ry, label_w - 0.1, row_h - 0.12,
-                 WHITE if i % 2 == 0 else ZEBRA)
-        add_rect(slide, MARGIN, ry, 0.07, row_h - 0.12,
-                 ACCENT if i % 2 == 0 else CORAL)
-        add_text(slide, MARGIN + 0.15, ry + 0.16, label_w - 0.4, 0.35, ph["name"],
-                 11.5, bold=True, color=NAVY)
-        add_text(slide, MARGIN + 0.15, ry + 0.54, label_w - 0.4, 0.35, ph["goal"],
-                 8.5, color=GRAY)
+        color = ACCENT if i % 2 == 0 else CORAL
+        phase_name = re.sub(r"^Phase\s*\d+\s*", "", ph["name"], flags=re.I)
+        phase_name = phase_name or ph["name"]
+        phase_size = fit_font_size(
+            phase_name, label_w - 0.72, 0.36, 12, min_pt=9.5)[0]
+        goal_size = fit_font_size(
+            ph["goal"], label_w - 0.72, 0.3, 8.8, min_pt=8)[0]
+        add_text(slide, MARGIN, ry + 0.12, 0.46, 0.36, f"{i + 1:02d}",
+                 16, bold=True, color=color)
+        add_text(slide, MARGIN + 0.58, ry + 0.1, label_w - 0.72, 0.36,
+                 phase_name, phase_size, bold=True, color=NAVY)
+        add_text(slide, MARGIN + 0.58, ry + 0.49, label_w - 0.72, 0.3,
+                 ph["goal"], goal_size, color=GRAY)
+        add_rect(slide, MARGIN + 0.58, ry + row_h - 0.14,
+                 label_w - 0.78, 0.012, RULE)
         x1 = grid_x + ph["start"] * mw + 0.06
         x2 = grid_x + ph["end"] * mw - 0.06
         add_rect(slide, x1, ry + 0.26, x2 - x1, 0.46,
@@ -106,8 +115,9 @@ def s_roadmap(slide, spec, page):
         sp.line.fill.background()
         sp.shadow.inherit = False
         lcx = min(mx, MARGIN + BODY_W - 0.9)  # 右マージンをはみ出さない
-        # バーの下段に白背景マスク付きで置く(背面のグリッド線を隠す)
-        arrow_label(slide, lcx, my + 0.4, ms["label"], w=1.8, size=8.5)
+        # バーの下段にキャンバス色マスク付きで置く(背面のグリッド線を隠す)
+        label = arrow_label(slide, lcx, my + 0.4, ms["label"], w=1.8, size=8.5)
+        label.fill.fore_color.rgb = CANVAS
     if spec.get("note"):
         note_line(slide, spec["note"])
 
