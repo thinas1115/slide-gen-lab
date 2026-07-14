@@ -12,6 +12,7 @@
   (rlPyCairo は reportlab 4.x のPNG描画バックエンド。無いと RenderPMError になる)
 - 生成したPNGは assets/CREDITS.md のクレジット表記とともにリポジトリに同梱する
   (MITライセンス。リカラー等の改変も許諾範囲内)。
+- PNGは背景透過とし、SVGの実描画領域を256pxキャンバスの中央へ配置する。
 - diagram仕様からは "icon": "fluent/server.png" のように参照する。
 
 アイコンを増やしたいときは ICONS に 出力名: リポジトリのassetsフォルダ名 を
@@ -25,6 +26,7 @@ import urllib.request
 from urllib.error import HTTPError
 from pathlib import Path
 
+from PIL import Image, ImageChops
 from reportlab.graphics import renderPM
 from svglib.svglib import svg2rlg
 
@@ -149,6 +151,33 @@ def to_png(svg_text: str, out_path: Path):
     drawing.scale(scale, scale)
     drawing.width = drawing.height = PX
     renderPM.drawToFile(drawing, str(out_path), fmt="PNG")
+
+    # renderPMは白背景で出力するため、指定色との合成率からalphaを復元する。
+    # SVGのviewBox中心と実描画領域の中心は一致しないので、余白ではなく
+    # 不透明ピクセルの外接矩形を基準にキャンバス中央へ移動する。
+    rgb = Image.open(out_path).convert("RGB")
+    fg = tuple(int(COLOR[i:i + 2], 16) for i in (1, 3, 5))
+
+    def channel_alpha(channel, foreground):
+        span = 255 - foreground
+        return channel.point(
+            lambda value: max(0, min(255, round((255 - value) * 255 / span))))
+
+    channels = [channel_alpha(ch, color) for ch, color in zip(rgb.split(), fg)]
+    alpha = ImageChops.lighter(ImageChops.lighter(channels[0], channels[1]),
+                               channels[2])
+    alpha = alpha.point(lambda value: 0 if value < 2 else value)
+
+    icon = Image.new("RGBA", (PX, PX), (*fg, 0))
+    icon.putalpha(alpha)
+    bbox = alpha.getbbox()
+    if not bbox:
+        raise RuntimeError(f"Fluentアイコンの描画領域が空です: {out_path.name}")
+    dx = round(PX / 2 - (bbox[0] + bbox[2]) / 2)
+    dy = round(PX / 2 - (bbox[1] + bbox[3]) / 2)
+    centered = Image.new("RGBA", (PX, PX), (0, 0, 0, 0))
+    centered.alpha_composite(icon, (dx, dy))
+    centered.save(out_path, "PNG")
 
 
 def main(names):

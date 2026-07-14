@@ -91,7 +91,8 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62):
     if not p.exists():
         raise FileNotFoundError(
             f"アイコン {img} が {ICON_DIR} にありません。extract_aws_icons.py で"
-            f"生成するか、ノードの icon を外して汎用図形ノードにしてください。")
+            f"生成するか、fetch_fluent_icons.py --list で同梱アイコンを確認して"
+            f"ください。")
     slide.shapes.add_picture(str(p), Inches(cx - size / 2),
                              Inches(cy - size / 2), Inches(size), Inches(size))
     add_text(slide, cx - 1.05, cy + size / 2 + 0.05, 2.1, 0.28, title, 10.5,
