@@ -1,15 +1,15 @@
 # 生成物 (render.ps1 / generate*.py の出力)
 out/
-sysC_marp/deck.md
+archive/sysC_marp/deck.md
 
-# アイコン素材 (sysA_pptx/assets/) は CREDITS.md のクレジット表記とともにコミットする
+# アイコン素材 (slidegen/assets/) は CREDITS.md のクレジット表記とともにコミットする
 # (AWS: 無改変・技術資料用途の許諾範囲内 / Fluent: MIT)
 
 # 調査・テストの一時レポート
-sysA_pptx/*_report.txt
-sysA_pptx/s3_labels.txt
-sysA_pptx/lbl.txt
-sysA_pptx/test_result.txt
+slidegen/*_report.txt
+slidegen/s3_labels.txt
+slidegen/lbl.txt
+slidegen/test_result.txt
 
 # 依存・キャッシュ
 node_modules/

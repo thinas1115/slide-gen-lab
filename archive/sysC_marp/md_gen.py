@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-DECK = json.loads((ROOT.parent / "content.json").read_text(encoding="utf-8"))
+DECK = json.loads((ROOT.parent.parent / "content.json").read_text(encoding="utf-8"))
 
 CHART_MAX = 600  # 軸の最大値(分)
 

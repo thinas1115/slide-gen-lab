@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const pptxgen = require("pptxgenjs");
 
-const DECK = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "content.json"), "utf8"));
+const DECK = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "content.json"), "utf8"));
 
 const NAVY = "1F3864", ACCENT = "2E75B6", LIGHT = "EAF1F8", TEXT = "262626",
   GRAY = "7F7F7F", WHITE = "FFFFFF", ZEBRA = "F2F6FB", RULE = "D9D9D9";

@@ -1,7 +1,7 @@
 """content.json を入力にしてPPTXを生成する。
 
 使い方:
-  python sysA_pptx/generate_from_json.py content.json out/from_json.pptx
+  python slidegen/generate_from_json.py content.json out/from_json.pptx
 
 生成前に validate_content.py の検証を通す。エラーがあればレンダリングせず、
 生成AIにそのまま渡して直させられる粒度のメッセージを出して終了する。

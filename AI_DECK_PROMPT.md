@@ -6,7 +6,7 @@
 
 あなたは `slide-gen-lab` のスライド内容作成担当です。
 `CONTENT_SCHEMA.md` に従って、新しい `content.json` を作成してください。
-既存の `content.json` / `sysA_pptx/content.py` は動作確認用のサンプルなので、参照しないでください。
+既存の `content.json` / `slidegen/content.py` は動作確認用のサンプルなので、参照しないでください。
 
 今回作る資料:
 
@@ -48,9 +48,9 @@
 生成されたJSONを `content.json` として保存してから実行する。
 
 ```powershell
-python sysA_pptx/validate_content.py content.json
-python sysA_pptx/generate_from_json.py content.json out\deck_from_json.pptx
-python sysA_pptx\check_layout.py out\deck_from_json.pptx
+python slidegen/validate_content.py content.json
+python slidegen/generate_from_json.py content.json out\deck_from_json.pptx
+python slidegen\check_layout.py out\deck_from_json.pptx
 powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\deck_from_json.pptx -OutDir out\png_from_json
 python contact_sheet.py out\png_from_json
 ```
