@@ -1,158 +1,97 @@
 # slide-gen-lab
 
-「生成→そのまま提出」レベルのスライドを決定論的に出力するパイプラインの検証プロジェクト。
-2つの独立したシステムで同一の9枚デッキ(調査報告)を生成し、PowerPoint実レンダリングで品質を検証済み。
+「生成 → そのまま提出」できる品質のスライドを、決定論的に出力するパイプライン。
 
 ![パイプライン全体像](docs/pipeline-overview.png)
 
-AIはスキーマに沿って `content.json` を書くだけ。座標・余白・フォントはコード側(renderer/レイアウトエンジン)が
+生成AIはスキーマに沿って `content.json` を書くだけ。座標・余白・フォントはコード側(renderer / レイアウトエンジン)が
 実測ベースで決定し、schema検証 → エンジン自己検証 → 機械検知 → 実レンダリング目視の多段ゲートで
 「そのまま提出」品質を担保する。NGはどの段からも `content.json` の修正に差し戻される
-(表現力が足りない場合のみ `extend`: EXTENDING.md に従うエンジン拡張ループ)。
+(表現力が足りない場合のみ `extend`: `EXTENDING.md` に従うエンジン拡張ループ)。
 
 ## 構成
 
 | パス | 内容 |
 |---|---|
-| `content.json` | デッキ内容(スライド構造の共有データ。slidegen/content.py から生成) |
-| `CONTENT_SCHEMA.md` | 新規デッキ用の中立schema。生成AIにはこちらを渡す |
-| `AI_DECK_PROMPT.md` | 生成AIに新規 `content.json` を作らせるための依頼テンプレート |
-| `EXTENDING.md` | AI向け拡張ガイド(新しいtype・エンジン機能を追加するときの不変条件と手順) |
-| `slidegen/` | 本体: Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
-| `slidegen/diagrams*.py` | 表現力検証: AWS構成図・関係者調整図・体制図・チェブロンフロー・ロードマップ・2軸マップ |
-| `slidegen/generate_from_json.py` | `content.json` を直接入力にしてPPTXを生成(生成前にschema検証を自動実行) |
+| `content.json` | デッキ内容(スライド構造の共有データ。`slidegen/content.py` から生成) |
+| `CONTENT_SCHEMA.md` | `content.json` の中立スキーマ。生成AIにはこれと `AI_DECK_PROMPT.md` を渡す |
+| `AI_DECK_PROMPT.md` | 生成AIに `content.json` を書かせる依頼文の穴埋めテンプレート |
+| `EXTENDING.md` | 新しいtype・エンジン機能を追加するときの不変条件と手順(AI向け拡張ガイド) |
+| `slidegen/` | 本体。Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
+| `slidegen/generate_from_json.py` | `content.json` → PPTX 生成(生成前にschema検証を自動実行) |
 | `slidegen/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・サンプル専用typeの拒否) |
-| `archive/sysB_pptxgenjs/` | 旧システムB: Node + PptxGenJS(**凍結**: 比較検証を終えたアーカイブ。同じ content.json を読む) |
-| `archive/sysC_marp/` | 旧システムC: Marp(**凍結**: 同上。PPTX出力が画像埋め込みになる制約で不採用) |
-| `render.ps1` | PPTX→PNG書き出し(PowerPoint COM)。品質検証ループ用 |
-| `contact_sheet.py` | PNG化した全スライドを一覧画像に合成。レビューの初手で使う |
 | `slidegen/check_layout.py` | 生成済みPPTXの重なり・はみ出しを機械検知する品質ゲート |
-| `out/` | 生成物。`sysA_deck.pptx`/`sysB_deck.pptx`=初版(9枚・保存版)、`sysA_deck2.pptx`=拡張版(15枚)、`sysC_deck.html/.pptx`=Marp版 |
+| `slidegen/diagram_layout.py` | グリッド仕様から構成図の座標・配線を計算するレイアウトエンジン |
+| `render.ps1` / `contact_sheet.py` | PPTX→PNG書き出し(PowerPoint COM)と一覧画像への合成。目視レビュー用 |
+| `archive/` | 比較検証を終えた旧実装(凍結)。`sysB_pptxgenjs`=Node+PptxGenJS、`sysC_marp`=Marp |
+| `out/` | 生成物(PPTX/PNG)。`.gitignore` 対象 |
+
+## セットアップ
+
+1. リポジトリを clone
+2. `pip install python-pptx pillow`(Python 3.10+)
+3. 前提: Windows + 游ゴシック(`slidegen/textfit.py` が `C:\Windows\Fonts\YuGoth*.ttc` を参照。別OSはこの数行を変更)
+4. 目視用に PowerPoint(`render.ps1` が使用。生成自体には不要)
+
+アイコン素材(AWS 13種 + Fluent汎用19種)は `slidegen/assets/` に**同梱済み**なので追加作業は不要
+(出典・ライセンスは [assets/CREDITS.md](slidegen/assets/CREDITS.md))。増やす場合のみ:
+
+- AWS: [公式アイコンデッキ(PPTX)](https://aws.amazon.com/jp/architecture/icons/) を入手し `slidegen/extract_aws_icons.py` の SRC を変えて実行
+- Fluent([Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)、MIT): `pip install svglib reportlab rlPyCairo` のうえ `slidegen/fetch_fluent_icons.py` の ICONS に追記して実行
 
 ## 使い方
 
-```powershell
-# 本体 (要: python-pptx, Pillow)
-cd slidegen
-python generate.py ..\out\sysA_deck.pptx
+新しいデッキを作る主経路は「生成AIに `content.json` を書かせる → コマンドで生成・検証」。
 
-# 品質検証: PNGに書き出して目視 (要: PowerPoint)
-powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\sysA_deck.pptx -OutDir out\pngA
-python contact_sheet.py out\pngA
-python slidegen\check_layout.py out\sysA_deck.pptx
-```
+### 1. content.json を用意する
 
-内容を変えるときは `slidegen/content.py` を編集し、`python export_content.py` で content.json を再生成する。
+**生成AIに書かせる(推奨)**
 
-## 実行手順
+1. `AI_DECK_PROMPT.md` の依頼文テンプレートをコピーし、`<...>` の空欄(テーマ・想定読者・目的など)を今回の内容で埋める。
+2. 埋めたテンプレートと `CONTENT_SCHEMA.md` を生成AI(どのLLMでも可)に渡し、`content.json` を書かせる。
+   既存の `content.json` / `slidegen/content.py` はサンプルなので参照させない。
+3. 出力を `content.json` としてプロジェクト直下に保存する。
 
-**生成AIに実行させるパターン**
+**手動で書く**: `CONTENT_SCHEMA.md` に沿って直接 `content.json` を用意してもよい。
 
-1. AIに `AI_DECK_PROMPT.md` と `CONTENT_SCHEMA.md` を渡し、新しい `content.json` を作らせる。
-   既存の `content.json` / `content.py` はサンプルなので参照させない。
-2. 生成された `content.json` をプロジェクト直下に置く。
-3. 生成・検証コマンドを実行する。
+構成図(システム構成・ネットワーク図など)は `diagram` type を使い、グリッド仕様(列・行・ノード・エッジ)を書く。
+座標の数値は書かず、`diagram_layout.py` が計算する。ノードの `icon` は省略可(汎用図形になる)。
+`aws` / `aws2` はサンプル固定図のため `generate_from_json.py` が機械的に拒否する。
+
+### 2. 生成・検証する
 
 ```powershell
-python slidegen/validate_content.py content.json
-python slidegen/generate_from_json.py content.json out\deck_from_json.pptx
-powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\deck_from_json.pptx -OutDir out\png_from_json
-python contact_sheet.py out\png_from_json
-python slidegen\check_layout.py out\deck_from_json.pptx
+python slidegen/generate_from_json.py content.json out\deck.pptx      # schema検証 → 生成
+python slidegen/check_layout.py out\deck.pptx                          # 重なり・はみ出しの機械検知
+powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\deck.pptx -OutDir out\png
+python contact_sheet.py out\png                                        # out\png\sheet.png を目視
 ```
 
-4. `validate_content.py` がNGの場合はエラー一覧をそのままAIに渡して `content.json` を直させる
-   (`generate_from_json.py` も生成前に同じ検証を自動実行する)。
-   `check_layout.py` がNG、またはPNG目視で崩れがある場合も同様に直させて再実行する。
+- schema検証は `generate_from_json.py` が生成前に自動実行する(NGなら生成しない)。
+  エラーは `slides[番号] (type=種別): 内容` 形式なので、そのまま生成AIに渡して直させる。
+- `check_layout.py` のNG、またはPNG目視での崩れ(テキスト溢れ・要素重なり・行頭禁則・線とラベルの衝突)も、
+  同様に `content.json` を直して再実行する。
 
-**構成図は `diagram` type で描く。** グリッド仕様(列・行・ノード・エッジ。座標の数値は書かない)を
-JSONで渡すと、レイアウトエンジン(`diagram_layout.py`)が座標・配線を決定論的に計算する。
-ノードの `icon` を省略すると汎用図形ノードになるため、AWSアイコンがないテーマ・環境でも描ける。
-`aws` / `aws2` はサンプル固定図のため `generate_from_json.py` が機械的に拒否する
-(既存サンプル図が新規資料に混入した事故への対策)。
+新しいレイアウト種別が必要になったときだけ、renderer / レイアウタのコーディングが発生する(→ `EXTENDING.md`)。
+サンプルデッキ自体を再生成するなら `python slidegen/generate.py out\sample.pptx`(基本)/ `generate2.py`(図解入り)。
 
-**人間が手動実行するパターン**
+## 設計方針(レイアウタ・カタログ)
 
-1. `CONTENT_SCHEMA.md` に沿って `content.json` を用意する。
-2. AWS構成図を含む場合は、先に `slidegen/assets/` にアイコンを用意する。
-3. 次のコマンドを実行する。
+全スライドを万能の宣言レイアウトエンジンに寄せるより、提出品質まで詰めた **レイアウタのカタログ**を増やす方針。
+カタログの品目は「renderer関数」ではなく「**ジャンル別レイアウタ**」と考える(詳細は `EXTENDING.md` のレイヤーモデル)。
 
-```powershell
-python slidegen/generate_from_json.py content.json out\deck_from_json.pptx
-python slidegen\check_layout.py out\deck_from_json.pptx
-powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\deck_from_json.pptx -OutDir out\png_from_json
-python contact_sheet.py out\png_from_json
-```
-
-4. 最後に `out\png_from_json\sheet.png` を見て、テキスト溢れ・要素重なり・行頭禁則・線とラベルの衝突を確認する。
-
-既存デッキをそのまま作るだけなら、従来どおり `python slidegen/generate.py out\sysA_deck.pptx`
-または `python slidegen/generate2.py out\sysA_deck2.pptx` でもよい。新しい内容を外から渡す運用では
-`generate_from_json.py` を使う。
-
-## 別PC・別AIでの利用手順
-
-**セットアップ(1回だけ)**
-
-1. このリポジトリをclone
-2. `pip install python-pptx pillow` (Python 3.10+)
-3. 前提: Windows + 游ゴシック(`textfit.py` が `C:\Windows\Fonts\YuGoth*.ttc` を参照。別OSはこの2〜3行を変更)
-4. 品質検証用にPowerPoint(render.ps1が使用。生成自体には不要)
-5. アイコン素材(AWS 13種 + Fluent汎用19種)は `slidegen/assets/` に**同梱済み**(出典・条件は
-   [assets/CREDITS.md](slidegen/assets/CREDITS.md))。追加セットアップ不要
-   - AWSアイコンを増やす場合のみ: [AWS公式アイコンデッキ(PPTX)](https://aws.amazon.com/jp/architecture/icons/) を入手し、
-     `extract_aws_icons.py` の SRC 定数をそのパスに変えて実行
-   - Fluent汎用アイコン([Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)、MIT。
-     PowerPointの「挿入 > アイコン」と同じデザイン体系)を増やす場合のみ:
-     `pip install svglib reportlab rlPyCairo` のうえ `fetch_fluent_icons.py` の ICONS に追記して実行。
-     diagram仕様からは `"icon": "fluent/server.png"` で参照する
-
-**新しいスライドを作る(定常運用)**
-
-1. AI(どのLLMでも可)に `AI_DECK_PROMPT.md` + `CONTENT_SCHEMA.md` を渡して新しい `content.json` を書かせる — AIの仕事はここだけ。既存サンプル(`content.py` / 既存 `content.json`)は見せない
-2. `python slidegen/generate_from_json.py content.json out\deck.pptx` で生成(schema検証は生成前に自動実行される)
-3. `render.ps1` でPNG化 → 目視(またはマルチモーダルAIに検査させる) → 問題があればcontent.jsonを直して再生成
-
-**新しいレイアウト種別が必要な場合のみ** renderer関数のコーディングが発生する(CLAUDE.mdの設計原則を参照)。
-`generate.py` / `generate2.py` は既存サンプルデッキの再生成専用。
-
-## 社内テンプレート化の方針
-
-このリポジトリでは、全スライドを万能の宣言レイアウトエンジンに寄せるより、
-提出品質まで詰めた **renderer カタログ** を増やす方針を優先する。
-カタログの品目は「renderer関数」ではなく「**ジャンル別レイアウタ**」と考える
-(詳細は `EXTENDING.md` のレイヤーモデル)。
-
-- LLMの役割: content スキーマに沿って、文言・項目・構造(グリッド仕様のセル名等)を構造化する。
-- Python レイアウタの役割: スライド種別ごとの余白、文字実測、配線、注記、描画順を決定論的に保証する。
+- LLMの役割: スキーマに沿って文言・項目・構造(グリッド仕様のセル名等)を構造化する。
+- レイアウタの役割: 余白・文字実測・配線・注記・描画順を決定論的に保証する。
 - 共通化するもの: テキスト実測、描画部品(箱・矢印・ラベルマスク)、schema検証、品質ゲート。
-- 共通化しないもの: **レイアウト計算そのもの**。グリッド図解(diagram_layout)・ガント・散布・
-  縦詰め・ツリーは別々の制約システムなので、ジャンルごとに小さなレイアウタを持つ。
-  1つのエンジンに寄せると前提が壊れて複雑化だけが進む。
+- 共通化しないもの: **レイアウト計算そのもの**。グリッド図解・ガント・散布・縦詰め・ツリーは
+  別々の制約システムなので、ジャンルごとに小さなレイアウタを持つ。1つのエンジンに寄せると前提が壊れて複雑化だけが進む。
 
-増やす優先度の高いパターンは、タイトル/目次/章扉、カード、2カラム比較、Before/After、
-KPI、プロセス、タイムライン/ロードマップ、表、ランキング、調査結果、2軸マップ、
-体制図、ステークホルダー図、シンプル構成図、高密度構成図。
+**モデル依存度の目安**: 文言作成=低(主要LLMなら可)/ 既存種別での再生成=ゼロ(決定論的)/
+新レイアウト実装=中 / レンダ画像を見た欠陥検出=高(マルチモーダル必須)。
 
-**モデル依存度の目安**: 文言作成=低(主要LLMなら可) / 既存種別での再生成=ゼロ(決定論的) /
-新レイアウト実装=中 / レンダ画像を見た欠陥検出=高(マルチモーダル必須。人間が目視して
-「どこが重なっている」と伝える運用ならどのAIでも回る)。
-
-## 「そのまま提出」を成立させている3要素
+## 品質を支える仕組み
 
 1. **配置前のテキスト実測**: 置く前に折り返し行数を計算し、入らなければフォント縮小/高さ調整。
-   日本語の禁則(行頭「、。」禁止)も折り返し計算に組み込み、さらに run に `lang="ja-JP"` を
-   設定してPowerPoint側の禁則も有効化する(これを忘れると行頭に句読点が来る — v1で実際に発生)。
-2. **自然高さパッキング**: 要素を領域に均等分散させず、内容の自然高さ+一定gapで詰めて
-   縦центーに置く(均等分散は間延びして「AIっぽい」見た目になる — v1で実際に発生)。
-3. **描画→目視のQAループ**: PowerPoint COMでPNG化し、溢れ・重なり・禁則を実物で確認してから納品。
-
-## 検証結果 (2026-07-11)
-
-- システムA(現 slidegen/): v1で行頭禁則違反2箇所+間延び → 修正 → **v2で9枚全て提出レベル**
-- システムB(現 archive/): Aの教訓を織り込んで実装 → **1回目で9枚全て提出レベル**
-- 拡張版(表現力検証6枚): チェブロンフロー・AWS構成図・ハブ型調整図・体制図は一発OK。
-  ロードマップと2軸マップはラベル重なり/はみ出しで各1回修正 → **15枚全て提出レベル**
-- システムC(現 archive/、Marp): 見た目は再現できたが**PPTX出力は画像埋め込みで編集不可**。HTML/PDF納品向き。
-  1px単位の固定配置(ヘッダー位置固定等)はCSS調整が必要(縦センター問題を1回修正)
-- 詳細は Obsidian `Knowledge\生成AIスライド生成\01_自前パイプライン検証.md`
+   日本語の禁則(行頭「、。」禁止)も折り返し計算に組み込み、run に `lang="ja-JP"` を設定してPowerPoint側の禁則も有効化する。
+2. **自然高さパッキング**: 要素を領域に均等分散させず、内容の自然高さ + 一定gapで詰めてやや上寄せに置く(均等分散は間延びして見える)。
+3. **描画 → 目視のQAループ**: PowerPoint COMでPNG化し、溢れ・重なり・禁則を実物で確認してから完成とする。
