@@ -257,6 +257,9 @@ def _v_diagram(s):
     if "spec" in s.spec or "spec" in d:
         s.err('"spec" (サンプル図の名前参照) は使えません。diagram の中に'
               'グリッド仕様をインラインで書いてください')
+    if "area" in d:
+        s.err("diagram.area は指定できません。描画領域は行数からエンジンが"
+              "自動計算します")
     cols, rows = d.get("cols"), d.get("rows")
     for key, v in (("cols", cols), ("rows", rows)):
         if not (isinstance(v, list) and v and all(_is_str(c) for c in v)):
@@ -292,6 +295,10 @@ def _v_diagram(s):
             s.err(f"containers[{i}] には name / label (文字列) と members (配列)"
                   f" が必要です")
             continue
+        for key in ("pad", "pad_x"):
+            if key in c:
+                s.err(f"containers[{i}].{key} は指定できません。余白は入れ子構造と"
+                      "行数からエンジンが自動計算します")
         cont_names.add(c["name"])
     for i, c in enumerate(containers):
         for m in c.get("members", []):

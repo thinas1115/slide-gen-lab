@@ -1,5 +1,9 @@
 """表現力検証用の拡張スライド定義(v2デッキで9枚の後ろに追加)。"""
 
+from copy import deepcopy
+
+from diagram_specs import AWS_MULTIAZ_EXAMPLE, AWS_SIMPLE_EXAMPLE
+
 EXTRA_SLIDES = [
     {
         "type": "process",
@@ -16,7 +20,7 @@ EXTRA_SLIDES = [
     },
     {
         "type": "diagram",
-        "spec": "aws_simple",
+        "diagram": deepcopy(AWS_SIMPLE_EXAMPLE),
         "kicker": "参考: システム構成(表現力検証)",
         "title": "全社展開時はAWS上にAPI化し、Bedrock経由で構成JSONを生成する",
         "note": "図は簡略化。実装時はIAM・ネットワーク設計を別途詳細化する。",
@@ -53,7 +57,7 @@ EXTRA_SLIDES = [
     },
     {
         "type": "diagram",
-        "spec": "aws_multiaz",
+        "diagram": deepcopy(AWS_MULTIAZ_EXAMPLE),
         "kicker": "参考: 本番構成(高密度検証)",
         "title": "本番はマルチAZ冗長構成。CloudFront配信とRDS同期まで含めて表現できるか検証",
     },

@@ -467,7 +467,7 @@ python slidegen/validate_content.py content.json
 
 - `diagram.containers`: 外接枠。object の配列(外側から順)
   - `name` / `label` / `members`(ノード名または `@子コンテナ名` の列挙)
-  - `color` / `dash` / `pad` / `pad_x`
+  - `color` / `dash`
 - `diagram.channels`: 配線レーン。`名前: [種類, 基準]` のobject
   - 種類: `"left_of_col"` / `"right_of_col"` / `"above_row"` / `"below_row"` / `"outside_container"`
   - `outside_container` の基準は `[コンテナ名, "left"|"right"|"top"|"bottom"|"top_inside"]`
@@ -502,9 +502,10 @@ python slidegen/validate_content.py content.json
 制約:
 
 - 参照整合(col/rowの存在、edges/membersのノード参照、viaのチャネル参照)はvalidatorが検証する。
+- 描画領域とコンテナ余白は、行数とコンテナの入れ子構造からエンジンが自動計算する。`area` / `pad` / `pad_x` は入力できない。
 - 行間に収まるか・配線がコンテナを貫通しないか等は、生成時にエンジン自身が対処方法つきのエラーで検出する(収まらない場合は行数・sub・ラベルを減らす)。
 - ノードは10個程度・4行程度までが安全(それ以上は縦に収まらずエラーになる)。
-- `diagram_specs.py` のサンプル名参照(`"spec": "aws_multiaz"` など)は**使えない**。仕様は必ずインラインで書く。
+- 名前付きテンプレート参照はない。仕様は必ず `diagram` にインラインで書く。
 
 ## Not Supported For New Decks
 

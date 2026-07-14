@@ -23,8 +23,7 @@ from validate_content import validate
 def s_diagram(slide, spec, page):
     """構成図: グリッド仕様(spec["diagram"])から座標ゼロで自動レイアウト。
 
-    仕様はスライド内にインラインで書く(diagram_specs.py のサンプル名指定は
-    受け付けない。名前参照を許すと既存サンプル図の流用経路が復活するため)。
+    仕様はスライド内にインラインで書く。名前付きテンプレート参照は持たない。
     """
     generate.header(slide, spec["kicker"], spec["title"])
     render_diagram(slide, spec["diagram"], note=spec.get("note"))

@@ -1,5 +1,9 @@
 """社内テンプレートのパターン検証用デッキ定義。"""
 
+from copy import deepcopy
+
+from diagram_specs import AWS_MULTIAZ_EXAMPLE, AWS_SIMPLE_EXAMPLE
+
 PATTERN_DECK = {
     "meta": {
         "title": "社内スライドパターン検証ギャラリー",
@@ -180,16 +184,16 @@ PATTERN_DECK = {
         },
         {
             "type": "diagram",
-            "spec": "aws_simple",
-            "pattern": "simple architecture (spec-driven)",
+            "diagram": deepcopy(AWS_SIMPLE_EXAMPLE),
+            "pattern": "simple architecture (inline diagram)",
             "kicker": "構成図",
             "title": "シンプル構成図は、主要コンポーネントとデータの流れを短く説明できる",
             "note": "AWSアイコンはローカル assets/ から読み込む。",
         },
         {
             "type": "diagram",
-            "spec": "aws_multiaz",
-            "pattern": "dense architecture (spec-driven)",
+            "diagram": deepcopy(AWS_MULTIAZ_EXAMPLE),
+            "pattern": "dense architecture (inline diagram)",
             "kicker": "高密度構成図",
             "title": "高密度構成図も、グリッド仕様から座標ゼロで自動レイアウトできる",
         },

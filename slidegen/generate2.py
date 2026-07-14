@@ -13,13 +13,12 @@ from content_ext import EXTRA_SLIDES
 from diagrams import s_hub, s_org
 from diagrams2 import s_matrix, s_process, s_roadmap
 from diagram_layout import render_diagram
-from diagram_specs import DIAGRAMS
 
 
 def s_diagram(slide, spec, page):
-    """宣言的仕様(diagram_specs.py)による図解スライド。"""
+    """content.json と同じインライン仕様による図解スライド。"""
     generate.header(slide, spec["kicker"], spec["title"])
-    render_diagram(slide, DIAGRAMS[spec["spec"]], note=spec.get("note"))
+    render_diagram(slide, spec["diagram"], note=spec.get("note"))
 
 
 RENDER2 = dict(generate.RENDER,
