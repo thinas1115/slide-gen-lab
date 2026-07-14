@@ -2,6 +2,7 @@
 
 対象読者: このリポジトリに**新しいスライド種別や図解機能を追加するAI**(Claude / Codex / Copilot 等)。
 `content.json` を書くだけなら [AI_DECK_PROMPT.md](AI_DECK_PROMPT.md) + [CONTENT_SCHEMA.md](CONTENT_SCHEMA.md) を読む(このファイルは不要)。
+既存rendererの配色・表紙・造形を変更する場合は [DESIGN_CUSTOMIZATION.md](DESIGN_CUSTOMIZATION.md) を読む。
 
 このリポジトリは「生成→そのまま提出」を成立させるため、**AIとコードの分業線**を固定している:
 
@@ -94,7 +95,7 @@ fit_font_size(text, box_w, box_h, start_pt, min_pt=..., ...) -> (size, lines)
 
 # generate.py — ページ部品と定数
 SLIDE_W=13.333, SLIDE_H=7.5, MARGIN=0.55, BODY_W=12.233, BODY_TOP=1.62, BODY_BOTTOM=6.85
-NAVY / ACCENT / TEXT / GRAY / LIGHT / ZEBRA / WHITE   # 配色はこれ以外使わない
+NAVY / ACCENT / CORAL / TEXT / GRAY / LIGHT / ZEBRA / WHITE / CANVAS / RULE
 add_text(slide, x, y, w, h, text, size, *, bold, color, align, anchor, spacing)
 add_rect(slide, x, y, w, h, fill, *, line=None, round_=False)
 header(slide, kicker, title) / footer(slide, page) / note_line(slide, note)

@@ -17,6 +17,7 @@
 | `CONTENT_SCHEMA.md` | `content.json` の中立スキーマ。生成AIにはこれと `AI_DECK_PROMPT.md` を渡す |
 | `AI_DECK_PROMPT.md` | 生成AIに `content.json` を書かせる依頼文の穴埋めテンプレート |
 | `EXTENDING.md` | 新しいtype・エンジン機能を追加するときの不変条件と手順(AI向け拡張ガイド) |
+| `DESIGN_CUSTOMIZATION.md` | 配色・表紙・既存renderer・複数テーマ対応など、デザイン変更時の修正箇所一覧 |
 | `slidegen/` | 本体。Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
 | `slidegen/generate_from_json.py` | `content.json` → PPTX 生成(生成前にschema検証を自動実行) |
 | `slidegen/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・サンプル専用typeの拒否) |
@@ -74,6 +75,9 @@ python contact_sheet.py out\png                                        # out\png
 
 新しいレイアウト種別が必要になったときだけ、renderer / レイアウタのコーディングが発生する(→ `EXTENDING.md`)。
 サンプルデッキ自体を再生成するなら `python slidegen/generate.py out\sample.pptx`(基本)/ `generate2.py`(図解入り)。
+
+既存レイアウトのデザインを変更する場合は [`DESIGN_CUSTOMIZATION.md`](DESIGN_CUSTOMIZATION.md) を参照する。
+配色・フォント・表紙などのテーマ差し替えと、新しいレイアウト追加では修正範囲が異なる。
 
 ## 設計方針(レイアウタ・カタログ)
 
