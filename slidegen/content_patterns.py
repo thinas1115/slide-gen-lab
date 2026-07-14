@@ -31,9 +31,9 @@ PATTERN_DECK = {
         },
         {
             "type": "cards",
-            "pattern": "4 cards / summary",
+            "pattern": "editorial key points",
             "kicker": "要点整理",
-            "title": "4枚カードは、役員向けサマリや論点整理の初手として使いやすい",
+            "title": "要点は枠で囲わず、番号・見出し・余白の強弱で読み順をつくる",
             "cards": [
                 ("目的", "何を判断してほしいかを1文で示し、読み手の視点を揃える。"),
                 ("現状", "事実・制約・既に分かっていることを短く置く。"),
@@ -43,9 +43,9 @@ PATTERN_DECK = {
         },
         {
             "type": "cards",
-            "pattern": "KPI cards",
+            "pattern": "KPI editorial columns",
             "kicker": "KPIスナップショット",
-            "title": "KPIカードは、数字の大きさよりも判断に使える補足文を重視する",
+            "title": "KPIはカード化せず、数値と判断材料を一続きの編集面として見せる",
             "cards": [
                 ("作成時間 -72%", "週次報告の作成時間が平均45分から13分に短縮。下書き作成の自動化が主因。"),
                 ("手直し 8分", "生成後の確認と語尾修正に平均8分。テンプレート崩れは検出なし。"),
@@ -142,7 +142,7 @@ PATTERN_DECK = {
             "target_label": "優先整備",
             "points": [
                 {"name": "タイトル", "x": 0.18, "y": 0.58},
-                {"name": "カード", "x": 0.72, "y": 0.76, "emph": True},
+                {"name": "要点列", "x": 0.72, "y": 0.76, "emph": True},
                 {"name": "比較表", "x": 0.68, "y": 0.66, "ly": 0.16},
                 {"name": "ロードマップ", "x": 0.44, "y": 0.62, "lx": -1.0},
                 {"name": "高密度構成図", "x": 0.35, "y": 0.86},
@@ -157,12 +157,12 @@ PATTERN_DECK = {
             "title": "ハブ図は、複数部門との依頼・承認・レビュー関係を整理しやすい",
             "hub": "テンプレート\n運用事務局",
             "ring": [
-                {"name": "経営層", "sub": "方針承認", "label": "効果報告"},
-                {"name": "情報システム", "sub": "環境管理", "label": "権限 / 監査"},
-                {"name": "現場部門", "sub": "利用者", "label": "要件 / 評価"},
-                {"name": "法務", "sub": "規程確認", "label": "利用ルール"},
-                {"name": "広報", "sub": "ブランド", "label": "表現基準"},
-                {"name": "外部支援", "sub": "技術相談", "label": "実装支援"},
+                {"name": "経営層", "sub": "方針承認", "label": "効果報告", "icon": "fluent/briefcase.png"},
+                {"name": "情報システム", "sub": "環境管理", "label": "権限 / 監査", "icon": "fluent/server.png"},
+                {"name": "現場部門", "sub": "利用者", "label": "要件 / 評価", "icon": "fluent/team.png"},
+                {"name": "法務", "sub": "規程確認", "label": "利用ルール", "icon": "fluent/shield_check.png"},
+                {"name": "広報", "sub": "ブランド", "label": "表現基準", "icon": "fluent/send.png"},
+                {"name": "外部支援", "sub": "技術相談", "label": "実装支援", "icon": "fluent/toolbox.png"},
             ],
         },
         {

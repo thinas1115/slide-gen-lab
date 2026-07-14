@@ -211,8 +211,13 @@ def _v_hub(s):
     ring = s.req_list("ring", 6, 6, "周辺ノード")
     for i, r in enumerate(ring or []):
         if not (isinstance(r, dict) and _is_str(r.get("name"))
-                and _is_str(r.get("label"))):
-            s.err(f"ring[{i}] には name / label (文字列) が必要です")
+                and _is_str(r.get("label")) and _is_str(r.get("icon"))):
+            s.err(f"ring[{i}] には name / label / icon (文字列) が必要です")
+            continue
+        icon = Path(__file__).parent / "assets" / r["icon"]
+        if not icon.is_file():
+            s.err(f"ring[{i}].icon のファイルがありません: {r['icon']}。"
+                  "CONTENT_SCHEMA.md のFluentアイコン一覧から選んでください")
 
 
 def _v_org(s):
@@ -281,10 +286,10 @@ def _v_diagram(s):
         if isinstance(rows, list) and n.get("row") not in rows:
             s.err(f"nodes.{name}.row={n.get('row')!r} が diagram.rows に"
                   f"ありません")
-        if "icon" in n and not _is_str(n["icon"]):
-            s.err(f"nodes.{name}.icon は文字列 (省略可。省略時は汎用図形ノード)"
-                  f" にしてください")
-        elif "icon" in n:
+        if not _is_str(n.get("icon")):
+            s.err(f"nodes.{name}.icon は必須です。CONTENT_SCHEMA.md の"
+                  f"Fluent/AWSアイコン一覧から選んでください")
+        else:
             assets = (Path(__file__).parent / "assets").resolve()
             icon_path = (assets / n["icon"]).resolve()
             try:

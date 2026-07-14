@@ -97,9 +97,9 @@ python slidegen/validate_content.py content.json
 }
 ```
 
-### cards
+### cards (互換キー: 枠なし要点列)
 
-用途: サマリ、KPI、論点整理。
+用途: サマリ、KPI、論点整理。type名は互換性のため `cards` だが、出力は枠なしの編集的な要点列になる。
 
 必須:
 
@@ -112,6 +112,7 @@ python slidegen/validate_content.py content.json
 
 - `cards` は3〜4件が安全(validatorの範囲は2〜4件)。
 - 件数に応じて横並び幅が自動計算される。
+- 枠・面塗り・角丸パネルは描画しない。番号、見出し、余白、細い区切り線で階層をつくる。
 
 ```json
 {
@@ -119,8 +120,8 @@ python slidegen/validate_content.py content.json
   "kicker": "分類",
   "title": "タイトル",
   "cards": [
-    ["カード見出し", "カード本文"],
-    ["カード見出し", "カード本文"]
+    ["要点見出し", "要点本文"],
+    ["要点見出し", "要点本文"]
   ]
 }
 ```
@@ -180,6 +181,7 @@ python slidegen/validate_content.py content.json
 制約:
 
 - 左右それぞれ3〜5項目程度が安全。
+- 左右を枠付きパネルにせず、中央罫線とタイポグラフィで比較関係を示す。
 
 ```json
 {
@@ -369,6 +371,7 @@ python slidegen/validate_content.py content.json
 - `ring`: object の配列
 - `ring[*].name`: string
 - `ring[*].label`: string
+- `ring[*].icon`: string。`fluent/〜.png` を指定する
 
 任意:
 
@@ -386,7 +389,7 @@ python slidegen/validate_content.py content.json
   "title": "タイトル",
   "hub": "中央ラベル",
   "ring": [
-    {"name": "周辺ノード", "sub": "補足", "label": "関係ラベル"}
+      {"name": "周辺ノード", "sub": "補足", "label": "関係ラベル", "icon": "fluent/team.png"}
   ]
 }
 ```
@@ -452,7 +455,7 @@ python slidegen/validate_content.py content.json
   - `col` / `row`: 所属セル(cols/rowsの名前)
   - `title`: 表示名
   - `sub`: 補足ラベル(任意)
-  - `icon`: `slidegen/assets/` からの相対PNGパス(任意)。通常は同梱Fluent/AWSアイコンを指定する。省略時だけ汎用図形ノード(角丸四角+カラーバー)になる
+  - `icon`: `slidegen/assets/` からの相対PNGパス(必須)。同梱Fluent/AWSアイコンから選ぶ
     - Fluentアイコン(`fluent/<名前>.png`、72種同梱済み)。次の名前だけを使い、ファイル名を発明しない。`python slidegen/fetch_fluent_icons.py --list` でも確認できる
       - インフラ・端末: `server` `router` `database` `desktop` `laptop` `tablet` `phone` `printer` `hard_drive` `storage`
       - ネットワーク・クラウド: `cloud` `globe` `wifi` `ethernet` `link` `gateway` `sync` `upload` `download` `switch`
@@ -463,7 +466,6 @@ python slidegen/validate_content.py content.json
       - 運用・状態: `alert` `warning` `info` `check` `search` `clock` `history` `settings` `toolbox` `wrench` `monitor`
       - 物理移動: `truck` `car` `airplane`
     - AWSアイコン(同梱済み): `alb.png` `bedrock.png` `cloudfront.png` `cloudwatch.png` `dynamodb.png` `ecr.png` `fargate.png` `rds.png` `route53.png` `s3.png` `sqs.png` `user.png` `users.png` のみ。増やす場合は `extract_aws_icons.py`
-  - `color`: `"accent"`(既定) / `"navy"` / `"line"`(icon省略時の汎用図形ノードの枠色)
 - `diagram.edges`: object の配列
   - `from` / `to`: ノード名(または `@コンテナ名`)
   - `label` / `label_w`: 線上ラベルと幅(任意)

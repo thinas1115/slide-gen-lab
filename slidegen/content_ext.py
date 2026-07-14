@@ -31,12 +31,12 @@ EXTRA_SLIDES = [
         "title": "導入は事務局をハブに6者と並行調整する",
         "hub": "AI活用\n推進事務局",
         "ring": [
-            {"name": "経営層", "sub": "投資判断", "label": "効果報告 / 承認"},
-            {"name": "情報システム部", "sub": "基盤・契約", "label": "セキュリティ審査"},
-            {"name": "現場部門", "sub": "パイロット参加", "label": "要件 / フィードバック"},
-            {"name": "法務・コンプラ", "sub": "規程整備", "label": "利用規程レビュー"},
-            {"name": "広報・ブランド", "sub": "テンプレ所管", "label": "テンプレート提供"},
-            {"name": "外部ベンダー", "sub": "技術支援", "label": "導入支援 / QA"},
+            {"name": "経営層", "sub": "投資判断", "label": "効果報告 / 承認", "icon": "fluent/briefcase.png"},
+            {"name": "情報システム部", "sub": "基盤・契約", "label": "セキュリティ審査", "icon": "fluent/server.png"},
+            {"name": "現場部門", "sub": "パイロット参加", "label": "要件 / フィードバック", "icon": "fluent/team.png"},
+            {"name": "法務・コンプラ", "sub": "規程整備", "label": "利用規程レビュー", "icon": "fluent/shield_check.png"},
+            {"name": "広報・ブランド", "sub": "テンプレ所管", "label": "テンプレート提供", "icon": "fluent/send.png"},
+            {"name": "外部ベンダー", "sub": "技術支援", "label": "導入支援 / QA", "icon": "fluent/toolbox.png"},
         ],
     },
     {

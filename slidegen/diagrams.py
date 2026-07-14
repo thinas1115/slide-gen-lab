@@ -1,4 +1,5 @@
 """図解系スライド: AWS構成図・ステークホルダー調整図・体制図。"""
+import math
 from pathlib import Path
 
 from pptx.dml.color import RGBColor
@@ -52,19 +53,6 @@ def arrow_label(slide, cx, cy, text, w=1.6, size=9):
     return tb
 
 
-def node(slide, x, y, w, h, title, sub=None, *, bar=ACCENT, fill=WHITE,
-         border=LINE, tsize=11, ssize=9):
-    """上部にカラーバーを持つサービスノード。"""
-    add_rect(slide, x, y, w, h, fill, line=border)
-    add_rect(slide, x, y, w, 0.09, bar)
-    ty = y + 0.12
-    add_text(slide, x + 0.08, ty, w - 0.16, 0.32, title, tsize, bold=True,
-             color=NAVY, align=PP_ALIGN.CENTER)
-    if sub:
-        add_text(slide, x + 0.08, y + h - 0.42, w - 0.16, 0.36, sub, ssize,
-                 color=GRAY, align=PP_ALIGN.CENTER)
-
-
 def container(slide, x, y, w, h, label, color=LINE, dash=None):
     sp = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(x), Inches(y),
                                 Inches(w), Inches(h))
@@ -85,7 +73,7 @@ ICON_R = 0.31        # アイコン半径(0.62角の半分)
 EDGE_GAP = 0.06      # 矢印端点とアイコン縁の隙間
 
 
-def icon_node(slide, cx, cy, img, title, sub=None, size=0.62):
+def icon_node(slide, cx, cy, img, title, sub=None, size=0.62, *, label_above=False):
     """AWS公式スタイル: アイコン+直下にサービス名ラベル。"""
     p = ICON_DIR / img
     if not p.exists():
@@ -95,34 +83,12 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62):
             f"ください。")
     slide.shapes.add_picture(str(p), Inches(cx - size / 2),
                              Inches(cy - size / 2), Inches(size), Inches(size))
-    add_text(slide, cx - 1.05, cy + size / 2 + 0.05, 2.1, 0.28, title, 10.5,
+    title_y = cy - size / 2 - 0.59 if label_above else cy + size / 2 + 0.05
+    add_text(slide, cx - 1.05, title_y, 2.1, 0.28, title, 10.5,
              bold=True, color=NAVY, align=PP_ALIGN.CENTER)
     if sub:
-        add_text(slide, cx - 1.05, cy + size / 2 + 0.33, 2.1, 0.26, sub, 8.5,
-                 color=GRAY, align=PP_ALIGN.CENTER)
-
-
-def box_node(slide, cx, cy, title, sub=None, size=0.62, color=ACCENT):
-    """アイコン画像を使わない汎用ノード: 角丸四角+上部カラーバー。
-    icon_node と同じ外形寸法・ラベル位置なので、diagram_layout の座標計算
-    (ICON_R 基準のポート・コンテナ外接)がそのまま成立する。
-    アイコン素材が用意できないテーマ(オンプレNW・業務システム等)用。
-    """
-    sp = slide.shapes.add_shape(
-        MSO_SHAPE.ROUNDED_RECTANGLE, Inches(cx - size / 2), Inches(cy - size / 2),
-        Inches(size), Inches(size))
-    sp.adjustments[0] = 0.12
-    sp.fill.solid()
-    sp.fill.fore_color.rgb = WHITE
-    sp.line.color.rgb = color
-    sp.line.width = Pt(1.5)
-    sp.shadow.inherit = False
-    add_rect(slide, cx - size / 2 + 0.08, cy - size / 2 + 0.08,
-             size - 0.16, 0.07, color)
-    add_text(slide, cx - 1.05, cy + size / 2 + 0.05, 2.1, 0.28, title, 10.5,
-             bold=True, color=NAVY, align=PP_ALIGN.CENTER)
-    if sub:
-        add_text(slide, cx - 1.05, cy + size / 2 + 0.33, 2.1, 0.26, sub, 8.5,
+        sub_y = cy - size / 2 - 0.31 if label_above else cy + size / 2 + 0.33
+        add_text(slide, cx - 1.05, sub_y, 2.1, 0.26, sub, 8.5,
                  color=GRAY, align=PP_ALIGN.CENTER)
 
 
@@ -141,28 +107,35 @@ def left_of(cx):
 # ---- ステークホルダー調整図(ハブ型) ----
 def s_hub(slide, spec, page):
     header(slide, spec["kicker"], spec["title"])
-    cx, cy = 6.67, 4.35
-    hw, hh = 2.3, 1.05
+    cx, cy = 6.67, 4.22
+    hw, hh = 2.3, 1.0
     # 周辺ノード: (x, y, タイトル, 出す矢印ラベル, 戻り矢印ラベル)
     ring = spec["ring"]
-    pos = [(cx - 4.6, cy - 2.15), (cx + 2.3, cy - 2.15),
-           (cx - 4.6, cy + 1.25), (cx + 2.3, cy + 1.25),
-           (cx - 1.15, cy - 2.55), (cx - 1.15, cy + 1.65)]
-    bw, bh = 2.3, 0.85
-    for i, ((bx, by), item) in enumerate(zip(pos, ring)):
-        node(slide, bx, by, bw, bh, item["name"], item.get("sub"),
-             bar=CORAL if i in (0, 3) else ACCENT)
-        # 中心との接続(端点をノード側/ハブ側の縁に寄せる)
-        ex = bx + bw / 2 + (0.0 if abs(bx + bw / 2 - cx) < 1 else (0.9 if bx < cx else -0.9))
-        sx = bx + bw / 2
-        sy = by + (bh if by < cy else 0)
-        tx = cx + (-hw / 2 * 0.7 if sx < cx else hw / 2 * 0.7)
-        ty = cy + (-hh / 2 if by < cy else hh / 2)
-        if abs(sx - cx) < 1.2:
-            tx = cx
-        add_arrow(slide, sx, sy, tx, ty, both=True, color=LINE, width=1.25)
-        mx, my = (sx + tx) / 2, (sy + ty) / 2
-        arrow_label(slide, mx, my, item["label"], w=1.9, size=8.5)
+    pos = [(2.35, 2.72), (10.99, 2.72),
+           (2.35, 5.40), (10.99, 5.40),
+           (6.67, 2.52), (6.67, 5.76)]
+
+    # Connectors first: lines stay behind the icon and its labels.
+    routes = []
+    for (sx, sy), item in zip(pos, ring):
+        dx, dy = cx - sx, cy - sy
+        distance = math.hypot(dx, dy)
+        ux, uy = dx / distance, dy / distance
+        start_x, start_y = sx + ux * 0.34, sy + uy * 0.34
+        ellipse_r = 1 / math.sqrt((ux / (hw / 2)) ** 2 + (uy / (hh / 2)) ** 2)
+        end_x, end_y = cx - ux * ellipse_r, cy - uy * ellipse_r
+        add_arrow(slide, start_x, start_y, end_x, end_y,
+                  both=True, color=LINE, width=1.25)
+        routes.append((start_x, start_y, end_x, end_y, item["label"]))
+
+    for start_x, start_y, end_x, end_y, label in routes:
+        arrow_label(slide, (start_x + end_x) / 2, (start_y + end_y) / 2,
+                    label, w=1.9, size=8.5)
+
+    for i, ((nx, ny), item) in enumerate(zip(pos, ring)):
+        icon_node(slide, nx, ny, item["icon"], item["name"], item.get("sub"),
+                  size=0.52, label_above=i == 4)
+
     # 中心ハブ
     sp = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(cx - hw / 2), Inches(cy - hh / 2),
                                 Inches(hw), Inches(hh))

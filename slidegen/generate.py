@@ -182,35 +182,35 @@ def s_bullets(slide, spec, page):
 
 
 def s_cards(slide, spec, page):
+    """Render editorial key-point columns without decorative card containers."""
     header(slide, spec["kicker"], spec["title"])
     cards = spec["cards"]
     n = len(cards)
-    gap = 0.0
-    left = 0.66
-    usable_w = 12.0
-    cw = usable_w / n
+    gap = 0.38
+    left = 0.76
+    usable_w = 11.82
+    cw = (usable_w - gap * (n - 1)) / n
     max_ch = BODY_BOTTOM - BODY_TOP - 0.35
     body_size = min(
-        fit_font_size(body, cw - 0.52, max_ch - 1.45, 13.5, min_pt=11.5,
+        fit_font_size(body, cw - 0.12, max_ch - 1.68, 13.5, min_pt=11.5,
                       spacing=1.22)[0]
         for _, body in cards)
-    body_h = max(len(wrap_text(b, cw - 0.52, body_size))
+    body_h = max(len(wrap_text(b, cw - 0.12, body_size))
                  * line_height_in(body_size, 1.22) for _, b in cards)
-    ch = min(max_ch, 1.5 + body_h + 0.34)
+    ch = min(max_ch, 1.72 + body_h + 0.24)
     top = BODY_TOP + 0.28 + (max_ch - ch) * 0.32
     for i, (head, body) in enumerate(cards):
         x = left + i * (cw + gap)
-        fill = NAVY if i == 0 else (WHITE if i % 2 else LIGHT)
-        hcolor = WHITE if i == 0 else NAVY
-        bcolor = LIGHT if i == 0 else TEXT
-        add_rect(slide, x, top, cw - 0.08, ch, fill)
-        add_rect(slide, x, top, cw - 0.08, 0.09, CORAL if i == 0 else ACCENT)
-        add_text(slide, x + 0.25, top + 0.28, cw - 0.5, 0.35, f"{i + 1:02d}",
-                 16, bold=True, color=CORAL if i == 0 else ACCENT)
-        add_text(slide, x + 0.25, top + 0.75, cw - 0.5, 0.62, head, 15.5,
-                 bold=True, color=hcolor)
-        add_text(slide, x + 0.25, top + 1.5, cw - 0.5, ch - 1.72, body,
-                 body_size, color=bcolor, spacing=1.22)
+        if i:
+            add_rect(slide, x - gap / 2, top + 0.18, 0.012, ch - 0.22, RULE)
+        add_text(slide, x, top, cw, 0.4, f"{i + 1:02d}", 18, bold=True,
+                 color=CORAL if i == 0 else ACCENT)
+        add_rect(slide, x, top + 0.52, 0.46, 0.045,
+                 CORAL if i == 0 else ACCENT)
+        add_text(slide, x, top + 0.76, cw - 0.08, 0.66, head, 16.5,
+                 bold=True, color=NAVY)
+        add_text(slide, x, top + 1.52, cw - 0.08, ch - 1.58, body,
+                 body_size, color=TEXT, spacing=1.22)
 
 
 def s_table(slide, spec, page):
@@ -275,40 +275,39 @@ def _cell(cell, text, size, *, bold=False, color=TEXT, fill=WHITE, center=False)
 
 
 def s_twocol(slide, spec, page):
+    """Render a flat comparison; the center rule carries the grouping."""
     header(slide, spec["kicker"], spec["title"])
-    gap = 0.16
-    left = 0.66
-    cw = (12.0 - gap) / 2
+    gap = 0.72
+    left = 0.78
+    cw = (11.78 - gap) / 2
     max_ch = BODY_BOTTOM - BODY_TOP - 0.15
     panels = [spec["left"], spec["right"]]
-    tw = cw - 0.82
+    tw = cw - 0.48
     size, bgap = 13.5, 0.3
     while size > 11:
         cont = [sum(len(wrap_text(b, tw, size)) * line_height_in(size, 1.2) + bgap
                     for b in p["bullets"]) - bgap for p in panels]
-        if max(cont) <= max_ch - 1.15:
+        if max(cont) <= max_ch - 1.38:
             break
         size -= 0.5
-    body_h = max(cont) + 0.36
-    top = BODY_TOP + 0.18
+    body_h = max(cont) + 0.28
+    top = BODY_TOP + 0.22
+    add_rect(slide, left + cw + gap / 2 - 0.008, top + 0.12, 0.016,
+             min(max_ch - 0.2, body_h + 1.22), RULE)
     for i, p in enumerate(panels):
         x = left + i * (cw + gap)
-        fill = NAVY if i == 0 else WHITE
-        tcolor = WHITE if i == 0 else TEXT
         marker = CORAL if i == 0 else ACCENT
-        add_rect(slide, x, top, cw, min(max_ch, body_h + 1.18), fill,
-                 line=None if i == 0 else RULE)
-        add_rect(slide, x, top, 0.11, min(max_ch, body_h + 1.18), marker)
-        add_text(slide, x + 0.38, top + 0.3, cw - 0.72, 0.5, p["heading"], 17,
-                 bold=True, color=tcolor)
-        add_rect(slide, x + 0.38, top + 0.92, cw - 0.76, 0.015,
-                 ACCENT if i == 0 else RULE)
-        y = top + 1.16
+        add_text(slide, x, top, 0.72, 0.4, f"{i + 1:02d}", 18,
+                 bold=True, color=marker)
+        add_text(slide, x + 0.78, top - 0.02, cw - 0.78, 0.48,
+                 p["heading"], 17, bold=True, color=NAVY)
+        add_rect(slide, x, top + 0.62, cw - 0.08, 0.018, RULE)
+        y = top + 0.9
         for b in p["bullets"]:
             bh = len(wrap_text(b, tw, size)) * line_height_in(size, 1.2)
-            add_rect(slide, x + 0.38, y + 0.11, 0.2, 0.045, marker)
-            add_text(slide, x + 0.67, y, tw, bh + 0.08, b, size,
-                     color=tcolor, spacing=1.2)
+            add_rect(slide, x, y + 0.11, 0.18, 0.045, marker)
+            add_text(slide, x + 0.3, y, tw, bh + 0.08, b, size,
+                     color=TEXT, spacing=1.2)
             y += bh + bgap
 
 
