@@ -48,7 +48,8 @@ python slidegen\check_layout.py out\sysA_deck.pptx
 
 **生成AIに実行させるパターン**
 
-1. AIに `AI_DECK_PROMPT.md` と `CONTENT_SCHEMA.md` を渡し、新しい `content.json` を作らせる。
+1. `AI_DECK_PROMPT.md` の依頼文テンプレートをコピーし、`<...>` の空欄(テーマ・想定読者・目的など)を
+   今回の内容で埋める。それと `CONTENT_SCHEMA.md` を生成AIに渡し、新しい `content.json` を作らせる。
    既存の `content.json` / `content.py` はサンプルなので参照させない。
 2. 生成された `content.json` をプロジェクト直下に置く。
 3. 生成・検証コマンドを実行する。
@@ -109,7 +110,7 @@ python contact_sheet.py out\png_from_json
 
 **新しいスライドを作る(定常運用)**
 
-1. AI(どのLLMでも可)に `AI_DECK_PROMPT.md` + `CONTENT_SCHEMA.md` を渡して新しい `content.json` を書かせる — AIの仕事はここだけ。既存サンプル(`content.py` / 既存 `content.json`)は見せない
+1. `AI_DECK_PROMPT.md` の依頼文テンプレートに今回のテーマ等を記入し、`CONTENT_SCHEMA.md` とともに生成AI(どのLLMでも可)に渡して `content.json` を書かせる — AIの仕事はここだけ。既存サンプル(`content.py` / 既存 `content.json`)は見せない
 2. `python slidegen/generate_from_json.py content.json out\deck.pptx` で生成(schema検証は生成前に自動実行される)
 3. `render.ps1` でPNG化 → 目視(またはマルチモーダルAIに検査させる) → 問題があればcontent.jsonを直して再生成
 
