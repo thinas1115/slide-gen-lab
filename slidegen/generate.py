@@ -182,35 +182,57 @@ def s_bullets(slide, spec, page):
 
 
 def s_cards(slide, spec, page):
-    """Render flat editorial cards for independent, comparable content units."""
+    """Render purpose-specific cards instead of one universal panel pattern."""
     header(slide, spec["kicker"], spec["title"])
     cards = spec["cards"]
     n = len(cards)
-    gap = 0.38
-    left = 0.76
-    usable_w = 11.82
-    cw = (usable_w - gap * (n - 1)) / n
-    max_ch = BODY_BOTTOM - BODY_TOP - 0.35
+    style = spec.get("style", "editorial")
+    left, usable_w = 0.76, 11.82
+
+    if style == "metrics":
+        gap = 0.28
+        cw = (usable_w - gap * (n - 1)) / n
+        ch, top = 2.72, BODY_TOP + 0.92
+        body_size = min(
+            fit_font_size(body, cw - 0.58, ch - 1.3, 13, min_pt=11,
+                          spacing=1.2)[0]
+            for _, body in cards)
+        fills = (WHITE, LIGHT, WHITE, ZEBRA)
+        for i, (head, body) in enumerate(cards):
+            x = left + i * (cw + gap)
+            add_rect(slide, x, top, cw, ch, fills[i % len(fills)])
+            accent = CORAL if i == 0 else ACCENT
+            add_rect(slide, x + cw - 0.3, top + 0.22, 0.12, 0.12, accent)
+            add_text(slide, x + 0.28, top + 0.38, cw - 0.58, 0.62, head,
+                     18, bold=True, color=NAVY)
+            add_text(slide, x + 0.28, top + 1.25, cw - 0.58, ch - 1.5, body,
+                     body_size, color=TEXT, spacing=1.2)
+            add_rect(slide, x + 0.28, top + ch - 0.25, 0.72, 0.035, accent)
+        return
+
+    cols = 2 if n == 4 else n
+    rows = 2 if n == 4 else 1
+    gap_x, gap_y = 0.3, 0.26
+    cw = (usable_w - gap_x * (cols - 1)) / cols
+    area_h = BODY_BOTTOM - BODY_TOP - 0.44
+    ch = ((area_h - gap_y) / 2 if rows == 2 else min(3.32, area_h))
+    top = BODY_TOP + (0.24 if rows == 2 else 0.72)
     body_size = min(
-        fit_font_size(body, cw - 0.12, max_ch - 1.68, 13.5, min_pt=11.5,
-                      spacing=1.22)[0]
+        fit_font_size(body, cw - 0.62, ch - 1.02, 13, min_pt=10.5,
+                      spacing=1.2)[0]
         for _, body in cards)
-    body_h = max(len(wrap_text(b, cw - 0.12, body_size))
-                 * line_height_in(body_size, 1.22) for _, b in cards)
-    ch = min(max_ch, 1.72 + body_h + 0.24)
-    top = BODY_TOP + 0.28 + (max_ch - ch) * 0.32
+    fills = (WHITE, LIGHT, WHITE, ZEBRA)
     for i, (head, body) in enumerate(cards):
-        x = left + i * (cw + gap)
-        if i:
-            add_rect(slide, x - gap / 2, top + 0.18, 0.012, ch - 0.22, RULE)
-        add_text(slide, x, top, cw, 0.4, f"{i + 1:02d}", 18, bold=True,
-                 color=CORAL if i == 0 else ACCENT)
-        add_rect(slide, x, top + 0.52, 0.46, 0.045,
-                 CORAL if i == 0 else ACCENT)
-        add_text(slide, x, top + 0.76, cw - 0.08, 0.66, head, 16.5,
-                 bold=True, color=NAVY)
-        add_text(slide, x, top + 1.52, cw - 0.08, ch - 1.58, body,
-                 body_size, color=TEXT, spacing=1.22)
+        row, col = divmod(i, cols)
+        x = left + col * (cw + gap_x)
+        y = top + row * (ch + gap_y)
+        add_rect(slide, x, y, cw, ch, fills[i % len(fills)])
+        accent = CORAL if i % 3 == 0 else ACCENT
+        add_rect(slide, x + 0.28, y + 0.3, 0.14, 0.14, accent)
+        add_text(slide, x + 0.55, y + 0.23, cw - 0.82, 0.5, head,
+                 15.5, bold=True, color=NAVY)
+        add_text(slide, x + 0.28, y + 0.88, cw - 0.56, ch - 1.08, body,
+                 body_size, color=TEXT, spacing=1.2)
 
 
 def s_table(slide, spec, page):

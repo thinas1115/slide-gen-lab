@@ -57,13 +57,12 @@ def s_process(slide, spec, page):
 def s_roadmap(slide, spec, page):
     header(slide, spec["kicker"], spec["title"])
     months = spec["months"]
-    label_w = 2.62
-    grid_x = MARGIN + label_w
-    grid_w = BODY_W - label_w
+    grid_x = MARGIN + 0.24
+    grid_w = BODY_W - 0.48
     mw = grid_w / len(months)
-    top, hdr_h = BODY_TOP + 0.5, 0.46
+    top, hdr_h = BODY_TOP + 0.42, 0.46
     rows = spec["phases"]
-    row_h = 1.15
+    row_h = 1.25
     grid_h = hdr_h + len(rows) * row_h
     # 月ヘッダー
     for j, m in enumerate(months):
@@ -79,34 +78,39 @@ def s_roadmap(slide, spec, page):
         ln.line.color.rgb = RULE
         ln.line._get_or_add_ln().remove(ln.line._get_or_add_ln().find(
             "{http://schemas.openxmlformats.org/drawingml/2006/main}tailEnd"))
-    # フェーズ見出しと期間帯
+    # フェーズ見出しは期間帯の開始位置へ統合し、視線の往復をなくす。
     for i, ph in enumerate(rows):
         ry = top + hdr_h + i * row_h
         color = ACCENT if i % 2 == 0 else CORAL
         phase_name = re.sub(r"^Phase\s*\d+\s*", "", ph["name"], flags=re.I)
         phase_name = phase_name or ph["name"]
-        phase_size = fit_font_size(
-            phase_name, label_w - 0.72, 0.36, 12, min_pt=9.5)[0]
-        goal_size = fit_font_size(
-            ph["goal"], label_w - 0.72, 0.3, 8.8, min_pt=8)[0]
-        add_text(slide, MARGIN, ry + 0.12, 0.46, 0.36, f"{i + 1:02d}",
-                 16, bold=True, color=color)
-        add_text(slide, MARGIN + 0.58, ry + 0.1, label_w - 0.72, 0.36,
-                 phase_name, phase_size, bold=True, color=NAVY)
-        add_text(slide, MARGIN + 0.58, ry + 0.49, label_w - 0.72, 0.3,
-                 ph["goal"], goal_size, color=GRAY)
-        add_rect(slide, MARGIN + 0.58, ry + row_h - 0.14,
-                 label_w - 0.78, 0.012, RULE)
         x1 = grid_x + ph["start"] * mw + 0.06
         x2 = grid_x + ph["end"] * mw - 0.06
-        add_rect(slide, x1, ry + 0.26, x2 - x1, 0.46,
+        label_w = max(1.25, min(3.1, grid_x + grid_w - x1 - 0.08))
+        phase_size = fit_font_size(
+            phase_name, label_w - 0.42, 0.3, 11.5, min_pt=9.5)[0]
+        goal_size = fit_font_size(
+            ph["goal"], label_w - 0.42, 0.24, 8.5, min_pt=7.8)[0]
+        add_text(slide, x1, ry + 0.05, 0.34, 0.3, f"{i + 1:02d}",
+                 10.5, bold=True, color=color)
+        phase_label = add_text(
+            slide, x1 + 0.42, ry + 0.03, label_w - 0.42, 0.3,
+            phase_name, phase_size, bold=True, color=NAVY)
+        phase_label.fill.solid()
+        phase_label.fill.fore_color.rgb = CANVAS
+        goal_label = add_text(
+            slide, x1 + 0.42, ry + 0.3, label_w - 0.42, 0.24,
+            ph["goal"], goal_size, color=GRAY)
+        goal_label.fill.solid()
+        goal_label.fill.fore_color.rgb = CANVAS
+        add_rect(slide, x1, ry + 0.58, x2 - x1, 0.42,
                  ACCENT if i % 2 == 0 else NAVY)
-        add_text(slide, x1 + 0.12, ry + 0.32, x2 - x1 - 0.24, 0.32, ph["bar"], 9.5,
+        add_text(slide, x1 + 0.12, ry + 0.63, x2 - x1 - 0.24, 0.3, ph["bar"], 9.5,
                  bold=True, color=WHITE)
     # マイルストーン(菱形)
     for ms in spec["milestones"]:
         mx = grid_x + ms["at"] * mw
-        my = top + hdr_h + ms["row"] * row_h + 0.49
+        my = top + hdr_h + ms["row"] * row_h + 0.79
         d = 0.17
         sp = slide.shapes.add_shape(MSO_SHAPE.DIAMOND, Inches(mx - d / 2),
                                     Inches(my - d / 2), Inches(d), Inches(d))
@@ -116,7 +120,7 @@ def s_roadmap(slide, spec, page):
         sp.shadow.inherit = False
         lcx = min(mx, MARGIN + BODY_W - 0.9)  # 右マージンをはみ出さない
         # バーの下段にキャンバス色マスク付きで置く(背面のグリッド線を隠す)
-        label = arrow_label(slide, lcx, my + 0.4, ms["label"], w=1.8, size=8.5)
+        label = arrow_label(slide, lcx, my + 0.37, ms["label"], w=1.8, size=8.5)
         label.fill.fore_color.rgb = CANVAS
     if spec.get("note"):
         note_line(slide, spec["note"])

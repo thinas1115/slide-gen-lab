@@ -76,6 +76,8 @@ def _v_bullets(s):
 
 def _v_cards(s):
     items = s.req_list("cards", 2, 4, "[見出し, 本文]")
+    if "style" in s.spec and s.spec["style"] not in {"editorial", "metrics"}:
+        s.err('cards.style は "editorial" または "metrics" にしてください')
     for i, c in enumerate(items or []):
         if not (isinstance(c, list) and len(c) == 2
                 and _is_str(c[0]) and _is_str(c[1])):

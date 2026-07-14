@@ -32,8 +32,9 @@ PATTERN_DECK = {
         {
             "type": "cards",
             "pattern": "editorial key points",
+            "style": "editorial",
             "kicker": "要点整理",
-            "title": "要点は枠で囲わず、番号・見出し・余白の強弱で読み順をつくる",
+            "title": "要点カードは、見出しと余白の強弱で読み順をつくる",
             "cards": [
                 ("目的", "何を判断してほしいかを1文で示し、読み手の視点を揃える。"),
                 ("現状", "事実・制約・既に分かっていることを短く置く。"),
@@ -43,7 +44,8 @@ PATTERN_DECK = {
         },
         {
             "type": "cards",
-            "pattern": "KPI editorial columns",
+            "pattern": "KPI metric cards",
+            "style": "metrics",
             "kicker": "KPIスナップショット",
             "title": "KPIカードは、数値と判断材料を一体で読み取れる余白設計にする",
             "cards": [

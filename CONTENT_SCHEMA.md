@@ -108,16 +108,22 @@ python slidegen/validate_content.py content.json
 - `title`: string
 - `cards`: `[heading, body]` の配列
 
+任意:
+
+- `style`: `"editorial"`(既定) / `"metrics"`
+
 制約:
 
 - `cards` は3〜4件が安全(validatorの範囲は2〜4件)。
 - 件数に応じて横並び幅が自動計算される。
 - 各項目が独立して比較できる場合に使う。フェーズ名や図のノードなど、別の構造に属する要素には使わない。
-- 現行rendererは番号、見出し、余白、細い区切り線でカード間の階層をつくる。
+- `editorial`: サマリ・選択肢・事例向け。2〜3件は横並び、4件は2×2で描画する。
+- `metrics`: KPI向け。数値を含む見出しを大きく扱う横並びカードとして描画する。
 
 ```json
 {
   "type": "cards",
+  "style": "editorial",
   "kicker": "分類",
   "title": "タイトル",
   "cards": [
