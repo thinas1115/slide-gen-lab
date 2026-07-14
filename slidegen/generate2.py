@@ -1,4 +1,4 @@
-"""v2デッキ: 基本9枚 + 表現力検証6枚 = 15枚を生成する。
+"""v2デッキ: 基本デッキ + 表現力検証スライドを生成する。
 
 初版(sysA_deck.pptx)はそのまま残し、こちらは sysA_deck2.pptx に出力する。
 """
@@ -33,6 +33,7 @@ def main(out_path):
     prs.slide_height = Inches(generate.SLIDE_H)
     blank = prs.slide_layouts[6]
     slides = DECK["slides"] + EXTRA_SLIDES
+    generate.DECK = {**DECK, "slides": slides}
     for idx, spec in enumerate(slides, 1):
         slide = prs.slides.add_slide(blank)
         RENDER2[spec["type"]](slide, spec, idx)

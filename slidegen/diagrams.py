@@ -8,8 +8,8 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
-from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, CORAL, GRAY,
-                      LIGHT, MARGIN, NAVY, TEXT, WHITE, add_rect, add_text,
+from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, CANVAS, CORAL, GRAY,
+                      LIGHT, MARGIN, NAVY, RULE, TEXT, WHITE, ZEBRA, add_rect, add_text,
                       header, note_line)
 from textfit import line_height_in, text_width_in
 
@@ -49,7 +49,7 @@ def arrow_label(slide, cx, cy, text, w=1.6, size=9):
                   text, size, color=TEXT, align=PP_ALIGN.CENTER,
                   anchor=MSO_ANCHOR.MIDDLE)
     tb.fill.solid()
-    tb.fill.fore_color.rgb = WHITE
+    tb.fill.fore_color.rgb = CANVAS
     return tb
 
 
@@ -107,13 +107,13 @@ def left_of(cx):
 # ---- ステークホルダー調整図(ハブ型) ----
 def s_hub(slide, spec, page):
     header(slide, spec["kicker"], spec["title"])
-    cx, cy = 6.67, 4.22
-    hw, hh = 2.3, 1.0
+    cx, cy = 6.67, 4.2
+    hw, hh = 2.45, 1.05
     # 周辺ノード: (x, y, タイトル, 出す矢印ラベル, 戻り矢印ラベル)
     ring = spec["ring"]
-    pos = [(2.35, 2.72), (10.99, 2.72),
-           (2.35, 5.40), (10.99, 5.40),
-           (6.67, 2.52), (6.67, 5.76)]
+    pos = [(2.15, 2.72), (11.18, 2.72),
+           (2.15, 5.42), (11.18, 5.42),
+           (6.67, 2.42), (6.67, 5.84)]
 
     # Connectors first: lines stay behind the icon and its labels.
     routes = []
@@ -130,11 +130,11 @@ def s_hub(slide, spec, page):
 
     for start_x, start_y, end_x, end_y, label in routes:
         arrow_label(slide, (start_x + end_x) / 2, (start_y + end_y) / 2,
-                    label, w=1.9, size=8.5)
+                    label, w=2.1, size=9.2)
 
     for i, ((nx, ny), item) in enumerate(zip(pos, ring)):
         icon_node(slide, nx, ny, item["icon"], item["name"], item.get("sub"),
-                  size=0.52, label_above=i == 4)
+                  size=0.64, label_above=i == 4)
 
     # 中心ハブ
     sp = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(cx - hw / 2), Inches(cy - hh / 2),
@@ -143,7 +143,7 @@ def s_hub(slide, spec, page):
     sp.fill.fore_color.rgb = NAVY
     sp.line.fill.background()
     sp.shadow.inherit = False
-    add_text(slide, cx - hw / 2, cy - 0.3, hw, 0.6, spec["hub"], 13, bold=True,
+    add_text(slide, cx - hw / 2, cy - 0.31, hw, 0.62, spec["hub"], 13.5, bold=True,
              color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
     if spec.get("note"):
         note_line(slide, spec["note"])
@@ -153,32 +153,36 @@ def s_hub(slide, spec, page):
 def s_org(slide, spec, page):
     header(slide, spec["kicker"], spec["title"])
 
-    def box(x, y, w, h, title, sub=None, fill=WHITE, tcolor=NAVY, border=LINE):
+    def box(x, y, w, h, title, sub=None, fill=WHITE, tcolor=NAVY,
+            border=LINE, members=None):
         add_rect(slide, x, y, w, h, fill, line=border)
-        add_text(slide, x + 0.06, y + (0.1 if sub else (h - 0.3) / 2), w - 0.12, 0.3,
-                 title, 11.5, bold=True, color=tcolor, align=PP_ALIGN.CENTER)
+        add_text(slide, x + 0.18, y + 0.16, w - 0.36, 0.32,
+                 title, 12.5, bold=True, color=tcolor, align=PP_ALIGN.CENTER)
         if sub:
-            add_text(slide, x + 0.06, y + h - 0.38, w - 0.12, 0.32, sub, 8.5,
-                     color=GRAY, align=PP_ALIGN.CENTER)
+            add_text(slide, x + 0.18, y + 0.56, w - 0.36, 0.28, sub, 9.5,
+                     color=GRAY if fill != NAVY else LIGHT, align=PP_ALIGN.CENTER)
+        if members:
+            add_rect(slide, x + 0.22, y + 0.94, w - 0.44, 0.01, RULE)
+            add_text(slide, x + 0.2, y + 1.05, w - 0.4, 0.5,
+                     "  /  ".join(members), 9.5, color=TEXT,
+                     align=PP_ALIGN.CENTER)
 
     def vline(x, y1, y2):
         add_arrow(slide, x, y1, x, y2, width=1.25)
 
     cx = 6.67
-    # 1段目: ステコミ
-    box(cx - 1.9, 1.95, 3.8, 0.62, spec["top"]["name"], None, NAVY, RGBColor(0xFF, 0xFF, 0xFF))
-    add_text(slide, cx + 2.1, 2.02, 3.0, 0.5, spec["top"]["sub"], 9, color=GRAY)
-    # 2段目: PM
-    vline(cx, 2.57, 3.05)
-    box(cx - 1.9, 3.05, 3.8, 0.75, spec["pm"]["name"], spec["pm"]["sub"])
-    # 幹線
+    box(cx - 2.05, 1.86, 4.1, 0.86, spec["top"]["name"], spec["top"]["sub"],
+        NAVY, WHITE, NAVY)
+    vline(cx, 2.72, 3.08)
+    box(cx - 2.05, 3.08, 4.1, 0.9, spec["pm"]["name"], spec["pm"]["sub"],
+        WHITE, NAVY, ACCENT)
     teams = spec["teams"]
     n = len(teams)
-    tw, gap = 2.7, 0.5
+    tw, gap = 3.25, 0.38
     total = n * tw + (n - 1) * gap
     x0 = cx - total / 2
-    trunk_y = 4.25
-    slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(cx), Inches(3.8),
+    trunk_y = 4.35
+    slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(cx), Inches(3.98),
                                Inches(cx), Inches(trunk_y)).line.color.rgb = LINE
     hl = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT,
                                     Inches(x0 + tw / 2), Inches(trunk_y),
@@ -186,14 +190,12 @@ def s_org(slide, spec, page):
     hl.line.color.rgb = LINE
     for i, t in enumerate(teams):
         x = x0 + i * (tw + gap)
-        vline(x + tw / 2, trunk_y, 4.6)
-        box(x, 4.6, tw, 0.95, t["name"], t["sub"], LIGHT)
-        for k, m in enumerate(t.get("members", [])):
-            add_text(slide, x + 0.15, 5.62 + k * 0.3, tw - 0.3, 0.3, "・" + m, 9.5, color=TEXT)
-    # 外部支援(点線)
+        vline(x + tw / 2, trunk_y, 4.62)
+        box(x, 4.62, tw, 1.62, t["name"], t["sub"], WHITE,
+            NAVY, RULE, t.get("members", []))
     ex = spec["external"]
-    box(10.6, 3.05, 2.15, 0.75, ex["name"], ex["sub"], WHITE)
-    add_arrow(slide, cx + 1.9, 3.42, 10.6, 3.42, dash="dash", width=1.25)
-    arrow_label(slide, (cx + 1.9 + 10.6) / 2, 3.24, ex["label"], w=1.7)
+    box(10.6, 3.08, 2.05, 0.9, ex["name"], ex["sub"], ZEBRA, NAVY, RULE)
+    add_arrow(slide, cx + 2.05, 3.53, 10.6, 3.53, dash="dash", width=1.25)
+    arrow_label(slide, (cx + 2.05 + 10.6) / 2, 3.33, ex["label"], w=1.7)
     if spec.get("note"):
         note_line(slide, spec["note"])

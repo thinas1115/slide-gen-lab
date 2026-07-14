@@ -15,14 +15,14 @@ PATTERN_DECK = {
         {
             "type": "title",
             "pattern": "title",
-            "title": "社内スライドパターン検証ギャラリー",
+            "title": "社内スライドパターン\n検証ギャラリー",
             "subtitle": "renderer カタログ方式で対応できる表現パターンを一覧検証",
         },
         {
             "type": "bullets",
             "pattern": "agenda / bullets",
             "kicker": "検証方針",
-            "title": "社内テンプレートでは、LLMは構造化、rendererは提出品質の絵作りを担う",
+            "title": "LLMは構造化、rendererは提出品質を担う",
             "bullets": [
                 ("文言・項目・強調は content 側に寄せ、座標や余白は renderer 側に閉じ込める", None),
                 ("汎用エンジン化しすぎず、よく使うスライド種別をカタログとして増やす", None),
@@ -34,7 +34,7 @@ PATTERN_DECK = {
             "pattern": "editorial key points",
             "style": "editorial",
             "kicker": "要点整理",
-            "title": "要点カードは、見出しと余白の強弱で読み順をつくる",
+            "title": "判断に必要な4つの要点を、読み順に沿って整理する",
             "cards": [
                 ("目的", "何を判断してほしいかを1文で示し、読み手の視点を揃える。"),
                 ("現状", "事実・制約・既に分かっていることを短く置く。"),
@@ -47,7 +47,7 @@ PATTERN_DECK = {
             "pattern": "KPI metric cards",
             "style": "metrics",
             "kicker": "KPIスナップショット",
-            "title": "KPIカードは、数値と判断材料を一体で読み取れる余白設計にする",
+            "title": "KPIは数値を主役にし、判断材料を添える",
             "cards": [
                 ("作成時間 -72%", "週次報告の作成時間が平均45分から13分に短縮。下書き作成の自動化が主因。"),
                 ("手直し 8分", "生成後の確認と語尾修正に平均8分。テンプレート崩れは検出なし。"),
@@ -58,7 +58,7 @@ PATTERN_DECK = {
             "type": "twocol",
             "pattern": "2-column comparison",
             "kicker": "Before / After",
-            "title": "2カラム比較は、導入前後の違いを短時間で理解してもらう用途に向く",
+            "title": "導入前後の違いを、同じ観点で比較する",
             "left": {
                 "heading": "導入前",
                 "bullets": [
@@ -80,7 +80,7 @@ PATTERN_DECK = {
             "type": "table",
             "pattern": "comparison table",
             "kicker": "方式比較",
-            "title": "比較表は、選定理由と見送り理由を同じ粒度で残せる",
+            "title": "選定理由と見送り理由を、同じ粒度で比較する",
             "columns": ["方式", "向いている用途", "強み", "注意点"],
             "col_widths": [2.0, 3.1, 3.1, 4.0],
             "rows": [
@@ -93,7 +93,7 @@ PATTERN_DECK = {
             "type": "chart",
             "pattern": "bar chart",
             "kicker": "効果測定",
-            "title": "横棒グラフは、改善幅を説明する定量スライドに向いている",
+            "title": "資料作成時間を最大72%短縮",
             "note": "値は検証用のサンプルデータ。",
             "chart": {
                 "categories": ["週次報告", "月次レビュー", "調査サマリ", "役員向け抜粋"],
@@ -107,7 +107,7 @@ PATTERN_DECK = {
             "type": "process",
             "pattern": "process / timeline",
             "kicker": "標準プロセス",
-            "title": "プロセス図は、資料生成を誰がどこで確認するかまで含めて表せる",
+            "title": "資料生成は5つの工程で品質を担保する",
             "steps": [
                 {"name": "入力整理", "desc": "目的・読み手・必須メッセージを箇条書きで整理する。", "actor": "人間"},
                 {"name": "構造化", "desc": "既存schemaに沿ってスライド種別と文言を作る。", "actor": "LLM"},
@@ -121,7 +121,7 @@ PATTERN_DECK = {
             "type": "roadmap",
             "pattern": "roadmap / gantt",
             "kicker": "展開計画",
-            "title": "ロードマップは、フェーズ・期間・判定ポイントを1枚で説明できる",
+            "title": "6か月で型の整備から標準運用へ移行する",
             "months": ["7月", "8月", "9月", "10月", "11月", "12月"],
             "phases": [
                 {"name": "Phase 1  型の整備", "goal": "主要パターンを定義", "bar": "renderer 8種を整備", "start": 0, "end": 2},
@@ -138,7 +138,7 @@ PATTERN_DECK = {
             "type": "matrix",
             "pattern": "2-axis matrix",
             "kicker": "優先度整理",
-            "title": "2軸マップは、対応優先度や方式選定の説明に使いやすい",
+            "title": "提出品質と再利用性から、整備優先度を決める",
             "x_axis": "再利用性 →",
             "y_axis": "↑ 提出品質",
             "target_label": "優先整備",
@@ -156,7 +156,7 @@ PATTERN_DECK = {
             "type": "hub",
             "pattern": "stakeholder hub",
             "kicker": "関係者調整",
-            "title": "ハブ図は、複数部門との依頼・承認・レビュー関係を整理しやすい",
+            "title": "運用事務局を中心に、6部門の役割をつなぐ",
             "hub": "テンプレート\n運用事務局",
             "ring": [
                 {"name": "経営層", "sub": "方針承認", "label": "効果報告", "icon": "fluent/briefcase.png"},
@@ -171,7 +171,7 @@ PATTERN_DECK = {
             "type": "org",
             "pattern": "organization chart",
             "kicker": "推進体制",
-            "title": "体制図は、意思決定・実装・検証の役割分担を固定化できる",
+            "title": "意思決定・実装・展開の責任範囲を明確にする",
             "top": {"name": "ステアリングコミッティ", "sub": "月次で投資・方針を判断"},
             "pm": {"name": "テンプレート整備PM", "sub": "スライド生成基盤の改善責任者"},
             "teams": [
@@ -189,7 +189,7 @@ PATTERN_DECK = {
             "diagram": deepcopy(AWS_SIMPLE_EXAMPLE),
             "pattern": "simple architecture (inline diagram)",
             "kicker": "構成図",
-            "title": "シンプル構成図は、主要コンポーネントとデータの流れを短く説明できる",
+            "title": "主要コンポーネントとデータの流れを短く示す",
             "note": "AWSアイコンはローカル assets/ から読み込む。",
         },
         {
@@ -197,14 +197,14 @@ PATTERN_DECK = {
             "diagram": deepcopy(AWS_MULTIAZ_EXAMPLE),
             "pattern": "dense architecture (inline diagram)",
             "kicker": "高密度構成図",
-            "title": "高密度構成図も、グリッド仕様から座標ゼロで自動レイアウトできる",
+            "title": "高密度なAWS構成も、グリッド仕様で自動配置する",
         },
         {
             # AWS以外の構成図も、同梱Fluentアイコンを指定して描けることを検証する。
             "type": "diagram",
             "pattern": "fluent icon architecture",
             "kicker": "Fluentアイコン構成図",
-            "title": "AWS以外のテーマでも、Fluentアイコンで業務システム構成図を描ける",
+            "title": "Fluentアイコンで業務システム構成を表現する",
             "note": "同梱のMicrosoft Fluent UIアイコンを使用。ライセンスはassets/CREDITS.mdを参照。",
             "diagram": {
                 "cols": ["user", "gw", "app", "db"],
@@ -243,7 +243,7 @@ PATTERN_DECK = {
             "type": "diagram",
             "pattern": "event-driven fan-out (inline diagram)",
             "kicker": "イベント駆動構成図",
-            "title": "受付と処理をキューで分離し、保存先と監視へ非同期に分岐する",
+            "title": "受付と処理を分離し、保存・監視へ非同期分岐する",
             "diagram": {
                 "cols": ["client", "api", "queue", "worker", "data"],
                 "rows": ["top", "main", "bottom"],
