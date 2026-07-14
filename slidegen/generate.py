@@ -21,6 +21,7 @@ TEXT = RGBColor(0x26, 0x26, 0x26)
 GRAY = RGBColor(0x7F, 0x7F, 0x7F)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 ZEBRA = RGBColor(0xF2, 0xF6, 0xFB)
+CANVAS = RGBColor(0xF7, 0xF9, 0xFC)
 FONT = "Yu Gothic"
 SLIDE_W, SLIDE_H = 13.333, 7.5
 MARGIN = 0.55
@@ -83,11 +84,21 @@ def header(slide, kicker, title):
     add_rect(slide, MARGIN, 1.48, BODY_W, 0.022, ACCENT)
 
 
+def page_label(page):
+    """Return a stable page marker shared by every generator entry point."""
+    total = len(DECK["slides"])
+    digits = max(2, len(str(total)))
+    return f"{page:0{digits}d} / {total:0{digits}d}"
+
+
 def footer(slide, page):
-    add_rect(slide, MARGIN, 7.06, BODY_W, 0.012, RGBColor(0xD9, 0xD9, 0xD9))
-    add_text(slide, MARGIN, 7.12, 8, 0.25, DECK["meta"]["footer"], 8, color=GRAY)
-    add_text(slide, SLIDE_W - MARGIN - 1.2, 7.12, 1.2, 0.25, f"{page}", 8,
-             color=GRAY, align=PP_ALIGN.RIGHT)
+    add_rect(slide, MARGIN, 7.04, BODY_W, 0.015, RGBColor(0xD9, 0xD9, 0xD9))
+    add_text(slide, MARGIN, 7.11, 8.5, 0.27, DECK["meta"]["footer"], 8.5,
+             color=GRAY, anchor=MSO_ANCHOR.MIDDLE)
+    add_rect(slide, SLIDE_W - MARGIN - 1.55, 7.09, 0.07, 0.24, ACCENT)
+    add_text(slide, SLIDE_W - MARGIN - 1.35, 7.08, 1.35, 0.27,
+             page_label(page), 10, bold=True, color=NAVY,
+             align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
 
 
 def note_line(slide, note):
@@ -96,13 +107,47 @@ def note_line(slide, note):
 
 # ---- スライド種別 ----
 def s_title(slide, spec, page):
-    add_rect(slide, 0, 0, SLIDE_W, 0.18, NAVY)
-    add_rect(slide, MARGIN, 2.52, 0.7, 0.045, ACCENT)
-    add_text(slide, MARGIN, 2.78, BODY_W, 1.0, spec["title"], 30, bold=True, color=NAVY)
-    add_text(slide, MARGIN, 3.72, BODY_W, 0.6, spec["subtitle"], 15, color=GRAY)
     meta = DECK["meta"]
-    add_text(slide, MARGIN, 6.35, BODY_W, 0.3, f"{meta['date']}    {meta['author']}", 11, color=GRAY)
-    add_rect(slide, 0, 7.32, SLIDE_W, 0.18, NAVY)
+    panel_x = 9.15
+
+    add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, CANVAS)
+    add_rect(slide, panel_x, 0, SLIDE_W - panel_x, SLIDE_H, NAVY)
+    add_rect(slide, panel_x, 0, 0.13, SLIDE_H, ACCENT)
+
+    add_text(slide, 0.78, 0.72, 7.7, 0.3, meta["date"], 10.5,
+             bold=True, color=ACCENT)
+    add_rect(slide, 0.78, 1.25, 0.85, 0.055, ACCENT)
+
+    title_size, title_lines = fit_font_size(
+        spec["title"], 7.75, 1.75, 42, min_pt=29, weight="bold", spacing=1.12)
+    title_h = max(0.9, len(title_lines) * line_height_in(title_size, 1.12) + 0.08)
+    add_text(slide, 0.78, 1.58, 7.75, title_h, "\n".join(title_lines), title_size,
+             bold=True, color=NAVY, spacing=1.12)
+
+    subtitle_y = min(4.35, 1.58 + title_h + 0.28)
+    subtitle_size, subtitle_lines = fit_font_size(
+        spec["subtitle"], 7.4, 0.95, 16, min_pt=12, spacing=1.25)
+    add_text(slide, 0.82, subtitle_y, 7.4, 0.95, "\n".join(subtitle_lines),
+             subtitle_size, color=GRAY, spacing=1.25)
+
+    add_rect(slide, 0.78, 6.27, 7.65, 0.012, RGBColor(0xD9, 0xDF, 0xE8))
+    add_text(slide, 0.78, 6.48, 7.65, 0.3, meta["author"], 11,
+             bold=True, color=NAVY)
+
+    add_text(slide, 9.82, 0.78, 2.65, 0.85, f"{page:02d}", 40,
+             bold=True, color=WHITE)
+    add_text(slide, 11.55, 1.16, 0.85, 0.32,
+             f"/ {len(DECK['slides']):02d}", 11, bold=True, color=LIGHT,
+             align=PP_ALIGN.RIGHT)
+
+    # Restrained geometric motif gives the cover a clear visual anchor.
+    add_rect(slide, 9.82, 3.05, 2.58, 0.08, WHITE)
+    add_rect(slide, 9.82, 3.42, 1.72, 0.08, ACCENT)
+    add_rect(slide, 10.68, 4.14, 1.72, 1.72, NAVY, line=ACCENT)
+    add_rect(slide, 9.82, 4.72, 0.68, 0.68, ACCENT)
+    add_rect(slide, 11.86, 5.32, 0.54, 0.54, WHITE)
+    add_text(slide, 9.82, 6.72, 2.58, 0.28, meta["footer"], 8.5,
+             color=WHITE, align=PP_ALIGN.RIGHT)
 
 
 def s_bullets(slide, spec, page):
