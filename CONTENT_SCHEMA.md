@@ -452,10 +452,18 @@ python slidegen/validate_content.py content.json
   - `col` / `row`: 所属セル(cols/rowsの名前)
   - `title`: 表示名
   - `sub`: 補足ラベル(任意)
-  - `icon`: `slidegen/assets/` からの相対PNGパス(任意)。**省略すると汎用図形ノード**(角丸四角+カラーバー)になるので、アイコン素材がないテーマでもそのまま描ける
-    - 汎用アイコン(`fluent/<名前>.png`、同梱済み): 使える名前は次の19種のみ(これ以外のファイル名を発明しない): `server` `router` `shield`(FW) `database` `desktop` `laptop` `people` `person` `building` `branch`(拠点) `cloud` `globe`(インターネット) `alert` `mail` `phone` `wrench`(保守) `lock` `switch`(L2/L3SW) `monitor`(監視)
+  - `icon`: `slidegen/assets/` からの相対PNGパス(任意)。通常は同梱Fluent/AWSアイコンを指定する。省略時だけ汎用図形ノード(角丸四角+カラーバー)になる
+    - Fluentアイコン(`fluent/<名前>.png`、72種同梱済み)。次の名前だけを使い、ファイル名を発明しない。`python slidegen/fetch_fluent_icons.py --list` でも確認できる
+      - インフラ・端末: `server` `router` `database` `desktop` `laptop` `tablet` `phone` `printer` `hard_drive` `storage`
+      - ネットワーク・クラウド: `cloud` `globe` `wifi` `ethernet` `link` `gateway` `sync` `upload` `download` `switch`
+      - セキュリティ: `shield` `shield_lock` `shield_check` `lock` `key` `certificate`
+      - 人物・組織・拠点: `people` `team` `person` `contact` `organization` `briefcase` `building` `branch` `factory` `store` `warehouse` `home`
+      - アプリ・データ・文書: `app` `browser` `terminal` `code` `bot` `ai` `folder` `document` `file_data` `archive`
+      - コミュニケーション・業務: `mail` `chat` `video` `call` `send` `calendar` `task` `cart` `money` `chart`
+      - 運用・状態: `alert` `warning` `info` `check` `search` `clock` `history` `settings` `toolbox` `wrench` `monitor`
+      - 物理移動: `truck` `car` `airplane`
     - AWSアイコン(同梱済み): `alb.png` `bedrock.png` `cloudfront.png` `cloudwatch.png` `dynamodb.png` `ecr.png` `fargate.png` `rds.png` `route53.png` `s3.png` `sqs.png` `user.png` `users.png` のみ。増やす場合は `extract_aws_icons.py`
-  - `color`: `"accent"`(既定) / `"navy"` / `"line"`(汎用図形ノードの枠色)
+  - `color`: `"accent"`(既定) / `"navy"` / `"line"`(icon省略時の汎用図形ノードの枠色)
 - `diagram.edges`: object の配列
   - `from` / `to`: ノード名(または `@コンテナ名`)
   - `label` / `label_w`: 線上ラベルと幅(任意)

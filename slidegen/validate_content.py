@@ -284,6 +284,18 @@ def _v_diagram(s):
         if "icon" in n and not _is_str(n["icon"]):
             s.err(f"nodes.{name}.icon は文字列 (省略可。省略時は汎用図形ノード)"
                   f" にしてください")
+        elif "icon" in n:
+            assets = (Path(__file__).parent / "assets").resolve()
+            icon_path = (assets / n["icon"]).resolve()
+            try:
+                icon_path.relative_to(assets)
+            except ValueError:
+                s.err(f"nodes.{name}.icon は slidegen/assets/ 内の相対パスに"
+                      f"してください")
+            else:
+                if not icon_path.is_file():
+                    s.err(f"nodes.{name}.icon={n['icon']!r} が assets/ にありません。"
+                          f"Fluent一覧は fetch_fluent_icons.py --list で確認してください")
     cont_names = set()
     containers = d.get("containers", [])
     if not isinstance(containers, list):

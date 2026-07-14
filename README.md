@@ -34,7 +34,7 @@
 3. 前提: Windows + 游ゴシック(`slidegen/textfit.py` が `C:\Windows\Fonts\YuGoth*.ttc` を参照。別OSはこの数行を変更)
 4. 目視用に PowerPoint(`render.ps1` が使用。生成自体には不要)
 
-アイコン素材(AWS 13種 + Fluent汎用19種)は `slidegen/assets/` に**同梱済み**なので追加作業は不要
+アイコン素材(AWS 13種 + Fluent 72種)は `slidegen/assets/` に**同梱済み**なので追加作業は不要
 (出典・ライセンスは [assets/CREDITS.md](slidegen/assets/CREDITS.md))。増やす場合のみ:
 
 - AWS: [公式アイコンデッキ(PPTX)](https://aws.amazon.com/jp/architecture/icons/) を入手し `slidegen/extract_aws_icons.py` の SRC を変えて実行

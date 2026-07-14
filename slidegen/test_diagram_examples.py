@@ -52,9 +52,12 @@ def main():
     invalid = deepcopy(json_roundtrip)
     invalid["slides"][0]["diagram"]["area"] = [0, 0, 1, 1]
     invalid["slides"][0]["diagram"]["containers"][0]["pad"] = 0.1
+    invalid["slides"][0]["diagram"]["nodes"]["user"]["icon"] = (
+        "fluent/not_defined.png")
     errors = validate(invalid)
     assert any("diagram.area" in error for error in errors)
     assert any(".pad" in error for error in errors)
+    assert any("assets/ にありません" in error for error in errors)
     print("OK: 2 inline diagram examples passed schema, layout, and routing checks")
 
 
