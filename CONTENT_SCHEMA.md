@@ -342,6 +342,7 @@ python slidegen/validate_content.py content.json
 - `points[*].emph`: boolean
 - `points[*].lx`: number
 - `points[*].ly`: number
+- `quadrants`: `[左下, 右下, 左上, 右上]` の4文字列
 - `note`: string
 
 制約:
@@ -358,6 +359,7 @@ python slidegen/validate_content.py content.json
   "x_axis": "横軸ラベル",
   "y_axis": "縦軸ラベル",
   "target_label": "強調領域ラベル",
+  "quadrants": ["左下", "右下", "左上", "右上"],
   "points": [
     {"name": "点ラベル", "x": 0.5, "y": 0.5, "emph": true}
   ],

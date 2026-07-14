@@ -194,6 +194,11 @@ def _v_matrix(s):
     for key in ("x_axis", "y_axis", "target_label"):
         s.req_str(key)
     points = s.req_list("points", 1, 8, "点")
+    quadrants = s.spec.get("quadrants")
+    if quadrants is not None and not (
+            isinstance(quadrants, list) and len(quadrants) == 4
+            and all(_is_str(label) for label in quadrants)):
+        s.err("quadrants は [左下, 右下, 左上, 右上] の4文字列にしてください")
     for i, p in enumerate(points or []):
         if not (isinstance(p, dict) and _is_str(p.get("name"))
                 and _is_num(p.get("x")) and _is_num(p.get("y"))):

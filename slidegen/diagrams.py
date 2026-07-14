@@ -63,7 +63,7 @@ def container(slide, x, y, w, h, label, color=LINE, dash=None):
     if dash:
         ln = sp.line._get_or_add_ln()
         ln.insert(0, ln.makeelement(qn("a:prstDash"), {"val": dash}))
-    add_text(slide, x + 0.12, y + 0.06, w - 0.3, 0.28, label, 10, bold=True,
+    add_text(slide, x + 0.12, y + 0.06, w - 0.3, 0.28, label, 10.5, bold=True,
              color=color)
 
 
@@ -84,11 +84,11 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62, *, label_above=Fal
     slide.shapes.add_picture(str(p), Inches(cx - size / 2),
                              Inches(cy - size / 2), Inches(size), Inches(size))
     title_y = cy - size / 2 - 0.59 if label_above else cy + size / 2 + 0.05
-    add_text(slide, cx - 1.05, title_y, 2.1, 0.28, title, 10.5,
+    add_text(slide, cx - 1.05, title_y, 2.1, 0.28, title, 11,
              bold=True, color=NAVY, align=PP_ALIGN.CENTER)
     if sub:
         sub_y = cy - size / 2 - 0.31 if label_above else cy + size / 2 + 0.33
-        add_text(slide, cx - 1.05, sub_y, 2.1, 0.26, sub, 8.5,
+        add_text(slide, cx - 1.05, sub_y, 2.1, 0.26, sub, 9,
                  color=GRAY, align=PP_ALIGN.CENTER)
 
 
@@ -130,7 +130,7 @@ def s_hub(slide, spec, page):
 
     for start_x, start_y, end_x, end_y, label in routes:
         arrow_label(slide, (start_x + end_x) / 2, (start_y + end_y) / 2,
-                    label, w=2.1, size=9.2)
+                    label, w=2.1, size=10)
 
     for i, ((nx, ny), item) in enumerate(zip(pos, ring)):
         icon_node(slide, nx, ny, item["icon"], item["name"], item.get("sub"),
@@ -159,12 +159,12 @@ def s_org(slide, spec, page):
         add_text(slide, x + 0.18, y + 0.16, w - 0.36, 0.32,
                  title, 12.5, bold=True, color=tcolor, align=PP_ALIGN.CENTER)
         if sub:
-            add_text(slide, x + 0.18, y + 0.56, w - 0.36, 0.28, sub, 9.5,
+            add_text(slide, x + 0.18, y + 0.56, w - 0.36, 0.28, sub, 10,
                      color=GRAY if fill != NAVY else LIGHT, align=PP_ALIGN.CENTER)
         if members:
             add_rect(slide, x + 0.22, y + 0.94, w - 0.44, 0.01, RULE)
             add_text(slide, x + 0.2, y + 1.05, w - 0.4, 0.5,
-                     "  /  ".join(members), 9.5, color=TEXT,
+                      "  /  ".join(members), 10, color=TEXT,
                      align=PP_ALIGN.CENTER)
 
     def vline(x, y1, y2):

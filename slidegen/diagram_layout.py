@@ -95,7 +95,7 @@ class Layout:
     def _half_w(self, name):
         """ノードの実効半幅(アイコンとタイトル実測幅の大きい方)。"""
         n = self.spec["nodes"][name]
-        tw = text_width_in(n["title"], 10.5, "bold") + 0.1
+        tw = text_width_in(n["title"], 11, "bold") + 0.1
         return max(ICON_R + 0.12, min(LABEL_W, tw) / 2)
 
     def _auto_rows(self):
@@ -530,11 +530,11 @@ def render_diagram(slide, spec, note=None):
             # で発生し、ラベルが自ノードのタイトルと重なる不具合になった)。
             horizontal = abs(b[1] - a[1]) < abs(b[0] - a[0])
             seg_len = abs(b[1] - a[1]) if not horizontal else abs(b[0] - a[0])
-            label_h = line_height_in(8.5, 1.1) + 0.08
+            label_h = line_height_in(9, 1.1) + 0.08
             if horizontal:
                 # 水平セグメント: 線の上側にずらす(近接ノードとの干渉回避)。
                 arrow_label(slide, mx, my - 0.17, e["label"],
-                           w=e.get("label_w", 1.1), size=8.5)
+                           w=e.get("label_w", 1.1), size=9)
             elif seg_len >= MIN_SEG - 0.02:
                 # 垂直セグメントが十分長い: 線上に置き、白背景で線をマスクする。
                 # しきい値はMIN_SEGに合わせてある: エンジンがvia無しの直結
@@ -545,15 +545,15 @@ def render_diagram(slide, spec, note=None):
                 # ない場所ではラベルがコンテナ境界の外にはみ出す
                 # (実際にr53<->cfで発生: 側面オフセットがcloud枠の外に出た)。
                 arrow_label(slide, mx, my, e["label"],
-                           w=e.get("label_w", 1.1), size=8.5)
+                           w=e.get("label_w", 1.1), size=9)
             else:
                 # 垂直セグメントが短すぎてラベルが収まらない: マスクせず
                 # 線の横に添える(現状これに該当するエッジはない。将来
                 # MIN_SEGを下回る垂直ラベルが出た場合のフォールバック)。
                 if len(pts) == 2 and not e["to"].startswith("@"):
                     my = lay.node_center(e["to"])[1]
-                lw = min(e.get("label_w", 1.1), text_width_in(e["label"], 8.5) + 0.1)
+                lw = min(e.get("label_w", 1.1), text_width_in(e["label"], 9) + 0.1)
                 cx = mx - ICON_R - EDGE_GAP - 0.04 - lw / 2
-                arrow_label(slide, cx, my, e["label"], w=lw, size=8.5)
+                arrow_label(slide, cx, my, e["label"], w=lw, size=9)
     if note:
         note_line(slide, note)

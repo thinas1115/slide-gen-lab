@@ -82,8 +82,8 @@ def add_rect(slide, x, y, w, h, fill, *, line=None, round_=False):
 
 def header(slide, kicker, title):
     add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, CANVAS)
-    add_text(slide, 0.72, 0.28, 4.8, 0.3, kicker, 10.5, bold=True, color=ACCENT)
-    size = 25
+    add_text(slide, 0.72, 0.27, 4.8, 0.32, kicker, 11.5, bold=True, color=ACCENT)
+    size = 27
     lines = wrap_text(title, 11.9, size, "bold")
     while len(lines) > 1 and size > 18:
         size -= 0.5
@@ -124,27 +124,39 @@ def s_title(slide, spec, page):
     total = len(DECK["slides"])
 
     add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, NAVY)
-    add_text(slide, 0.9, 0.68, 3.2, 0.3, "SLIDE PATTERN LIBRARY", 9.5,
+    add_text(slide, 0.9, 0.68, 3.2, 0.3, "SLIDE PATTERN LIBRARY", 10,
              bold=True, color=LIGHT)
-    add_text(slide, 10.2, 0.68, 2.2, 0.3, f"{total:02d} PATTERNS", 9.5,
-             bold=True, color=LIGHT, align=PP_ALIGN.RIGHT)
+    add_text(slide, 9.78, 0.68, 2.62, 0.3, meta["date"], 10,
+             color=LIGHT, align=PP_ALIGN.RIGHT)
 
     title_size, title_lines = fit_font_size(
-        spec["title"], 10.6, 2.15, 43, min_pt=34, weight="bold", spacing=1.06)
+        spec["title"], 8.05, 2.15, 42, min_pt=34, weight="bold", spacing=1.06)
     title_h = max(1.0, len(title_lines) * line_height_in(title_size, 1.08) + 0.1)
-    add_text(slide, 0.9, 1.7, 10.6, title_h, "\n".join(title_lines), title_size,
+    add_text(slide, 0.9, 1.72, 8.05, title_h, "\n".join(title_lines), title_size,
              bold=True, color=WHITE, spacing=1.08)
 
-    subtitle_y = min(4.65, 1.7 + title_h + 0.38)
+    subtitle_y = min(4.72, 1.72 + title_h + 0.38)
     subtitle_size, subtitle_lines = fit_font_size(
-        spec["subtitle"], 9.6, 0.8, 17, min_pt=14, spacing=1.2)
-    add_text(slide, 0.94, subtitle_y, 9.6, 0.8, "\n".join(subtitle_lines),
+        spec["subtitle"], 8.0, 0.8, 17.5, min_pt=15, spacing=1.2)
+    add_text(slide, 0.94, subtitle_y, 8.0, 0.8, "\n".join(subtitle_lines),
              subtitle_size, color=LIGHT, spacing=1.2)
+
+    # The right rail is informative, not decorative: it frames the deck's scope.
+    add_rect(slide, 9.45, 1.68, 0.012, 3.82, LIGHT)
+    rail = [
+        ("SCOPE", f"{total:02d} patterns"),
+        ("OUTPUT", "PowerPoint"),
+        ("QUALITY", "Generate / Validate / Review"),
+    ]
+    for i, (label, value) in enumerate(rail):
+        y = 1.82 + i * 1.12
+        add_text(slide, 9.82, y, 2.25, 0.25, label, 8.8,
+                 bold=True, color=LIGHT)
+        add_text(slide, 9.82, y + 0.34, 2.35, 0.45, value, 13.5,
+                 bold=True, color=WHITE)
 
     add_text(slide, 0.9, 6.5, 4.8, 0.3, meta["author"], 10.5,
              bold=True, color=WHITE)
-    add_text(slide, 9.7, 6.5, 2.7, 0.3, meta["date"], 10.5,
-             color=LIGHT, align=PP_ALIGN.RIGHT)
 
 
 def s_bullets(slide, spec, page):
@@ -202,6 +214,34 @@ def s_cards(slide, spec, page):
                 add_rect(slide, x + cw + gap / 2, top + 0.04, 0.012, ch - 0.08, RULE)
         return
 
+    if style == "editorial" and n == 4:
+        lead_head, lead_body = cards[0]
+        top = BODY_TOP + 0.46
+        add_text(slide, 0.8, top, 0.58, 0.36, "01", 15,
+                 bold=True, color=GRAY)
+        add_text(slide, 1.52, top - 0.03, 3.95, 0.56, lead_head,
+                 23, bold=True, color=NAVY)
+        lead_size, lead_lines = fit_font_size(
+            lead_body, 4.1, 2.05, 16, min_pt=13, spacing=1.28)
+        add_text(slide, 1.52, top + 0.76, 4.1, 2.05,
+                 "\n".join(lead_lines), lead_size, color=TEXT, spacing=1.28)
+
+        right_x, right_w = 6.42, 5.92
+        row_h = 1.31
+        for i, (head, body) in enumerate(cards[1:], 2):
+            y = top + (i - 2) * row_h
+            add_text(slide, right_x, y + 0.02, 0.5, 0.32, f"{i:02d}", 12.5,
+                     bold=True, color=GRAY)
+            add_text(slide, right_x + 0.68, y, right_w - 0.68, 0.38, head,
+                     16, bold=True, color=NAVY)
+            body_size, body_lines = fit_font_size(
+                body, right_w - 0.72, 0.56, 12.5, min_pt=11, spacing=1.15)
+            add_text(slide, right_x + 0.68, y + 0.48, right_w - 0.72, 0.56,
+                     "\n".join(body_lines), body_size, color=TEXT, spacing=1.15)
+            if i < n:
+                add_rect(slide, right_x + 0.68, y + 1.14, right_w - 0.68, 0.012, RULE)
+        return
+
     cols = 2 if n == 4 else n
     rows = 2 if n == 4 else 1
     gap_x, gap_y = 0.72, 0.44
@@ -241,9 +281,9 @@ def s_table(slide, spec, page):
     assert abs(sum(widths) - BODY_W) < 0.6, f"列幅合計={sum(widths)}"
     size = 13.5
     pad = 0.14
-    hdr_h = 0.66
+    hdr_h = 0.72
     avail = BODY_BOTTOM - BODY_TOP - 0.15 - hdr_h - (0.3 if spec.get("note") else 0)
-    min_row_h = min(0.82, max(0.56, avail / max(1, len(rows))))
+    min_row_h = min(1.04, max(0.64, avail / max(1, len(rows))))
     while size >= 10.5:
         row_hs = []
         for row in rows:
