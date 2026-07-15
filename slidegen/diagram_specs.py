@@ -1,22 +1,23 @@
-"""図解の宣言的仕様。座標は書かない(diagram_layout.pyが計算する)。
+"""公開diagramスキーマだけで記述した構成図サンプル。
 
 書くのは:
   cols/rows   : グリッドの列・行の並び(名前だけ)
   nodes       : ノード = (列, 行, アイコン, ラベル)
-  containers  : メンバー列挙(外側から順に。@名前 で子コンテナ参照)。
-                  "pad"は全辺の余白、"pad_x"を指定すると左右だけ上書きできる
-                  (上下[行間計算]を変えずに配線レーンのクリアランスだけ広げたい時に使う)
-  channels    : 配線レーン = ("left_of_col"|"right_of_col"|"above_row"|"below_row", 基準セル)
-                  または ("outside_container", (コンテナ名 または [ノード名,...], "left"|"right"|"top"|"bottom"))
+  containers  : メンバー列挙(外側から順に。@名前 で子コンテナ参照)
+  channels    : 配線レーン = ["left_of_col"|"right_of_col"|"above_row"|"below_row", 基準セル]
+                  または ["outside_container", [コンテナ名 または [ノード名,...], 辺]]
                   — 後者は「そのコンテナ(またはノード群)のすぐ外側」を指す。同じ列/近い位置を
                   共有するノード間のローカルループ(例: 同一AZ内のFargate→RDS、隣接する
                   Route53↔CloudFrontの折り返し)は必ずこちらを使う。
                   列基準のチャネルを流用すると、無関係な隣接列まで大回りして他コンテナの
                   境界線を貫通する(実際に2箇所で発生した不具合。要注意)。
   edges       : from/to(+必要なら exit/enter 辺, via チャネル, label)
+座標・描画領域・コンテナ余白は diagram_layout.py が構造から計算する。
+これらは名前付きテンプレートではなく、content.json の diagram と同じ形式の
+回帰試験用サンプルである。
 """
 
-AWS_SIMPLE = {
+AWS_SIMPLE_EXAMPLE = {
     "cols": ["user", "alb", "ecs", "svc", "dept"],
     "rows": ["top", "mid", "bot"],
     "nodes": {
@@ -39,7 +40,7 @@ AWS_SIMPLE = {
         {"name": "cloud", "label": "AWS Cloud",
          "members": ["@vpc", "bedrock", "s3", "cw"], "color": "line"},
         {"name": "vpc", "label": "VPC (private)", "members": ["alb", "ecs"],
-         "color": "accent", "dash": "dash", "pad": 0.24},
+         "color": "accent", "dash": "dash"},
     ],
     "channels": {},
     "edges": [
@@ -52,12 +53,9 @@ AWS_SIMPLE = {
     ],
 }
 
-AWS_MULTIAZ = {
+AWS_MULTIAZ_EXAMPLE = {
     "cols": ["user", "edge", "fg_a", "alb", "fg_c", "svc"],
     "rows": ["north", "web", "fg", "rds"],
-    # 4行×sub付きノード込みで既定領域(AREA)には収まらないため、この図解専用に
-    # 縦を広げる(ヘッダー罫線の直下から使い、下端も本文フッター罫線の手前まで)。
-    "area": (0.70, 1.50, 12.633, 7.04),
     "nodes": {
         "user": {"col": "user", "row": "web", "icon": "users.png",
                  "title": "社内ユーザー"},
@@ -80,35 +78,27 @@ AWS_MULTIAZ = {
                "title": "CloudWatch", "sub": "監視・ログ"},
     },
     "containers": [
-        # pad: Route53<->CloudFront間にDIRECT_GAP(直結コネクタ用の必須ギャップ、
-        # はっきり視認できる幅)を確保するため、上下スタックの余白をここで
-        # 切り詰めて捻出している(行間圧縮ではGAPがほぼ0まで潰れ、直結
-        # コネクタが事実上消えていた)。
         {"name": "cloud", "label": "AWS Cloud",
-         "members": ["@vpc", "r53", "cf", "s3", "cw"], "pad": 0.08},
+         "members": ["@vpc", "r53", "cf", "s3", "cw"]},
         {"name": "vpc", "label": "VPC (private subnets)",
-         "members": ["alb", "@az_a", "@az_c"], "color": "navy",
-         "pad": 0.04, "pad_x": 0.44},  # pad_x: AZ間ループ配線+ラベルのクリアランス確保用
-        # pad_x: 縦長で窮屈に見えないよう横だけ広げる(手書き版は幅2.95inだった
-        # のに対し、自動計算の素の幅は1.47inしかなく縦長すぎた。実際の指摘)。
-        # pad(縦)は行間計算に響くため変えない。
+         "members": ["alb", "@az_a", "@az_c"], "color": "navy"},
         {"name": "az_a", "label": "AZ-a", "members": ["fg_a", "rds_a"],
-         "dash": "dash", "pad": 0.10, "pad_x": 0.28},
+         "dash": "dash"},
         {"name": "az_c", "label": "AZ-c", "members": ["fg_c", "rds_c"],
-         "dash": "dash", "pad": 0.10, "pad_x": 0.28},
+         "dash": "dash"},
     ],
     "channels": {
-        "loop_a": ("outside_container", ("az_a", "left")),
-        "loop_c": ("outside_container", ("az_c", "right")),
+        "loop_a": ["outside_container", ["az_a", "left"]],
+        "loop_c": ["outside_container", ["az_c", "right"]],
         # fg_c->s3をloop_cと同じレーンに通すと、fg_c->rds_cのループと同じ
         # x座標を共有し、別々の線が1本につながって見える(実際の指摘)。
         # VPCのさらに外側に専用レーンを設けて視覚的に分離する。
-        "s3_lane": ("outside_container", ("vpc", "right")),
+        "s3_lane": ["outside_container", ["vpc", "right"]],
         # ALB→Fargateの横方向ジョグをAZコンテナのラベル帯のすぐ下(内側)で
         # 行い、ラベルの文字帯を横切らないようにする(自動Zルート任せだと
         # ジョグ位置がラベル帯の高さと重なることがあった。実際に発生した不具合)。
-        "above_az_a": ("outside_container", ("az_a", "top_inside")),
-        "above_az_c": ("outside_container", ("az_c", "top_inside")),
+        "above_az_a": ["outside_container", ["az_a", "top_inside"]],
+        "above_az_c": ["outside_container", ["az_c", "top_inside"]],
     },
     "edges": [
         {"from": "user", "to": "cf"},
@@ -141,5 +131,3 @@ AWS_MULTIAZ = {
         {"from": "@vpc", "to": "cw", "from_row": "rds", "dash": "dash"},
     ],
 }
-
-DIAGRAMS = {"aws_simple": AWS_SIMPLE, "aws_multiaz": AWS_MULTIAZ}

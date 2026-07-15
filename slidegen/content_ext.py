@@ -1,5 +1,9 @@
 """表現力検証用の拡張スライド定義(v2デッキで9枚の後ろに追加)。"""
 
+from copy import deepcopy
+
+from diagram_specs import AWS_MULTIAZ_EXAMPLE, AWS_SIMPLE_EXAMPLE
+
 EXTRA_SLIDES = [
     {
         "type": "process",
@@ -16,7 +20,7 @@ EXTRA_SLIDES = [
     },
     {
         "type": "diagram",
-        "spec": "aws_simple",
+        "diagram": deepcopy(AWS_SIMPLE_EXAMPLE),
         "kicker": "参考: システム構成(表現力検証)",
         "title": "全社展開時はAWS上にAPI化し、Bedrock経由で構成JSONを生成する",
         "note": "図は簡略化。実装時はIAM・ネットワーク設計を別途詳細化する。",
@@ -27,12 +31,12 @@ EXTRA_SLIDES = [
         "title": "導入は事務局をハブに6者と並行調整する",
         "hub": "AI活用\n推進事務局",
         "ring": [
-            {"name": "経営層", "sub": "投資判断", "label": "効果報告 / 承認"},
-            {"name": "情報システム部", "sub": "基盤・契約", "label": "セキュリティ審査"},
-            {"name": "現場部門", "sub": "パイロット参加", "label": "要件 / フィードバック"},
-            {"name": "法務・コンプラ", "sub": "規程整備", "label": "利用規程レビュー"},
-            {"name": "広報・ブランド", "sub": "テンプレ所管", "label": "テンプレート提供"},
-            {"name": "外部ベンダー", "sub": "技術支援", "label": "導入支援 / QA"},
+            {"name": "経営層", "sub": "投資判断", "label": "効果報告 / 承認", "icon": "fluent/briefcase.png"},
+            {"name": "情報システム部", "sub": "基盤・契約", "label": "セキュリティ審査", "icon": "fluent/server.png"},
+            {"name": "現場部門", "sub": "パイロット参加", "label": "要件 / フィードバック", "icon": "fluent/team.png"},
+            {"name": "法務・コンプラ", "sub": "規程整備", "label": "利用規程レビュー", "icon": "fluent/shield_check.png"},
+            {"name": "広報・ブランド", "sub": "テンプレ所管", "label": "テンプレート提供", "icon": "fluent/send.png"},
+            {"name": "外部ベンダー", "sub": "技術支援", "label": "導入支援 / QA", "icon": "fluent/toolbox.png"},
         ],
     },
     {
@@ -53,7 +57,7 @@ EXTRA_SLIDES = [
     },
     {
         "type": "diagram",
-        "spec": "aws_multiaz",
+        "diagram": deepcopy(AWS_MULTIAZ_EXAMPLE),
         "kicker": "参考: 本番構成(高密度検証)",
         "title": "本番はマルチAZ冗長構成。CloudFront配信とRDS同期まで含めて表現できるか検証",
     },

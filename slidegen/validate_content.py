@@ -76,6 +76,8 @@ def _v_bullets(s):
 
 def _v_cards(s):
     items = s.req_list("cards", 2, 4, "[見出し, 本文]")
+    if "style" in s.spec and s.spec["style"] not in {"editorial", "metrics"}:
+        s.err('cards.style は "editorial" または "metrics" にしてください')
     for i, c in enumerate(items or []):
         if not (isinstance(c, list) and len(c) == 2
                 and _is_str(c[0]) and _is_str(c[1])):
@@ -192,6 +194,11 @@ def _v_matrix(s):
     for key in ("x_axis", "y_axis", "target_label"):
         s.req_str(key)
     points = s.req_list("points", 1, 8, "点")
+    quadrants = s.spec.get("quadrants")
+    if quadrants is not None and not (
+            isinstance(quadrants, list) and len(quadrants) == 4
+            and all(_is_str(label) for label in quadrants)):
+        s.err("quadrants は [左下, 右下, 左上, 右上] の4文字列にしてください")
     for i, p in enumerate(points or []):
         if not (isinstance(p, dict) and _is_str(p.get("name"))
                 and _is_num(p.get("x")) and _is_num(p.get("y"))):
@@ -211,8 +218,13 @@ def _v_hub(s):
     ring = s.req_list("ring", 6, 6, "周辺ノード")
     for i, r in enumerate(ring or []):
         if not (isinstance(r, dict) and _is_str(r.get("name"))
-                and _is_str(r.get("label"))):
-            s.err(f"ring[{i}] には name / label (文字列) が必要です")
+                and _is_str(r.get("label")) and _is_str(r.get("icon"))):
+            s.err(f"ring[{i}] には name / label / icon (文字列) が必要です")
+            continue
+        icon = Path(__file__).parent / "assets" / r["icon"]
+        if not icon.is_file():
+            s.err(f"ring[{i}].icon のファイルがありません: {r['icon']}。"
+                  "CONTENT_SCHEMA.md のFluentアイコン一覧から選んでください")
 
 
 def _v_org(s):
@@ -257,6 +269,9 @@ def _v_diagram(s):
     if "spec" in s.spec or "spec" in d:
         s.err('"spec" (サンプル図の名前参照) は使えません。diagram の中に'
               'グリッド仕様をインラインで書いてください')
+    if "area" in d:
+        s.err("diagram.area は指定できません。描画領域は行数からエンジンが"
+              "自動計算します")
     cols, rows = d.get("cols"), d.get("rows")
     for key, v in (("cols", cols), ("rows", rows)):
         if not (isinstance(v, list) and v and all(_is_str(c) for c in v)):
@@ -278,9 +293,21 @@ def _v_diagram(s):
         if isinstance(rows, list) and n.get("row") not in rows:
             s.err(f"nodes.{name}.row={n.get('row')!r} が diagram.rows に"
                   f"ありません")
-        if "icon" in n and not _is_str(n["icon"]):
-            s.err(f"nodes.{name}.icon は文字列 (省略可。省略時は汎用図形ノード)"
-                  f" にしてください")
+        if not _is_str(n.get("icon")):
+            s.err(f"nodes.{name}.icon は必須です。CONTENT_SCHEMA.md の"
+                  f"Fluent/AWSアイコン一覧から選んでください")
+        else:
+            assets = (Path(__file__).parent / "assets").resolve()
+            icon_path = (assets / n["icon"]).resolve()
+            try:
+                icon_path.relative_to(assets)
+            except ValueError:
+                s.err(f"nodes.{name}.icon は slidegen/assets/ 内の相対パスに"
+                      f"してください")
+            else:
+                if not icon_path.is_file():
+                    s.err(f"nodes.{name}.icon={n['icon']!r} が assets/ にありません。"
+                          f"Fluent一覧は fetch_fluent_icons.py --list で確認してください")
     cont_names = set()
     containers = d.get("containers", [])
     if not isinstance(containers, list):
@@ -292,6 +319,10 @@ def _v_diagram(s):
             s.err(f"containers[{i}] には name / label (文字列) と members (配列)"
                   f" が必要です")
             continue
+        for key in ("pad", "pad_x"):
+            if key in c:
+                s.err(f"containers[{i}].{key} は指定できません。余白は入れ子構造と"
+                      "行数からエンジンが自動計算します")
         cont_names.add(c["name"])
     for i, c in enumerate(containers):
         for m in c.get("members", []):

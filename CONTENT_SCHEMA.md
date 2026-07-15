@@ -99,7 +99,7 @@ python slidegen/validate_content.py content.json
 
 ### cards
 
-用途: サマリ、KPI、論点整理。
+用途: 独立したサマリ、KPI、選択肢、事例の比較。出力は枠線に頼らないフラットな編集的カードになる。
 
 必須:
 
@@ -108,19 +108,27 @@ python slidegen/validate_content.py content.json
 - `title`: string
 - `cards`: `[heading, body]` の配列
 
+任意:
+
+- `style`: `"editorial"`(既定) / `"metrics"`
+
 制約:
 
 - `cards` は3〜4件が安全(validatorの範囲は2〜4件)。
 - 件数に応じて横並び幅が自動計算される。
+- 各項目が独立して比較できる場合に使う。フェーズ名や図のノードなど、別の構造に属する要素には使わない。
+- `editorial`: サマリ・選択肢・事例向け。2〜3件は横並び、4件は2×2で描画する。
+- `metrics`: KPI向け。数値を含む見出しを大きく扱う横並びカードとして描画する。
 
 ```json
 {
   "type": "cards",
+  "style": "editorial",
   "kicker": "分類",
   "title": "タイトル",
   "cards": [
-    ["カード見出し", "カード本文"],
-    ["カード見出し", "カード本文"]
+    ["要点見出し", "要点本文"],
+    ["要点見出し", "要点本文"]
   ]
 }
 ```
@@ -180,6 +188,7 @@ python slidegen/validate_content.py content.json
 制約:
 
 - 左右それぞれ3〜5項目程度が安全。
+- 左右を枠付きパネルにせず、中央罫線とタイポグラフィで比較関係を示す。
 
 ```json
 {
@@ -333,6 +342,7 @@ python slidegen/validate_content.py content.json
 - `points[*].emph`: boolean
 - `points[*].lx`: number
 - `points[*].ly`: number
+- `quadrants`: `[左下, 右下, 左上, 右上]` の4文字列
 - `note`: string
 
 制約:
@@ -349,6 +359,7 @@ python slidegen/validate_content.py content.json
   "x_axis": "横軸ラベル",
   "y_axis": "縦軸ラベル",
   "target_label": "強調領域ラベル",
+  "quadrants": ["左下", "右下", "左上", "右上"],
   "points": [
     {"name": "点ラベル", "x": 0.5, "y": 0.5, "emph": true}
   ],
@@ -369,6 +380,7 @@ python slidegen/validate_content.py content.json
 - `ring`: object の配列
 - `ring[*].name`: string
 - `ring[*].label`: string
+- `ring[*].icon`: string。`fluent/〜.png` を指定する
 
 任意:
 
@@ -386,7 +398,7 @@ python slidegen/validate_content.py content.json
   "title": "タイトル",
   "hub": "中央ラベル",
   "ring": [
-    {"name": "周辺ノード", "sub": "補足", "label": "関係ラベル"}
+      {"name": "周辺ノード", "sub": "補足", "label": "関係ラベル", "icon": "fluent/team.png"}
   ]
 }
 ```
@@ -452,10 +464,17 @@ python slidegen/validate_content.py content.json
   - `col` / `row`: 所属セル(cols/rowsの名前)
   - `title`: 表示名
   - `sub`: 補足ラベル(任意)
-  - `icon`: `slidegen/assets/` からの相対PNGパス(任意)。**省略すると汎用図形ノード**(角丸四角+カラーバー)になるので、アイコン素材がないテーマでもそのまま描ける
-    - 汎用アイコン(`fluent/<名前>.png`、同梱済み): 使える名前は次の19種のみ(これ以外のファイル名を発明しない): `server` `router` `shield`(FW) `database` `desktop` `laptop` `people` `person` `building` `branch`(拠点) `cloud` `globe`(インターネット) `alert` `mail` `phone` `wrench`(保守) `lock` `switch`(L2/L3SW) `monitor`(監視)
+  - `icon`: `slidegen/assets/` からの相対PNGパス(必須)。同梱Fluent/AWSアイコンから選ぶ
+    - Fluentアイコン(`fluent/<名前>.png`、72種同梱済み)。次の名前だけを使い、ファイル名を発明しない。`python slidegen/fetch_fluent_icons.py --list` でも確認できる
+      - インフラ・端末: `server` `router` `database` `desktop` `laptop` `tablet` `phone` `printer` `hard_drive` `storage`
+      - ネットワーク・クラウド: `cloud` `globe` `wifi` `ethernet` `link` `gateway` `sync` `upload` `download` `switch`
+      - セキュリティ: `shield` `shield_lock` `shield_check` `lock` `key` `certificate`
+      - 人物・組織・拠点: `people` `team` `person` `contact` `organization` `briefcase` `building` `branch` `factory` `store` `warehouse` `home`
+      - アプリ・データ・文書: `app` `browser` `terminal` `code` `bot` `ai` `folder` `document` `file_data` `archive`
+      - コミュニケーション・業務: `mail` `chat` `video` `call` `send` `calendar` `task` `cart` `money` `chart`
+      - 運用・状態: `alert` `warning` `info` `check` `search` `clock` `history` `settings` `toolbox` `wrench` `monitor`
+      - 物理移動: `truck` `car` `airplane`
     - AWSアイコン(同梱済み): `alb.png` `bedrock.png` `cloudfront.png` `cloudwatch.png` `dynamodb.png` `ecr.png` `fargate.png` `rds.png` `route53.png` `s3.png` `sqs.png` `user.png` `users.png` のみ。増やす場合は `extract_aws_icons.py`
-  - `color`: `"accent"`(既定) / `"navy"` / `"line"`(汎用図形ノードの枠色)
 - `diagram.edges`: object の配列
   - `from` / `to`: ノード名(または `@コンテナ名`)
   - `label` / `label_w`: 線上ラベルと幅(任意)
@@ -467,7 +486,7 @@ python slidegen/validate_content.py content.json
 
 - `diagram.containers`: 外接枠。object の配列(外側から順)
   - `name` / `label` / `members`(ノード名または `@子コンテナ名` の列挙)
-  - `color` / `dash` / `pad` / `pad_x`
+  - `color` / `dash`
 - `diagram.channels`: 配線レーン。`名前: [種類, 基準]` のobject
   - 種類: `"left_of_col"` / `"right_of_col"` / `"above_row"` / `"below_row"` / `"outside_container"`
   - `outside_container` の基準は `[コンテナ名, "left"|"right"|"top"|"bottom"|"top_inside"]`
@@ -502,9 +521,10 @@ python slidegen/validate_content.py content.json
 制約:
 
 - 参照整合(col/rowの存在、edges/membersのノード参照、viaのチャネル参照)はvalidatorが検証する。
+- 描画領域とコンテナ余白は、行数とコンテナの入れ子構造からエンジンが自動計算する。`area` / `pad` / `pad_x` は入力できない。
 - 行間に収まるか・配線がコンテナを貫通しないか等は、生成時にエンジン自身が対処方法つきのエラーで検出する(収まらない場合は行数・sub・ラベルを減らす)。
 - ノードは10個程度・4行程度までが安全(それ以上は縦に収まらずエラーになる)。
-- `diagram_specs.py` のサンプル名参照(`"spec": "aws_multiaz"` など)は**使えない**。仕様は必ずインラインで書く。
+- 名前付きテンプレート参照はない。仕様は必ず `diagram` にインラインで書く。
 
 ## Not Supported For New Decks
 

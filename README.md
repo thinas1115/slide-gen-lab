@@ -17,6 +17,7 @@
 | `CONTENT_SCHEMA.md` | `content.json` の中立スキーマ。生成AIにはこれと `AI_DECK_PROMPT.md` を渡す |
 | `AI_DECK_PROMPT.md` | 生成AIに `content.json` を書かせる依頼文の穴埋めテンプレート |
 | `EXTENDING.md` | 新しいtype・エンジン機能を追加するときの不変条件と手順(AI向け拡張ガイド) |
+| `DESIGN_CUSTOMIZATION.md` | 配色・表紙・既存renderer・複数テーマ対応など、デザイン変更時の修正箇所一覧 |
 | `slidegen/` | 本体。Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
 | `slidegen/generate_from_json.py` | `content.json` → PPTX 生成(生成前にschema検証を自動実行) |
 | `slidegen/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・サンプル専用typeの拒否) |
@@ -33,7 +34,7 @@
 3. 前提: Windows + 游ゴシック(`slidegen/textfit.py` が `C:\Windows\Fonts\YuGoth*.ttc` を参照。別OSはこの数行を変更)
 4. 目視用に PowerPoint(`render.ps1` が使用。生成自体には不要)
 
-アイコン素材(AWS 13種 + Fluent汎用19種)は `slidegen/assets/` に**同梱済み**なので追加作業は不要
+アイコン素材(AWS 13種 + Fluent 72種)は `slidegen/assets/` に**同梱済み**なので追加作業は不要
 (出典・ライセンスは [assets/CREDITS.md](slidegen/assets/CREDITS.md))。増やす場合のみ:
 
 - AWS: [公式アイコンデッキ(PPTX)](https://aws.amazon.com/jp/architecture/icons/) を入手し `slidegen/extract_aws_icons.py` の SRC を変えて実行
@@ -55,8 +56,10 @@
 **手動で書く**: `CONTENT_SCHEMA.md` に沿って直接 `content.json` を用意してもよい。
 
 構成図(システム構成・ネットワーク図など)は `diagram` type を使い、グリッド仕様(列・行・ノード・エッジ)を書く。
-座標の数値は書かず、`diagram_layout.py` が計算する。ノードの `icon` は省略可(汎用図形になる)。
+座標の数値は書かず、`diagram_layout.py` が計算する。ノードの `icon` は必須で、同梱Fluent/AWSアイコンから選ぶ。
 `aws` / `aws2` はサンプル固定図のため `generate_from_json.py` が機械的に拒否する。
+
+`cards` typeは、KPI・選択肢・事例など各項目が独立して比較できる場合に使う。サマリ・事例は `style: "editorial"`、KPIは `style: "metrics"` を選ぶ。情報が少ないことだけを理由に白箱を並べたり、フェーズ名や図のノードなど別の構造に属する要素をカード化したりしない。
 
 ### 2. 生成・検証する
 
@@ -74,6 +77,9 @@ python contact_sheet.py out\png                                        # out\png
 
 新しいレイアウト種別が必要になったときだけ、renderer / レイアウタのコーディングが発生する(→ `EXTENDING.md`)。
 サンプルデッキ自体を再生成するなら `python slidegen/generate.py out\sample.pptx`(基本)/ `generate2.py`(図解入り)。
+
+既存レイアウトのデザインを変更する場合は [`DESIGN_CUSTOMIZATION.md`](DESIGN_CUSTOMIZATION.md) を参照する。
+配色・フォント・表紙などのテーマ差し替えと、新しいレイアウト追加では修正範囲が異なる。
 
 ## 設計方針(レイアウタ・カタログ)
 
