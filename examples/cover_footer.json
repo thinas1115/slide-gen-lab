@@ -6,9 +6,9 @@
     "show_rail": true,
     "background_image": null,
     "rail": [
-      {"label": "PAGES", "value": "{total:02d} slides"},
-      {"label": "OWNER", "value": "{author}"},
-      {"label": "DATE", "value": "{date}"}
+      {"label": "TOPIC", "value": "スライド生成基盤"},
+      {"label": "AUDIENCE", "value": "社内利用者"},
+      {"label": "OWNER", "value": "{author}"}
     ],
     "background_color": "16324F",
     "title_color": "FFFDF7",

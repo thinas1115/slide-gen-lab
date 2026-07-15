@@ -75,6 +75,8 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 画像を指定しない場合は `background_color` が使われる。画像上の文字が読めるよう、画像に合わせて
 `title_color` と `secondary_color` も指定する。背景には16:9で十分な解像度の画像を推奨する。
 画像は生成時にPPTXへ埋め込まれるため、生成後の閲覧時に元画像は不要。
+右側の補足情報には `TOPIC / AUDIENCE / OWNER` を推奨する。記載する情報がない場合は、
+装飾のために空欄を残さず `show_rail` を `false` にする。
 
 ```json
 {
@@ -83,7 +85,12 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
     "background_image": "assets/cover.jpg",
     "title_color": "FFFFFF",
     "secondary_color": "E5ECEA",
-    "show_rail": false
+    "show_rail": true,
+    "rail": [
+      {"label": "TOPIC", "value": "スライド生成基盤"},
+      {"label": "AUDIENCE", "value": "社内利用者"},
+      {"label": "OWNER", "value": "{author}"}
+    ]
   },
   "footer": {
     "text": "{author}  |  Confidential",
