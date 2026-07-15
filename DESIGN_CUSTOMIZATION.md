@@ -3,18 +3,22 @@
 ## 結論
 
 このリポジトリは、**1つのデザインを別のデザインへ置き換える作業**を局所的な変更で行える構成になっている。
-配色・フォント・共通ヘッダー・フッター・表紙・基本rendererは `slidegen/generate.py` に集約され、
+配色・フォント・共通ヘッダー・基本rendererは `slidegen/generate.py`、表紙・フッターは
+`slidegen/cover_footer.py` に集約され、
 図解系も役割別のファイルに分離されているため、入力schemaを変えないデザイン変更は
 rendererと共通部品の範囲に閉じ込めやすい。
 
-テーマを実行時に選ぶ仕組みはなく、デザインはPythonコード内の単一テーマとして定義されているため、
-「テーマA / テーマBを `content.json` やCLIオプションで切り替える」には別途テーマ層の実装が必要になる。
+表紙とフッターだけは `--cover-footer-config` でユーザー別の設定JSONを選択できる。
+詳細は [`docs/cover-footer-customization.md`](docs/cover-footer-customization.md) を参照する。
+本文を含むテーマ全体を実行時に切り替える仕組みはなく、デザインはPythonコード内の単一テーマとして
+定義されているため、「テーマA / テーマBを切り替える」には別途テーマ層の実装が必要になる。
 
 ## 変更規模と難易度
 
 | 変更規模 | 例 | 主な修正範囲 | 難易度 |
 |---|---|---|---|
 | テーマ差し替え | 色、背景、フォント、見出し、ページ番号、表紙 | 主に `generate.py` | 低〜中 |
+| 表紙・フッター設定 | 固定文言、表示項目、表紙とフッターだけの色 | `slidegen/cover_footer.py` + 設定JSON | 低 |
 | 既存パターンの再デザイン | カード、比較、表、工程、ロードマップの造形変更 | `generate.py` + `diagrams*.py` | 中 |
 | 図解の表現変更 | ノード、コンテナ、矢印、ラベル、構成図の色と線 | `diagrams.py` + `diagram_layout.py` | 中 |
 | 新しいレイアウト追加 | タイムライン、写真中心、メッセージ1枚絵など新ジャンル | renderer + schema + validator + gallery | 高 |
@@ -28,8 +32,8 @@ rendererと共通部品の範囲に閉じ込めやすい。
 | 基本フォント | `slidegen/generate.py` の `FONT` / `set_run()` | PowerPointに設定する日本語フォント、言語、太字、文字色 |
 | フォント実測 | `slidegen/textfit.py` の `_font()` | `FONT` を変える場合に、Pillowが同じフォントファイルを測るよう変更 |
 | スライド寸法・本文領域 | `generate.py` の `SLIDE_W` / `SLIDE_H` / `MARGIN` / `BODY_*` | 画面比率、余白、本文の使用可能領域。変更影響が大きいため全rendererを再検証 |
-| 共通フレーム | `generate.py` の `header()` / `footer()` / `note_line()` | 全本文スライドの背景、見出し、装飾、ページ番号、注記 |
-| 表紙 | `generate.py` の `s_title()` | 表紙専用の構図、タイトル階層、日付・作成者、装飾 |
+| 表紙・フッター | `slidegen/cover_footer.py` / `--cover-footer-config` | 表紙、ページ番号、フッター文言。利用者別設定はコード変更不要 |
+| 共通ヘッダー・注記 | `generate.py` の `header()` / `note_line()` | 全本文スライドの背景、見出し、注記 |
 | 箇条書き | `generate.py` の `s_bullets()` | 番号、区切り、縦詰め、本文サイズ |
 | カード / KPI | `generate.py` の `s_cards()` | 列数計算、強調カード、背景面、見出しと本文の階層 |
 | 比較表 | `generate.py` の `s_table()` / `_cell()` | ヘッダー、行高、交互色、列見出し、文字位置 |
@@ -63,9 +67,16 @@ rendererと共通部品の範囲に閉じ込めやすい。
 
 PowerPoint側だけフォントを変え、`textfit.py` を変えない状態は禁止。測定値と実描画がずれて溢れの原因になる。
 
-### 表紙と共通フレームだけ変える
+### 表紙とフッターだけ変える
 
-`generate.py` の `s_title()`、`header()`、`footer()`、`note_line()` が対象。
+利用者ごとの差し替えは、`generate.py` を編集せず `--cover-footer-config` を使う。
+設定できる項目と実行方法は [`docs/cover-footer-customization.md`](docs/cover-footer-customization.md) を参照する。
+
+標準デザイン自体を変更する場合は `slidegen/cover_footer.py` の標準設定と描画を変更する。
+
+### 共通ヘッダーと注記も変える
+
+`generate.py` の `header()`、`note_line()` が対象。
 renderer内部の配置を変えなければ、本文パターンへの影響は限定的。
 
 ### 既存パターンの構図を変える
