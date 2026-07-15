@@ -38,7 +38,7 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 | `meta.date` | 表紙の日付と `{date}` |
 | `meta.author` | 表紙の作成者と `{author}` |
 
-表紙・フッター設定JSONは、表示する要素、固定文言、配色を持つ。資料内容とブランド設定を
+表紙・フッター設定JSONは、表示する要素、固定文言、配色、表紙背景画像を持つ。資料内容とブランド設定を
 分離することで、同じ `content.json` を利用者別の表紙・フッターで再生成できる。
 
 ## 設定項目
@@ -52,6 +52,7 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 | `show_author` | boolean | 左下の作成者を表示する |
 | `show_rail` | boolean | 右側の補足情報を表示する |
 | `rail` | array | `label` / `value` の組。0〜3件 |
+| `background_image` | string / null | 表紙背景のPNG/JPEG。設定JSONからの相対パスを推奨。絶対パスも使用可能 |
 | `background_color` | string | 表紙背景の6桁HEX色 |
 | `title_color` | string | タイトル・作成者・rail値の6桁HEX色 |
 | `secondary_color` | string | サブタイトル・日付・rail線の6桁HEX色 |
@@ -70,11 +71,18 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 | `divider_color` | string | 境界線の6桁HEX色 |
 
 設定JSONは部分指定できる。省略した項目には標準設定が使われる。
+`background_image` を指定すると、画像の縦横比を維持したまま中央基準で表紙全面へトリミングする。
+画像を指定しない場合は `background_color` が使われる。画像上の文字が読めるよう、画像に合わせて
+`title_color` と `secondary_color` も指定する。背景には16:9で十分な解像度の画像を推奨する。
+画像は生成時にPPTXへ埋め込まれるため、生成後の閲覧時に元画像は不要。
 
 ```json
 {
   "cover": {
     "eyebrow": "QUARTERLY BUSINESS REVIEW",
+    "background_image": "assets/cover.jpg",
+    "title_color": "FFFFFF",
+    "secondary_color": "E5ECEA",
     "show_rail": false
   },
   "footer": {
