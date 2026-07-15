@@ -14,7 +14,8 @@ from pptx.util import Emu, Inches, Pt
 
 from content import DECK
 from cover_footer import load_cover_footer_config, render_cover, render_footer
-from textfit import fit_font_size, line_height_in, wrap_text
+from layout_fit import FitError, fit_text_or_raise, select_fit, stepped
+from textfit import line_height_in, wrap_text
 
 # ---- テーマ ----
 NAVY = RGBColor(0x18, 0x2C, 0x43)
@@ -91,15 +92,20 @@ def add_rect(slide, x, y, w, h, fill, *, line=None, round_=False):
 
 def header(slide, kicker, title):
     add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, CANVAS)
-    add_text(slide, 0.72, 0.27, 4.8, 0.32, kicker, 11.5, bold=True, color=ACCENT)
+    kicker_size, _ = fit_text_or_raise(
+        "header", "kicker", kicker, 4.8, 0.32, 11.5,
+        min_pt=9, weight="bold", spacing=1.1)
+    add_text(slide, 0.72, 0.27, 4.8, 0.32, kicker, kicker_size,
+             bold=True, color=ACCENT)
     size = 27
     lines = wrap_text(title, 11.9, size, "bold")
     while len(lines) > 1 and size > 18:
         size -= 0.5
         lines = wrap_text(title, 11.9, size, "bold")
     if len(lines) > 1:
-        size, lines = fit_font_size(
-            title, 11.9, 0.86, 18, min_pt=16, weight="bold", spacing=1.08)
+        size, lines = fit_text_or_raise(
+            "header", "title", title, 11.9, 0.86, 18,
+            min_pt=16, weight="bold", spacing=1.12)
     add_text(slide, 0.72, 0.67, 11.9, 0.86, "\n".join(lines), size,
              bold=True, color=NAVY, spacing=1.12)
 
@@ -118,7 +124,11 @@ def footer(slide, page):
 
 
 def note_line(slide, note):
-    add_text(slide, MARGIN, 6.62, BODY_W, 0.25, note, 8.5, color=GRAY, align=PP_ALIGN.RIGHT)
+    size, _ = fit_text_or_raise(
+        "note", "text", note, BODY_W, 0.25, 8.5,
+        min_pt=7, spacing=1.1)
+    add_text(slide, MARGIN, 6.62, BODY_W, 0.25, note, size,
+             color=GRAY, align=PP_ALIGN.RIGHT)
 
 
 # ---- スライド種別 ----
@@ -135,14 +145,27 @@ def s_bullets(slide, spec, page):
     area_h = BODY_BOTTOM - BODY_TOP - 0.22
     tx = 1.68
     tw = 10.15
-    size, gap = 18, 0.48
-    while size > 12:
+    def measure(size, gap):
         heights = [len(wrap_text(t, tw, size)) * line_height_in(size, 1.22)
                    for t, _ in bullets]
         total = sum(heights) + gap * (len(bullets) - 1)
-        if total <= area_h:
-            break
-        size -= 0.5
+        return heights, total
+
+    def candidates():
+        for gap in stepped(0.48, 0.30, 0.03):
+            _heights, total = measure(18, gap)
+            yield ("standard" if gap == 0.48 else "gap",
+                   {"size": 18, "gap": gap}, total)
+        for size in stepped(17.5, 12, 0.5):
+            _heights, total = measure(size, 0.30)
+            yield "font", {"size": size, "gap": 0.30}, total
+
+    fitted = select_fit(
+        "bullets", area_h, candidates(),
+        guidance="箇条書きを減らすか各項目を短くしてください。",
+    )
+    size, gap = fitted.values["size"], fitted.values["gap"]
+    heights, total = measure(size, gap)
     y = BODY_TOP + 0.38 + max(0.0, (area_h - total) * 0.22)
     for i, ((text, _), bh) in enumerate(zip(bullets, heights), 1):
         add_text(slide, 0.78, y - 0.07, 0.62, 0.45, f"{i:02d}", 15,
@@ -166,16 +189,22 @@ def s_cards(slide, spec, page):
         cw = (usable_w - gap * (n - 1)) / n
         ch, top = 3.0, BODY_TOP + 0.76
         body_size = min(
-            fit_font_size(body, cw - 0.2, ch - 1.35, 13.5, min_pt=11,
-                          spacing=1.2)[0]
-            for _, body in cards)
+            fit_text_or_raise(
+                "cards.metrics", f"cards[{i}].body", body,
+                cw - 0.2, ch - 1.35, 13.5, min_pt=11, spacing=1.2,
+            )[0]
+            for i, (_, body) in enumerate(cards))
         for i, (head, body) in enumerate(cards):
             x = left + i * (cw + gap)
             label, value = _split_metric_head(head)
-            add_text(slide, x, top, cw, 0.34, label, 12.5,
+            label_size, _ = fit_text_or_raise(
+                "cards.metrics", f"cards[{i}].label", label,
+                cw, 0.34, 12.5, min_pt=10.5, weight="bold", spacing=1.1)
+            add_text(slide, x, top, cw, 0.34, label, label_size,
                      bold=True, color=NAVY)
-            value_size = fit_font_size(value, cw, 0.76, 34, min_pt=26,
-                                       weight="bold")[0]
+            value_size = fit_text_or_raise(
+                "cards.metrics", f"cards[{i}].value", value,
+                cw, 0.76, 34, min_pt=26, weight="bold")[0]
             add_text(slide, x, top + 0.48, cw, 0.76, value, value_size,
                      bold=True, color=ACCENT)
             add_text(slide, x, top + 1.55, cw, ch - 1.55, body,
@@ -189,10 +218,14 @@ def s_cards(slide, spec, page):
         top = BODY_TOP + 0.46
         add_text(slide, 0.8, top, 0.58, 0.36, "01", 15,
                  bold=True, color=GRAY)
+        lead_head_size, _ = fit_text_or_raise(
+            "cards.editorial", "cards[0].head", lead_head,
+            3.95, 0.56, 23, min_pt=18, weight="bold", spacing=1.1)
         add_text(slide, 1.52, top - 0.03, 3.95, 0.56, lead_head,
-                 23, bold=True, color=NAVY)
-        lead_size, lead_lines = fit_font_size(
-            lead_body, 4.1, 2.05, 16, min_pt=13, spacing=1.28)
+                 lead_head_size, bold=True, color=NAVY)
+        lead_size, lead_lines = fit_text_or_raise(
+            "cards.editorial", "cards[0].body", lead_body,
+            4.1, 2.05, 16, min_pt=13, spacing=1.28)
         add_text(slide, 1.52, top + 0.76, 4.1, 2.05,
                  "\n".join(lead_lines), lead_size, color=TEXT, spacing=1.28)
 
@@ -202,10 +235,15 @@ def s_cards(slide, spec, page):
             y = top + (i - 2) * row_h
             add_text(slide, right_x, y + 0.02, 0.5, 0.32, f"{i:02d}", 12.5,
                      bold=True, color=GRAY)
+            head_size, _ = fit_text_or_raise(
+                "cards.editorial", f"cards[{i - 1}].head", head,
+                right_w - 0.68, 0.38, 16, min_pt=13,
+                weight="bold", spacing=1.1)
             add_text(slide, right_x + 0.68, y, right_w - 0.68, 0.38, head,
-                     16, bold=True, color=NAVY)
-            body_size, body_lines = fit_font_size(
-                body, right_w - 0.72, 0.56, 12.5, min_pt=11, spacing=1.15)
+                     head_size, bold=True, color=NAVY)
+            body_size, body_lines = fit_text_or_raise(
+                "cards.editorial", f"cards[{i - 1}].body", body,
+                right_w - 0.72, 0.56, 12.5, min_pt=11, spacing=1.15)
             add_text(slide, right_x + 0.68, y + 0.48, right_w - 0.72, 0.56,
                      "\n".join(body_lines), body_size, color=TEXT, spacing=1.15)
             if i < n:
@@ -217,20 +255,50 @@ def s_cards(slide, spec, page):
     gap_x, gap_y = 0.72, 0.44
     cw = (usable_w - gap_x * (cols - 1)) / cols
     area_h = BODY_BOTTOM - BODY_TOP - 0.62
+    fit_available = area_h if rows == 2 else min(3.32, area_h)
+
+    def measure(size, candidate_gap):
+        row_needs = []
+        for row in range(rows):
+            row_cards = cards[row * cols:(row + 1) * cols]
+            body_need = max(
+                len(wrap_text(body, cw - 0.92, size))
+                * line_height_in(size, 1.2)
+                for _head, body in row_cards)
+            row_needs.append(0.72 + body_need)
+        return sum(row_needs) + candidate_gap * (rows - 1)
+
+    def candidates():
+        gaps = stepped(gap_y, 0.28, 0.04) if rows == 2 else [gap_y]
+        for candidate_gap in gaps:
+            used = measure(14, candidate_gap)
+            yield ("standard" if candidate_gap == gap_y else "gap",
+                   {"size": 14, "gap": candidate_gap}, used)
+        for size in stepped(13.5, 11, 0.5):
+            used = measure(size, 0.28 if rows == 2 else gap_y)
+            yield "font", {"size": size,
+                            "gap": 0.28 if rows == 2 else gap_y}, used
+
+    fitted = select_fit(
+        "cards", fit_available, candidates(),
+        guidance="カード本文を短くするかカード数を減らしてください。",
+    )
+    body_size = fitted.values["size"]
+    gap_y = fitted.values["gap"]
     ch = ((area_h - gap_y) / 2 if rows == 2 else min(3.32, area_h))
     top = BODY_TOP + (0.42 if rows == 2 else 0.72)
-    body_size = min(
-        fit_font_size(body, cw - 0.92, ch - 0.72, 14, min_pt=11,
-                      spacing=1.2)[0]
-        for _, body in cards)
     for i, (head, body) in enumerate(cards):
         row, col = divmod(i, cols)
         x = left + col * (cw + gap_x)
         y = top + row * (ch + gap_y)
         add_text(slide, x, y + 0.02, 0.58, 0.36, f"{i + 1:02d}", 14,
                  bold=True, color=GRAY)
-        add_text(slide, x + 0.72, y, cw - 0.72, 0.42, head,
-                 16.5, bold=True, color=NAVY)
+        head_size, _ = fit_text_or_raise(
+            "cards", f"cards[{i}].head", head,
+            cw - 0.72, 0.42, 16.5, min_pt=13,
+            weight="bold", spacing=1.1)
+        add_text(slide, x + 0.72, y, cw - 0.72, 0.42,
+                 head, head_size, bold=True, color=NAVY)
         add_text(slide, x + 0.72, y + 0.58, cw - 0.82, ch - 0.64, body,
                  body_size, color=TEXT, spacing=1.2)
         if row == 0:
@@ -249,21 +317,34 @@ def s_table(slide, spec, page):
     cols, rows = spec["columns"], spec["rows"]
     widths = spec["col_widths"]
     assert abs(sum(widths) - BODY_W) < 0.6, f"列幅合計={sum(widths)}"
-    size = 13.5
-    pad = 0.14
     hdr_h = 0.72
     avail = BODY_BOTTOM - BODY_TOP - 0.15 - hdr_h - (0.3 if spec.get("note") else 0)
     min_row_h = min(1.04, max(0.64, avail / max(1, len(rows))))
-    while size >= 10.5:
+
+    def measure(size, pad):
         row_hs = []
         for row in rows:
             need = max(
-                fit_font_size(c, widths[j] - pad * 2, 10, size, min_pt=size)[1].__len__()
+                len(wrap_text(c, widths[j] - pad * 2, size))
                 * line_height_in(size, 1.15) for j, c in enumerate(row))
             row_hs.append(max(need + pad * 2, min_row_h))
-        if sum(row_hs) <= avail:
-            break
-        size -= 0.5
+        return row_hs, sum(row_hs)
+
+    def candidates():
+        for pad in stepped(0.14, 0.10, 0.02):
+            _row_hs, used = measure(13.5, pad)
+            yield ("standard" if pad == 0.14 else "padding",
+                   {"size": 13.5, "pad": pad}, used)
+        for size in stepped(13.0, 10.5, 0.5):
+            _row_hs, used = measure(size, 0.10)
+            yield "font", {"size": size, "pad": 0.10}, used
+
+    fitted = select_fit(
+        "table", avail, candidates(),
+        guidance="表の行を減らすかセル内の文言を短くしてください。",
+    )
+    size, pad = fitted.values["size"], fitted.values["pad"]
+    row_hs, _used = measure(size, pad)
     table_h = hdr_h + sum(row_hs)
     top = BODY_TOP + 0.38 + max(0.0, (avail - table_h) * 0.12)
     gt = slide.shapes.add_table(len(rows) + 1, len(cols), Inches(MARGIN),
@@ -277,7 +358,10 @@ def s_table(slide, spec, page):
     for i, rh in enumerate(row_hs):
         table.rows[i + 1].height = Emu(int(Inches(rh)))
     for j, name in enumerate(cols):
-        _cell(table.cell(0, j), name, size, bold=True, color=WHITE, fill=NAVY,
+        header_size, _ = fit_text_or_raise(
+            "table", f"columns[{j}]", name, widths[j] - 0.18, hdr_h - 0.08,
+            size, min_pt=10.5, weight="bold", spacing=1.15)
+        _cell(table.cell(0, j), name, header_size, bold=True, color=WHITE, fill=NAVY,
               center=j != len(cols) - 1 and j != 0)
     for i, row in enumerate(rows):
         fill = WHITE if i % 2 else ZEBRA
@@ -314,13 +398,26 @@ def s_twocol(slide, spec, page):
     max_ch = BODY_BOTTOM - BODY_TOP - 0.15
     panels = [spec["left"], spec["right"]]
     tw = cw - 0.76
-    size, bgap = 14, 0.32
-    while size > 11:
+    def measure(size, bgap):
         cont = [sum(len(wrap_text(b, tw, size)) * line_height_in(size, 1.2) + bgap
                     for b in p["bullets"]) - bgap for p in panels]
-        if max(cont) <= max_ch - 1.38:
-            break
-        size -= 0.5
+        return cont, max(cont)
+
+    def candidates():
+        for bgap in stepped(0.32, 0.22, 0.02):
+            _cont, used = measure(14, bgap)
+            yield ("standard" if bgap == 0.32 else "gap",
+                   {"size": 14, "gap": bgap}, used)
+        for size in stepped(13.5, 11, 0.5):
+            _cont, used = measure(size, 0.22)
+            yield "font", {"size": size, "gap": 0.22}, used
+
+    fitted = select_fit(
+        "twocol", max_ch - 1.38, candidates(),
+        guidance="左右の箇条書きを減らすか文言を短くしてください。",
+    )
+    size, bgap = fitted.values["size"], fitted.values["gap"]
+    cont, _used = measure(size, bgap)
     body_h = max(cont) + 0.28
     top = BODY_TOP + 0.34
     for i, p in enumerate(panels):
@@ -330,8 +427,12 @@ def s_twocol(slide, spec, page):
         add_text(slide, x + 0.36, top + 0.28, cw - 0.72, 0.25,
                  "BEFORE" if i == 0 else "AFTER", 9.5,
                  bold=True, color=GRAY if i == 0 else ACCENT)
+        heading_size, _ = fit_text_or_raise(
+            "twocol", f"{'left' if i == 0 else 'right'}.heading",
+            p["heading"], cw - 0.72, 0.48, 18,
+            min_pt=14, weight="bold", spacing=1.1)
         add_text(slide, x + 0.36, top + 0.67, cw - 0.72, 0.48,
-                 p["heading"], 18, bold=True, color=NAVY)
+                 p["heading"], heading_size, bold=True, color=NAVY)
         y = top + 1.42
         for b in p["bullets"]:
             bh = len(wrap_text(b, tw, size)) * line_height_in(size, 1.2)
@@ -344,9 +445,15 @@ def s_twocol(slide, spec, page):
 
 def s_chart(slide, spec, page):
     header(slide, spec["kicker"], spec["title"])
+    categories = spec["chart"]["categories"]
+    series = spec["chart"]["series"]
+    if not 1 <= len(categories) <= 6 or not 1 <= len(series) <= 2:
+        raise FitError(
+            "chart: 描画可能範囲はカテゴリ1〜6件、系列1〜2件です。"
+            "カテゴリまたは系列を減らしてください。")
     cd = CategoryChartData()
-    cd.categories = spec["chart"]["categories"]
-    for name, vals in spec["chart"]["series"]:
+    cd.categories = categories
+    for name, vals in series:
         cd.add_series(name, vals)
     gf = slide.shapes.add_chart(
         XL_CHART_TYPE.BAR_CLUSTERED, Inches(0.9), Inches(BODY_TOP + 0.22),
@@ -377,6 +484,16 @@ RENDER = {"title": s_title, "bullets": s_bullets, "cards": s_cards,
           "table": s_table, "twocol": s_twocol, "chart": s_chart}
 
 
+def render_slide(renderer, slide, spec, idx):
+    """rendererの収容エラーをスライド位置つきの運用メッセージへ変換する。"""
+    try:
+        renderer(slide, spec, idx)
+    except (ValueError, FileNotFoundError) as e:
+        raise SystemExit(
+            f"NG: slides[{idx - 1}] (type={spec['type']}) の生成に失敗:\n"
+            f"  {e}") from e
+
+
 def main(out_path, cover_footer_config=None):
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -391,7 +508,7 @@ def main(out_path, cover_footer_config=None):
     total = len(DECK["slides"])
     for idx, spec in enumerate(DECK["slides"], 1):
         slide = prs.slides.add_slide(blank)
-        RENDER[spec["type"]](slide, spec, idx)
+        render_slide(RENDER[spec["type"]], slide, spec, idx)
         if spec["type"] != "title":
             footer(slide, idx)
     prs.save(out_path)

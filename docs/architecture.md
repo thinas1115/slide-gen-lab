@@ -57,7 +57,7 @@
 
 | 層 | 責務 | 主な実装 | 再利用範囲 |
 |---|---|---|---|
-| L0 測定・描画部品 | 文字計測、矩形、線、矢印、アイコン、ラベル | `textfit.py`、`generate.py`、`diagrams.py` | 全type |
+| L0 測定・描画部品 | 文字計測、収容候補の選択、矩形、線、矢印、アイコン、ラベル | `textfit.py`、`layout_fit.py`、`generate.py`、`diagrams.py` | 全type |
 | L1 レイアウト計算 | ジャンル固有の位置・サイズ・配線計算 | `diagram_layout.py`、`diagrams2.py`、各renderer | 同一ジャンル内 |
 | L2 入力境界 | schema、入力検証、renderer選択 | `CONTENT_SCHEMA.md`、`validate_content.py`、`generate_from_json.py` | 全type |
 | L3 品質保証 | PPTX検査、PNG化、一覧確認 | `check_layout.py`、`render.ps1`、`contact_sheet.py` | 全type |
@@ -96,6 +96,19 @@ rendererは計測結果を使ってフォントサイズまたは配置領域を
 
 日本語では、句読点が行頭へ出ないように折り返し位置を調整する。PowerPoint側でも禁則が働くように、
 日本語runへ`lang="ja-JP"`を設定する。計測と描画で異なるフォントや行間を使ってはならない。
+
+### 段階的な収容ポリシー
+
+全rendererは描画前に必要量を測り、次の順序で収容候補を評価する。
+
+1. 標準の余白・文字・図形サイズを使う。
+2. 要素の可読性に必要な間隔は残し、裁量余白やパディングだけを圧縮する。
+3. renderer固有の視覚要素を、縦横比を維持したまま文書化済みの最小値まで縮小する。
+4. 最小値でも収まらなければ`FitError`で生成を停止し、不足量と対処方法を返す。
+
+候補選択と停止形式は`layout_fit.py`で共有する。一方、何を裁量余白とするか、アイコン・文字・行高の
+どれをどこまで縮小できるかはジャンル固有の設計判断なので、各rendererまたはL1レイアウタが持つ。
+最小サイズへ黙って固定して溢れたまま描画する処理や、PowerPointの自動縮小への委譲は禁止する。
 
 ### 自然高さパッキング
 

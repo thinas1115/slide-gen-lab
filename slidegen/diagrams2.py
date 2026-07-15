@@ -10,7 +10,7 @@ from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, CANVAS, CORAL, GRAY
                       LIGHT, MARGIN, NAVY, RULE, TEXT, WHITE, ZEBRA, add_rect,
                       add_text, header, note_line)
 from diagrams import LINE, add_arrow, arrow_label
-from textfit import fit_font_size
+from layout_fit import FitError, ensure_within, fit_text_or_raise, select_fit, stepped
 
 MID = RGBColor(0x9D, 0xC3, 0xE6)
 
@@ -20,6 +20,9 @@ def s_process(slide, spec, page):
     header(slide, spec["kicker"], spec["title"])
     steps = spec["steps"]
     n = len(steps)
+    if not 3 <= n <= 6:
+        raise FitError(
+            "process: 工程は3〜6件までです。工程を統合または分割してください。")
     left, usable_w = 0.78, 11.72
     w = usable_w / n
     line_y = 2.42
@@ -38,16 +41,29 @@ def s_process(slide, spec, page):
         sp.shadow.inherit = False
         add_text(slide, cx - 0.31, line_y - 0.2, 0.62, 0.32, f"{i + 1:02d}",
                  11.5, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
-        add_text(slide, x + 0.1, 2.94, w - 0.2, 0.42, st["name"], 15.5,
+        name_size, name_lines = fit_text_or_raise(
+            "process", f"steps[{i}].name", st["name"], w - 0.2, 0.42,
+            15.5, min_pt=12.5, weight="bold", spacing=1.1)
+        add_text(slide, x + 0.1, 2.94, w - 0.2, 0.42,
+                 st["name"], name_size,
                  bold=True, color=NAVY, align=PP_ALIGN.CENTER)
-        size, _ = fit_font_size(st["desc"], w - 0.34, 1.35, 13.5, min_pt=11.5,
-                                spacing=1.2)
-        add_text(slide, x + 0.17, 3.56, w - 0.34, 1.35, st["desc"], size,
+        size, desc_lines = fit_text_or_raise(
+            "process", f"steps[{i}].desc", st["desc"],
+            w - 0.34, 1.35, 13.5, min_pt=11.5, spacing=1.2)
+        add_text(slide, x + 0.17, 3.56, w - 0.34, 1.35,
+                 st["desc"], size,
                  color=TEXT, align=PP_ALIGN.CENTER, spacing=1.2)
         add_text(slide, x + 0.15, 5.27, w - 0.3, 0.22, "OWNER", 9.5,
                  bold=True, color=GRAY, align=PP_ALIGN.CENTER)
-        add_text(slide, x + 0.15, 5.56, w - 0.3, 0.3, st["actor"], 11.5,
+        actor_size, actor_lines = fit_text_or_raise(
+            "process", f"steps[{i}].actor", st["actor"],
+            w - 0.3, 0.3, 11.5, min_pt=9.5, weight="bold", spacing=1.1)
+        add_text(slide, x + 0.15, 5.56, w - 0.3, 0.3,
+                 st["actor"], actor_size,
                  bold=True, color=color, align=PP_ALIGN.CENTER)
+    ensure_within(
+        "process", 5.86 - BODY_TOP, BODY_BOTTOM - BODY_TOP,
+        guidance="工程説明を短くしてください。")
     if spec.get("note"):
         note_line(slide, spec["note"])
 
@@ -62,11 +78,30 @@ def s_roadmap(slide, spec, page):
     mw = grid_w / len(months)
     top, hdr_h = BODY_TOP + 0.4, 0.52
     rows = spec["phases"]
-    row_h = 1.22
+    if not 1 <= len(rows) <= 3:
+        raise FitError(
+            "roadmap: フェーズは1〜3件までです。フェーズを統合してください。")
+    available = BODY_BOTTOM - top - (0.30 if spec.get("note") else 0)
+
+    def candidates():
+        for row_h in stepped(1.22, 1.04, 0.03):
+            used = hdr_h + len(rows) * row_h
+            yield ("standard" if row_h == 1.22 else "row_gap",
+                   {"row_h": row_h}, used)
+
+    fitted = select_fit(
+        "roadmap", available, candidates(),
+        guidance="フェーズ数を減らしてください。",
+    )
+    row_h = fitted.values["row_h"]
     grid_h = hdr_h + len(rows) * row_h
     add_rect(slide, grid_x, top, grid_w, hdr_h, NAVY)
     for j, m in enumerate(months):
-        add_text(slide, grid_x + j * mw, top + 0.08, mw, 0.3, m, 10.5,
+        month_size, month_lines = fit_text_or_raise(
+            "roadmap", f"months[{j}]", m, mw, 0.3, 10.5,
+            min_pt=8.5, weight="bold", spacing=1.1)
+        add_text(slide, grid_x + j * mw, top + 0.08, mw, 0.3,
+                 m, month_size,
                  bold=True, color=WHITE, align=PP_ALIGN.CENTER)
         if j:
             add_rect(slide, grid_x + j * mw, top + 0.08, 0.01, hdr_h - 0.16, GRAY)
@@ -83,15 +118,27 @@ def s_roadmap(slide, spec, page):
         phase_name = phase_name or ph["name"]
         add_text(slide, label_x, ry + 0.16, 0.38, 0.3, f"{i + 1:02d}",
                  11.5, bold=True, color=GRAY)
+        phase_size, phase_lines = fit_text_or_raise(
+            "roadmap", f"phases[{i}].name", phase_name,
+            label_w - 0.5, 0.34, 14, min_pt=11.5,
+            weight="bold", spacing=1.1)
         add_text(slide, label_x + 0.5, ry + 0.11, label_w - 0.5, 0.34,
-                 phase_name, 14, bold=True, color=NAVY)
+                 phase_name, phase_size, bold=True, color=NAVY)
+        goal_size, goal_lines = fit_text_or_raise(
+            "roadmap", f"phases[{i}].goal", ph["goal"],
+            label_w - 0.5, 0.27, 10.5, min_pt=8.5, spacing=1.1)
         add_text(slide, label_x + 0.5, ry + 0.52, label_w - 0.5, 0.27,
-                 ph["goal"], 10.5, color=GRAY)
+                 ph["goal"], goal_size, color=GRAY)
         x1 = grid_x + ph["start"] * mw + 0.06
         x2 = grid_x + ph["end"] * mw - 0.06
         add_rect(slide, x1, ry + 0.34, x2 - x1, 0.42,
                  ACCENT if i != 1 else NAVY)
-        add_text(slide, x1 + 0.12, ry + 0.39, x2 - x1 - 0.24, 0.3, ph["bar"], 10.5,
+        bar_size, bar_lines = fit_text_or_raise(
+            "roadmap", f"phases[{i}].bar", ph["bar"],
+            x2 - x1 - 0.24, 0.3, 10.5,
+            min_pt=8.5, weight="bold", spacing=1.1)
+        add_text(slide, x1 + 0.12, ry + 0.39, x2 - x1 - 0.24, 0.3,
+                 ph["bar"], bar_size,
                  bold=True, color=WHITE)
     for ms in spec["milestones"]:
         mx = grid_x + ms["at"] * mw
@@ -113,6 +160,9 @@ def s_roadmap(slide, spec, page):
 # ---- 2軸ポジショニングマップ ----
 def s_matrix(slide, spec, page):
     header(slide, spec["kicker"], spec["title"])
+    if not 1 <= len(spec["points"]) <= 8:
+        raise FitError(
+            "matrix: 点は1〜8件までです。点をまとめるかスライドを分割してください。")
     ox, oy = 1.68, 6.24
     aw, ah = 10.5, 4.02
     mid_x, mid_y = ox + aw / 2, oy - ah / 2
@@ -129,18 +179,30 @@ def s_matrix(slide, spec, page):
             (ox + 0.18, oy - ah + 0.18, 2.2, quadrants[2], PP_ALIGN.LEFT, GRAY),
             (ox + aw - 2.38, oy - ah + 0.18, 2.2, quadrants[3], PP_ALIGN.RIGHT, ACCENT),
         ]
-        for x, y, w, label, align, color in qlabels:
-            add_text(slide, x, y, w, 0.3, label, 10.5, bold=True,
+        for idx, (x, y, w, label, align, color) in enumerate(qlabels):
+            label_size, _ = fit_text_or_raise(
+                "matrix", f"quadrants[{idx}]", label, w, 0.3, 10.5,
+                min_pt=8.5, weight="bold", spacing=1.1)
+            add_text(slide, x, y, w, 0.3, label, label_size, bold=True,
                      color=color, align=align)
     else:
+        target_size, _ = fit_text_or_raise(
+            "matrix", "target_label", spec["target_label"], 2.0, 0.3, 10.5,
+            min_pt=8.5, weight="bold", spacing=1.1)
         add_text(slide, mid_x + 0.18, oy - ah + 0.16, 2.0, 0.3,
-                 spec["target_label"], 10.5, bold=True, color=ACCENT)
+                 spec["target_label"], target_size, bold=True, color=ACCENT)
 
     add_arrow(slide, ox, oy, ox + aw, oy, width=1.75)
     add_arrow(slide, ox, oy, ox, oy - ah, width=1.75)
-    add_text(slide, ox + aw - 2.5, oy + 0.16, 2.4, 0.3, spec["x_axis"], 11.5,
+    x_axis_size, _ = fit_text_or_raise(
+        "matrix", "x_axis", spec["x_axis"], 2.4, 0.3, 11.5,
+        min_pt=9.5, weight="bold", spacing=1.1)
+    y_axis_size, _ = fit_text_or_raise(
+        "matrix", "y_axis", spec["y_axis"], 3.0, 0.3, 11.5,
+        min_pt=9.5, weight="bold", spacing=1.1)
+    add_text(slide, ox + aw - 2.5, oy + 0.16, 2.4, 0.3, spec["x_axis"], x_axis_size,
              bold=True, color=TEXT, align=PP_ALIGN.RIGHT)
-    add_text(slide, ox - 0.02, oy - ah - 0.38, 3.0, 0.3, spec["y_axis"], 11.5,
+    add_text(slide, ox - 0.02, oy - ah - 0.38, 3.0, 0.3, spec["y_axis"], y_axis_size,
              bold=True, color=TEXT)
     for p in spec["points"]:
         px = ox + p["x"] * aw
@@ -154,8 +216,16 @@ def s_matrix(slide, spec, page):
         sp.line.width = Pt(1.0)
         sp.shadow.inherit = False
         dx, dy = p.get("lx", 0.0), p.get("ly", -0.36)
-        add_text(slide, px - 1.0 + dx, py + dy, 2.0, 0.3, p["name"], 11,
+        point_size, point_lines = fit_text_or_raise(
+            "matrix", "points.name", p["name"], 2.0, 0.3, 11,
+            min_pt=9, weight="bold" if p.get("emph") else "regular",
+            spacing=1.1)
+        add_text(slide, px - 1.0 + dx, py + dy, 2.0, 0.3,
+                 p["name"], point_size,
                  bold=bool(p.get("emph")), color=CORAL if p.get("emph") else TEXT,
                  align=PP_ALIGN.CENTER)
+    ensure_within(
+        "matrix", oy - BODY_TOP, BODY_BOTTOM - BODY_TOP,
+        guidance="軸ラベルまたは点の名称を短くしてください。")
     if spec.get("note"):
         note_line(slide, spec["note"])

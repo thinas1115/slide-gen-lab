@@ -64,15 +64,7 @@ def main(json_path, out_path, cover_footer_config=None):
         except KeyError as e:
             known = ", ".join(sorted(RENDER))
             raise SystemExit(f"unknown slide type: {spec['type']!r}. known: {known}") from e
-        try:
-            renderer(slide, spec, idx)
-        except (ValueError, FileNotFoundError) as e:
-            # diagram type のレイアウトエンジンは、収まらない/配線が壊れる場合に
-            # 対処方法つきの日本語 ValueError を投げる。スタックトレースではなく
-            # スライド番号+メッセージにして、生成AIにそのまま直させる。
-            raise SystemExit(
-                f"NG: slides[{idx - 1}] (type={spec['type']}) の生成に失敗:\n"
-                f"  {e}") from e
+        generate.render_slide(renderer, slide, spec, idx)
         if spec["type"] != "title":
             generate.footer(slide, idx)
     out_path = Path(out_path)

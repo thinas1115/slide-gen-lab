@@ -11,6 +11,7 @@ from pptx.util import Inches, Pt
 from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, CANVAS, CORAL, GRAY,
                       LIGHT, MARGIN, NAVY, RULE, TEXT, WHITE, ZEBRA, add_rect, add_text,
                       header, note_line)
+from layout_fit import FitError, ensure_within, fit_text_or_raise
 from textfit import line_height_in, text_width_in
 
 ORANGE = RGBColor(0xE8, 0x7B, 0x1E)   # compute
@@ -43,10 +44,14 @@ def arrow_label(slide, cx, cy, text, w=1.6, size=9):
     (固定幅だと短い文字列ほど余計な範囲まで線を隠してしまうため)。
     """
     pad = 0.14
-    actual_w = min(w, text_width_in(text, size) + pad)
-    actual_h = line_height_in(size, 1.1) + 0.08
+    box_h = line_height_in(size, 1.1) + 0.02
+    actual_size, _ = fit_text_or_raise(
+        "arrow_label", "text", text, w - pad, box_h, size,
+        min_pt=max(7, size - 2), spacing=1.1)
+    actual_w = min(w, text_width_in(text, actual_size) + pad)
+    actual_h = line_height_in(actual_size, 1.1) + 0.08
     tb = add_text(slide, cx - actual_w / 2, cy - actual_h / 2, actual_w, actual_h,
-                  text, size, color=TEXT, align=PP_ALIGN.CENTER,
+                  text, actual_size, color=TEXT, align=PP_ALIGN.CENTER,
                   anchor=MSO_ANCHOR.MIDDLE)
     tb.fill.solid()
     tb.fill.fore_color.rgb = CANVAS
@@ -63,7 +68,10 @@ def container(slide, x, y, w, h, label, color=LINE, dash=None):
     if dash:
         ln = sp.line._get_or_add_ln()
         ln.insert(0, ln.makeelement(qn("a:prstDash"), {"val": dash}))
-    add_text(slide, x + 0.12, y + 0.06, w - 0.3, 0.28, label, 10.5, bold=True,
+    label_size, _ = fit_text_or_raise(
+        "container", "label", label, w - 0.3, 0.28, 10.5,
+        min_pt=8.5, weight="bold", spacing=1.1)
+    add_text(slide, x + 0.12, y + 0.06, w - 0.3, 0.28, label, label_size, bold=True,
              color=color)
 
 
@@ -84,11 +92,19 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62, *, label_above=Fal
     slide.shapes.add_picture(str(p), Inches(cx - size / 2),
                              Inches(cy - size / 2), Inches(size), Inches(size))
     title_y = cy - size / 2 - 0.59 if label_above else cy + size / 2 + 0.05
-    add_text(slide, cx - 1.05, title_y, 2.1, 0.28, title, 11,
+    title_size, title_lines = fit_text_or_raise(
+        "icon_node", "title", title, 2.1, 0.28, 11,
+        min_pt=9.5, weight="bold", spacing=1.1)
+    add_text(slide, cx - 1.05, title_y, 2.1, 0.28,
+             title, title_size,
              bold=True, color=NAVY, align=PP_ALIGN.CENTER)
     if sub:
         sub_y = cy - size / 2 - 0.31 if label_above else cy + size / 2 + 0.33
-        add_text(slide, cx - 1.05, sub_y, 2.1, 0.26, sub, 9,
+        sub_size, sub_lines = fit_text_or_raise(
+            "icon_node", "sub", sub, 2.1, 0.26, 9,
+            min_pt=8, spacing=1.1)
+        add_text(slide, cx - 1.05, sub_y, 2.1, 0.26,
+                 sub, sub_size,
                  color=GRAY, align=PP_ALIGN.CENTER)
 
 
@@ -111,6 +127,9 @@ def s_hub(slide, spec, page):
     hw, hh = 2.45, 1.05
     # 周辺ノード: (x, y, タイトル, 出す矢印ラベル, 戻り矢印ラベル)
     ring = spec["ring"]
+    if len(ring) != 6:
+        raise FitError(
+            "hub: 周辺ノードは6件必要です。項目を6件に整理してください。")
     pos = [(2.15, 2.72), (11.18, 2.72),
            (2.15, 5.42), (11.18, 5.42),
            (6.67, 2.42), (6.67, 5.84)]
@@ -143,8 +162,15 @@ def s_hub(slide, spec, page):
     sp.fill.fore_color.rgb = NAVY
     sp.line.fill.background()
     sp.shadow.inherit = False
-    add_text(slide, cx - hw / 2, cy - 0.31, hw, 0.62, spec["hub"], 13.5, bold=True,
+    hub_size, hub_lines = fit_text_or_raise(
+        "hub", "hub", spec["hub"], hw, 0.62, 13.5,
+        min_pt=11, weight="bold", spacing=1.1)
+    add_text(slide, cx - hw / 2, cy - 0.31, hw, 0.62,
+             spec["hub"], hub_size, bold=True,
              color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    ensure_within(
+        "hub", 6.43 - BODY_TOP, BODY_BOTTOM - BODY_TOP,
+        guidance="周辺ノードのラベルを短くしてください。")
     if spec.get("note"):
         note_line(slide, spec["note"])
 
@@ -156,15 +182,27 @@ def s_org(slide, spec, page):
     def box(x, y, w, h, title, sub=None, fill=WHITE, tcolor=NAVY,
             border=LINE, members=None):
         add_rect(slide, x, y, w, h, fill, line=border)
+        title_size, title_lines = fit_text_or_raise(
+            "org", "box.title", title, w - 0.36, 0.32, 12.5,
+            min_pt=10.5, weight="bold", spacing=1.1)
         add_text(slide, x + 0.18, y + 0.16, w - 0.36, 0.32,
-                 title, 12.5, bold=True, color=tcolor, align=PP_ALIGN.CENTER)
+                 title, title_size,
+                 bold=True, color=tcolor, align=PP_ALIGN.CENTER)
         if sub:
-            add_text(slide, x + 0.18, y + 0.56, w - 0.36, 0.28, sub, 10,
+            sub_size, sub_lines = fit_text_or_raise(
+                "org", "box.sub", sub, w - 0.36, 0.28, 10,
+                min_pt=8.5, spacing=1.1)
+            add_text(slide, x + 0.18, y + 0.56, w - 0.36, 0.28,
+                     sub, sub_size,
                      color=GRAY if fill != NAVY else LIGHT, align=PP_ALIGN.CENTER)
         if members:
             add_rect(slide, x + 0.22, y + 0.94, w - 0.44, 0.01, RULE)
+            member_text = "  /  ".join(members)
+            member_size, member_lines = fit_text_or_raise(
+                "org", "box.members", member_text, w - 0.4, 0.5, 10,
+                min_pt=8.5, spacing=1.1)
             add_text(slide, x + 0.2, y + 1.05, w - 0.4, 0.5,
-                      "  /  ".join(members), 10, color=TEXT,
+                     member_text, member_size, color=TEXT,
                      align=PP_ALIGN.CENTER)
 
     def vline(x, y1, y2):
@@ -178,6 +216,9 @@ def s_org(slide, spec, page):
         WHITE, NAVY, ACCENT)
     teams = spec["teams"]
     n = len(teams)
+    if not 1 <= n <= 3:
+        raise FitError(
+            "org: チームは1〜3件までです。階層を分けるかチームを統合してください。")
     tw, gap = 3.25, 0.38
     total = n * tw + (n - 1) * gap
     x0 = cx - total / 2
@@ -197,5 +238,8 @@ def s_org(slide, spec, page):
     box(10.6, 3.08, 2.05, 0.9, ex["name"], ex["sub"], ZEBRA, NAVY, RULE)
     add_arrow(slide, cx + 2.05, 3.53, 10.6, 3.53, dash="dash", width=1.25)
     arrow_label(slide, (cx + 2.05 + 10.6) / 2, 3.33, ex["label"], w=1.7)
+    ensure_within(
+        "org", 6.24 - BODY_TOP, BODY_BOTTOM - BODY_TOP,
+        guidance="チーム数またはメンバー数を減らしてください。")
     if spec.get("note"):
         note_line(slide, spec["note"])
