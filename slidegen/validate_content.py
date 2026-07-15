@@ -18,11 +18,8 @@ from pathlib import Path
 
 from generate import BODY_W
 
-# サンプル専用type: 図の中身(ノード・ラベル・座標)が全てコード内固定で、
-# content.json からは差し替えられない。新規資料でこれを使うと
-# 「タイトルだけ新規テーマ、中身は既存サンプルのAWS構成図」になる
-# (実際に別環境の生成AIがこれをやり、サンプル文言が新規資料に混入した)。
-SAMPLE_ONLY = {"aws", "aws2"}
+# 旧固定構成図type。互換性のあるエラーを返すため、廃止名だけ保持する。
+RETIRED_TYPES = {"aws", "aws2"}
 
 # noteを実際に描画するtype。それ以外に書いても黙って無視される。
 NOTE_TYPES = {"table", "chart", "process", "roadmap", "matrix", "hub", "org",
@@ -393,10 +390,9 @@ def validate(deck):
             continue
         s = _Slide(idx, spec, errors)
         t = spec.get("type")
-        if t in SAMPLE_ONLY:
-            s.err('サンプル専用typeです。図の中身がコード内固定のため、新規'
-                  '資料のテーマには差し替わりません。構成図は type: "diagram" '
-                  'でグリッド仕様(座標なし)を書いてください')
+        if t in RETIRED_TYPES:
+            s.err('廃止済みtypeです。構成図は type: "diagram" でグリッド仕様'
+                  '(座標なし)を書いてください')
             continue
         if t not in VALIDATORS:
             s.err(f"未対応のtypeです。使用可能: {', '.join(sorted(VALIDATORS))}")

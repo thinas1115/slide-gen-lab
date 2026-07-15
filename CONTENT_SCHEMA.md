@@ -18,7 +18,7 @@ python slidegen/validate_content.py content.json
 
 エラーメッセージは `slides[番号] (type=種別): 内容` の形式。生成AIにそのまま渡して直させる。
 
-## Top Level
+## トップレベル
 
 必須:
 
@@ -40,16 +40,16 @@ python slidegen/validate_content.py content.json
 }
 ```
 
-## Common Rules
+## 共通ルール
 
 - `slides[*].type` は必須。
 - `type: "title"` 以外は `kicker` と `title` が必須。
 - JSONなので、Pythonのタプルではなく配列を使う。
 - `note` (右下の注記) が描画されるのは `table` / `chart` / `process` / `roadmap` / `matrix` / `hub` / `org` / `diagram` のみ。それ以外のtypeに書いても無視される(validatorがエラーにする)。
 - 構成図は `diagram` type で書く(グリッド仕様のみ、座標の数値は書かない)。
-- `aws` / `aws2` は使えない。固定サンプル図であり、`generate_from_json.py` は受け付けない(validatorが拒否する)。
+- `aws` / `aws2` は廃止済みの旧type名であり、`generate_from_json.py` は受け付けない(validatorが拒否する)。
 
-## Supported Types
+## 対応type
 
 ### title
 
@@ -83,7 +83,8 @@ python slidegen/validate_content.py content.json
 制約:
 
 - `bullets` は3〜5件程度が安全(validatorの上限は6件)。
-- 各要素は `["本文", null]` の2要素配列。2要素目は旧強調フラグの名残で現状未使用。`null` 固定にする(文字列だけを直接並べるとエラーになる)。
+- 各要素は `["本文", null]` の2要素配列。2要素目は互換用の予約フィールドで現状未使用。
+  `null` 固定にする(文字列だけを直接並べるとエラーになる)。
 
 ```json
 {
@@ -117,7 +118,7 @@ python slidegen/validate_content.py content.json
 - `cards` は3〜4件が安全(validatorの範囲は2〜4件)。
 - 件数に応じて横並び幅が自動計算される。
 - 各項目が独立して比較できる場合に使う。フェーズ名や図のノードなど、別の構造に属する要素には使わない。
-- `editorial`: サマリ・選択肢・事例向け。2〜3件は横並び、4件は2×2で描画する。
+- `editorial`: サマリ・選択肢・事例向け。2〜3件は横並び、4件は先頭を主項目、残り3件を補助項目として描画する。
 - `metrics`: KPI向け。数値を含む見出しを大きく扱う横並びカードとして描画する。
 
 ```json
@@ -502,9 +503,9 @@ python slidegen/validate_content.py content.json
     "cols": ["user", "gw", "app"],
     "rows": ["main"],
     "nodes": {
-      "pc": {"col": "user", "row": "main", "title": "利用者端末"},
-      "fw": {"col": "gw", "row": "main", "title": "ファイアウォール", "color": "navy"},
-      "web": {"col": "app", "row": "main", "title": "業務サーバ", "sub": "アプリ本体"}
+      "pc": {"col": "user", "row": "main", "icon": "fluent/desktop.png", "title": "利用者端末"},
+      "fw": {"col": "gw", "row": "main", "icon": "fluent/shield.png", "title": "ファイアウォール"},
+      "web": {"col": "app", "row": "main", "icon": "fluent/server.png", "title": "業務サーバ", "sub": "アプリ本体"}
     },
     "containers": [
       {"name": "dc", "label": "データセンター", "members": ["fw", "web"]}
@@ -526,12 +527,13 @@ python slidegen/validate_content.py content.json
 - ノードは10個程度・4行程度までが安全(それ以上は縦に収まらずエラーになる)。
 - 名前付きテンプレート参照はない。仕様は必ず `diagram` にインラインで書く。
 
-## Not Supported For New Decks
+## 廃止済みtype名
 
 ### aws / aws2
 
-`aws` と `aws2` は固定サンプル図。図のノード・ラベル・矢印はすべてコード内に固定されており、`content.json` から差し替えられない(タイトルだけ新規テーマで、中身は既存サンプルのAWS構成図になる)。
+`aws` と `aws2` は、過去の固定構成図rendererで使われていた旧type名。現在のrenderer一覧には登録されていない。
 
 **`generate_from_json.py` はこの2つのtypeを受け付けない**(validate_content.py が生成前に拒否する)。ドキュメント上の禁止ではなく機械的に通らない。
 
-構成図が必要な場合は `diagram` type でグリッド仕様を新規に書く。サンプル図自体の再生成は `generate2.py` / `generate_patterns.py` を使う。
+構成図が必要な場合は `diagram` type でグリッド仕様を新規に書く。回帰検証用のサンプル図も
+`diagram_specs.py` または `content_patterns.py` のインライン仕様から生成する。

@@ -2,7 +2,19 @@
 
 「生成 → そのまま提出」できる品質のスライドを、決定論的に出力するパイプライン。
 
-![パイプライン全体像](docs/pipeline-overview.png)
+```mermaid
+flowchart LR
+    A[要件・情報源] --> B[生成AIまたは人間<br/>content.jsonを作成]
+    B --> C[validate_content.py<br/>スキーマ検証]
+    C --> D[generate_from_json.py<br/>PPTX生成]
+    D --> E[check_layout.py<br/>衝突検査]
+    E --> F[PowerPoint<br/>PNG化]
+    F --> G[人間またはAI<br/>目視確認]
+    G -->|内容・崩れを修正| B
+    G -->|表現力が不足| H[EXTENDING.md<br/>rendererを拡張]
+    H --> D
+    G -->|合格| I[提出]
+```
 
 生成AIはスキーマに沿って `content.json` を書くだけ。座標・余白・フォントはコード側(renderer / レイアウトエンジン)が
 実測ベースで決定し、schema検証 → エンジン自己検証 → 機械検知 → 実レンダリング目視の多段ゲートで
@@ -13,19 +25,23 @@
 
 | パス | 内容 |
 |---|---|
-| `content.json` | デッキ内容(スライド構造の共有データ。`slidegen/content.py` から生成) |
+| `content.json` | 新規デッキの入力データ。生成AIまたは人間がschemaに沿って作成する |
 | `CONTENT_SCHEMA.md` | `content.json` の中立スキーマ。生成AIにはこれと `AI_DECK_PROMPT.md` を渡す |
 | `AI_DECK_PROMPT.md` | 生成AIに `content.json` を書かせる依頼文の穴埋めテンプレート |
 | `EXTENDING.md` | 新しいtype・エンジン機能を追加するときの不変条件と手順(AI向け拡張ガイド) |
 | `DESIGN_CUSTOMIZATION.md` | 配色・表紙・既存renderer・複数テーマ対応など、デザイン変更時の修正箇所一覧 |
 | `slidegen/` | 本体。Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
 | `slidegen/generate_from_json.py` | `content.json` → PPTX 生成(生成前にschema検証を自動実行) |
-| `slidegen/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・サンプル専用typeの拒否) |
+| `slidegen/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・廃止typeの拒否) |
 | `slidegen/check_layout.py` | 生成済みPPTXの重なり・はみ出しを機械検知する品質ゲート |
 | `slidegen/diagram_layout.py` | グリッド仕様から構成図の座標・配線を計算するレイアウトエンジン |
+| `slidegen/content*.py` | 基本・拡張・パターンギャラリーの回帰検証用サンプル |
 | `render.ps1` / `contact_sheet.py` | PPTX→PNG書き出し(PowerPoint COM)と一覧画像への合成。目視レビュー用 |
-| `archive/` | 比較検証を終えた旧実装(凍結)。`sysB_pptxgenjs`=Node+PptxGenJS、`sysC_marp`=Marp |
-| `out/` | 生成物(PPTX/PNG)。`.gitignore` 対象 |
+| `out/` | PPTX・PNG・検証レポート・一時JSONなどの生成物。`.gitignore` 対象 |
+
+**出力先ルール:** 実行時に生成するファイルはすべて `out/` 配下へ保存する。`docs/` を設ける場合は、
+保守対象の説明文書と、その文書から参照する掲載素材だけを置く。実験結果、PR確認画像、一時JSON、
+検証レポートを `docs/` に出力しない。
 
 ## セットアップ
 
@@ -57,7 +73,8 @@
 
 構成図(システム構成・ネットワーク図など)は `diagram` type を使い、グリッド仕様(列・行・ノード・エッジ)を書く。
 座標の数値は書かず、`diagram_layout.py` が計算する。ノードの `icon` は必須で、同梱Fluent/AWSアイコンから選ぶ。
-`aws` / `aws2` はサンプル固定図のため `generate_from_json.py` が機械的に拒否する。
+`aws` / `aws2` は廃止済みの旧type名であり、互換性のあるエラーを返すためvalidatorにのみ残している。
+新しい構成図は `diagram` を使う。
 
 `cards` typeは、KPI・選択肢・事例など各項目が独立して比較できる場合に使う。サマリ・事例は `style: "editorial"`、KPIは `style: "metrics"` を選ぶ。情報が少ないことだけを理由に白箱を並べたり、フェーズ名や図のノードなど別の構造に属する要素をカード化したりしない。
 
@@ -76,7 +93,8 @@ python contact_sheet.py out\png                                        # out\png
   同様に `content.json` を直して再実行する。
 
 新しいレイアウト種別が必要になったときだけ、renderer / レイアウタのコーディングが発生する(→ `EXTENDING.md`)。
-サンプルデッキ自体を再生成するなら `python slidegen/generate.py out\sample.pptx`(基本)/ `generate2.py`(図解入り)。
+サンプルデッキ自体を再生成するなら `python slidegen/generate.py out\sample.pptx`(基本)、
+`python slidegen/generate2.py out\sample_extended.pptx`(図解入り)を使う。
 
 既存レイアウトのデザインを変更する場合は [`DESIGN_CUSTOMIZATION.md`](DESIGN_CUSTOMIZATION.md) を参照する。
 配色・フォント・表紙などのテーマ差し替えと、新しいレイアウト追加では修正範囲が異なる。
