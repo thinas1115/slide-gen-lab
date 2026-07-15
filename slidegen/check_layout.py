@@ -1,7 +1,7 @@
 """生成済みPPTXのレイアウト衝突を機械検知する品質ゲート。
 
-使い方: python check_layout.py ..\\out\\sysA_deck2.pptx
-検知対象(これまでの全実欠陥をカバー):
+使い方: python slidegen/check_layout.py out/deck.pptx
+検知対象:
   T-T: テキストグリフ同士の交差
   T-P: テキストグリフ×画像(アイコン)
   T-S: テキストグリフ×塗り図形の「部分重なり」(完全内包=意図的デザインは許可)

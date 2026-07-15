@@ -1,6 +1,7 @@
-"""システムA: python-pptx + テキスト実測によるスライド生成。"""
+"""python-pptxとテキスト実測による基本サンプルデッキ生成。"""
 import re
 import sys
+from pathlib import Path
 
 from pptx import Presentation
 from pptx.chart.data import CategoryChartData
@@ -408,6 +409,8 @@ RENDER = {"title": s_title, "bullets": s_bullets, "cards": s_cards,
 
 
 def main(out_path):
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     prs = Presentation()
     prs.slide_width = Inches(SLIDE_W)
     prs.slide_height = Inches(SLIDE_H)
@@ -423,4 +426,5 @@ def main(out_path):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "../out/sysA_deck.pptx")
+    default_out = Path(__file__).resolve().parent.parent / "out" / "sample_basic.pptx"
+    main(sys.argv[1] if len(sys.argv) > 1 else default_out)

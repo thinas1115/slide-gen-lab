@@ -1,5 +1,6 @@
 """社内テンプレート用のパターン検証ギャラリーを生成する。"""
 import sys
+from pathlib import Path
 
 from pptx import Presentation
 from pptx.util import Inches
@@ -24,6 +25,8 @@ RENDER = dict(generate.RENDER,
 
 
 def main(out_path):
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     # footer() は generate.DECK の meta を参照するため、ギャラリー用に差し替える。
     generate.DECK = PATTERN_DECK
     prs = Presentation()
@@ -40,4 +43,5 @@ def main(out_path):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "../out/pattern_gallery.pptx")
+    default_out = Path(__file__).resolve().parent.parent / "out" / "pattern_gallery.pptx"
+    main(sys.argv[1] if len(sys.argv) > 1 else default_out)

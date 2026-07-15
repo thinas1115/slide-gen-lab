@@ -3,7 +3,7 @@
 AI目視のToken節約用: 全枚を1回のReadで俯瞰し、怪しいスライドだけ
 render.ps1 -Slides で高解像度に出し直して確認する。
 
-使い方: python contact_sheet.py out\\pngA2 [列数=4] [タイル幅=400]
+使い方: python contact_sheet.py out\\png [列数=4] [タイル幅=400]
 出力:   <dir>\\sheet.png
 """
 import sys
