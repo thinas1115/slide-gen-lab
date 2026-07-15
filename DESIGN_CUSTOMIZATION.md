@@ -4,7 +4,8 @@
 
 現在の実装は、**1つのデザインを別のデザインへ置き換える作業**なら比較的容易。
 配色・フォント・共通ヘッダー・フッター・表紙・基本rendererは `slidegen/generate.py` に集約され、
-図解系も3ファイルに分離されている。今回の全面変更も、入力schemaを変えずに4ファイルの修正で完了した。
+図解系も役割別のファイルに分離されているため、入力schemaを変えないデザイン変更は
+rendererと共通部品の範囲に閉じ込めやすい。
 
 ただし、現時点ではテーマを実行時に選べる仕組みではない。デザインはPythonコード内の単一テーマとして定義されているため、
 「テーマA / テーマBを `content.json` やCLIオプションで切り替える」には別途テーマ層の実装が必要になる。
@@ -34,7 +35,7 @@
 | 比較表 | `generate.py` の `s_table()` / `_cell()` | ヘッダー、行高、交互色、列見出し、文字位置 |
 | 2カラム比較 | `generate.py` の `s_twocol()` | 左右のコントラスト、見出し、箇条書き、区切り |
 | グラフ | `generate.py` の `s_chart()` | グラフ面、系列色、凡例、余白、データラベル |
-| 図解共通部品 | `slidegen/diagrams.py` の `LINE` / `node()` / `container()` / `icon_node()` / `box_node()` | ノード、枠、矢印、ラベル、汎用図形の見た目 |
+| 図解共通部品 | `slidegen/diagrams.py` の `LINE` / `add_arrow()` / `arrow_label()` / `container()` / `icon_node()` | アイコンノード、枠、矢印、線上ラベルの見た目 |
 | ハブ図 / 体制図 | `diagrams.py` の `s_hub()` / `s_org()` | 放射配置・組織ツリー専用の造形と強調 |
 | 工程 / ロードマップ / 2軸図 | `slidegen/diagrams2.py` の各 `s_*()` | 各ジャンル固有の線、帯、点、ラベル、余白 |
 | 構成図の色名 | `slidegen/diagram_layout.py` の `COLORS` | diagram specで指定できる離散的な色名と実色の対応 |
@@ -122,4 +123,3 @@ python slidegen/check_layout.py out\sample_16slides.pptx
 - 表・カード・ロードマップの内容量が変わっても間延びや溢れがないか
 - 図解の線、ラベル、コンテナ、アイコンが干渉していないか
 - AWSアイコンを無改変で使用しているか
-

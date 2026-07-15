@@ -29,12 +29,8 @@ def s_diagram(slide, spec, page):
     render_diagram(slide, spec["diagram"], note=spec.get("note"))
 
 
-# aws / aws2 は意図的に登録しない: 図の中身がコード内固定のサンプル専用
-# rendererで、content.json からは差し替えられない。登録したままにすると
-# 「タイトルだけ新規テーマ、中身は既存サンプルのAWS構成図」の資料が
-# エラーなく生成されてしまう(実際に別環境の生成AIで発生した事故)。
-# 任意テーマの構成図は diagram type(宣言的レイアウトエンジン)を使う。
-# サンプルデッキの再生成は generate2.py / generate_patterns.py を使う。
+# 旧固定構成図typeの aws / aws2 は廃止済み。任意テーマの構成図は
+# diagram type(宣言的レイアウトエンジン)で生成する。
 RENDER = dict(generate.RENDER,
               hub=s_hub, org=s_org,
               process=s_process, roadmap=s_roadmap, matrix=s_matrix,

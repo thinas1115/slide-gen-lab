@@ -1,6 +1,5 @@
 # 生成物 (render.ps1 / generate*.py の出力)
 out/
-archive/sysC_marp/deck.md
 
 # アイコン素材 (slidegen/assets/) は CREDITS.md のクレジット表記とともにコミットする
 # (AWS: 無改変・技術資料用途の許諾範囲内 / Fluent: MIT)
