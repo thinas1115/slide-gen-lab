@@ -64,7 +64,8 @@ flowchart LR
 
 **生成AIに書かせる(推奨)**
 
-1. `AI_DECK_PROMPT.md` の依頼文テンプレートをコピーし、`<...>` の空欄(テーマ・想定読者・目的など)を今回の内容で埋める。
+1. `AI_DECK_PROMPT.md` の依頼文テンプレートをコピーし、資料テーマ・想定読者・目的・必須内容・
+   情報源・枚数目安の各入力欄を具体値で埋める。
 2. 埋めたテンプレートと `CONTENT_SCHEMA.md` を生成AI(どのLLMでも可)に渡し、`content.json` を書かせる。
    既存の `content.json` / `slidegen/content.py` はサンプルなので参照させない。
 3. 出力を `content.json` としてプロジェクト直下に保存する。

@@ -531,7 +531,7 @@ python slidegen/validate_content.py content.json
 
 ### aws / aws2
 
-`aws` と `aws2` は、過去の固定構成図rendererで使われていた旧type名。現在のrenderer一覧には登録されていない。
+`aws` と `aws2` は、固定構成図rendererで使われていた廃止済みtype名。renderer一覧には登録されていない。
 
 **`generate_from_json.py` はこの2つのtypeを受け付けない**(validate_content.py が生成前に拒否する)。ドキュメント上の禁止ではなく機械的に通らない。
 

@@ -1,8 +1,6 @@
-"""v2デッキ: 基本デッキ + 表現力検証スライドを生成する。
-
-初版(sysA_deck.pptx)はそのまま残し、こちらは sysA_deck2.pptx に出力する。
-"""
+"""基本デッキに表現力検証スライドを加えた拡張サンプルを生成する。"""
 import sys
+from pathlib import Path
 
 from pptx import Presentation
 from pptx.util import Inches
@@ -21,13 +19,15 @@ def s_diagram(slide, spec, page):
     render_diagram(slide, spec["diagram"], note=spec.get("note"))
 
 
-RENDER2 = dict(generate.RENDER,
-               hub=s_hub, org=s_org,
-               process=s_process, roadmap=s_roadmap, matrix=s_matrix,
-               diagram=s_diagram)
+RENDER_EXTENDED = dict(generate.RENDER,
+                       hub=s_hub, org=s_org,
+                       process=s_process, roadmap=s_roadmap, matrix=s_matrix,
+                       diagram=s_diagram)
 
 
 def main(out_path):
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     prs = Presentation()
     prs.slide_width = Inches(generate.SLIDE_W)
     prs.slide_height = Inches(generate.SLIDE_H)
@@ -36,7 +36,7 @@ def main(out_path):
     generate.DECK = {**DECK, "slides": slides}
     for idx, spec in enumerate(slides, 1):
         slide = prs.slides.add_slide(blank)
-        RENDER2[spec["type"]](slide, spec, idx)
+        RENDER_EXTENDED[spec["type"]](slide, spec, idx)
         if spec["type"] != "title":
             generate.footer(slide, idx)
     prs.save(out_path)
@@ -44,4 +44,5 @@ def main(out_path):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "../out/sysA_deck2.pptx")
+    default_out = Path(__file__).resolve().parent.parent / "out" / "sample_extended.pptx"
+    main(sys.argv[1] if len(sys.argv) > 1 else default_out)

@@ -70,12 +70,15 @@ def main(json_path, out_path):
                 f"  {e}") from e
         if spec["type"] != "title":
             generate.footer(slide, idx)
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     prs.save(out_path)
     print(f"saved: {out_path} ({len(deck['slides'])} slides)")
 
 
 if __name__ == "__main__":
+    project_root = Path(__file__).resolve().parent.parent
     main(
-        sys.argv[1] if len(sys.argv) > 1 else "content.json",
-        sys.argv[2] if len(sys.argv) > 2 else "out/from_json.pptx",
+        sys.argv[1] if len(sys.argv) > 1 else project_root / "content.json",
+        sys.argv[2] if len(sys.argv) > 2 else project_root / "out" / "from_json.pptx",
     )
