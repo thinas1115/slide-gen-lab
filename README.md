@@ -2,19 +2,7 @@
 
 「生成 → そのまま提出」できる品質のスライドを、決定論的に出力するパイプライン。
 
-```mermaid
-flowchart LR
-    A[要件・情報源] --> B[生成AIまたは人間<br/>content.jsonを作成]
-    B --> C[validate_content.py<br/>スキーマ検証]
-    C --> D[generate_from_json.py<br/>PPTX生成]
-    D --> E[check_layout.py<br/>衝突検査]
-    E --> F[PowerPoint<br/>PNG化]
-    F --> G[人間またはAI<br/>目視確認]
-    G -->|内容・崩れを修正| B
-    G -->|表現力が不足| H[EXTENDING.md<br/>rendererを拡張]
-    H --> D
-    G -->|合格| I[提出]
-```
+![パイプライン全体像](docs/pipeline-overview.png)
 
 生成AIはスキーマに沿って `content.json` を書くだけ。座標・余白・フォントはコード側(renderer / レイアウトエンジン)が
 実測ベースで決定し、schema検証 → エンジン自己検証 → 機械検知 → 実レンダリング目視の多段ゲートで
