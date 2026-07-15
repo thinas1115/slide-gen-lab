@@ -16,6 +16,7 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Emu
 
+from cover_footer import COVER_BACKGROUND_NAME
 from textfit import line_height_in, wrap_text
 
 EMU = 914400
@@ -129,7 +130,8 @@ def check(path):
         for z, sh in enumerate(slide.shapes):  # zは描画順(後勝ち)
             st = sh.shape_type
             if st == MSO_SHAPE_TYPE.PICTURE:
-                pics.append((rect_of(sh), sh.name))
+                if sh.name != COVER_BACKGROUND_NAME:
+                    pics.append((rect_of(sh), sh.name))
             elif st in (MSO_SHAPE_TYPE.AUTO_SHAPE,):
                 (solids if has_solid_fill(sh) else frames).append(
                     (rect_of(sh), sh.name, z))

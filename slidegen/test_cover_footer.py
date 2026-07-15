@@ -3,18 +3,23 @@ import json
 import tempfile
 from pathlib import Path
 
+from PIL import Image
+from pptx import Presentation
 from pptx.dml.color import RGBColor
+from pptx.util import Inches
 
 from cover_footer import (
+    COVER_BACKGROUND_NAME,
     load_cover_footer_config,
     parse_cover_footer_config,
+    render_cover,
     render_footer,
 )
 
 
-def _must_fail(data, expected):
+def _must_fail(data, expected, **kwargs):
     try:
-        parse_cover_footer_config(data)
+        parse_cover_footer_config(data, **kwargs)
     except ValueError as e:
         assert expected in str(e), str(e)
     else:
@@ -24,6 +29,7 @@ def _must_fail(data, expected):
 def main():
     default = parse_cover_footer_config({})
     assert default.cover.eyebrow == "SLIDE PATTERN LIBRARY"
+    assert default.cover.background_image is None
     assert default.footer.text == "{footer}"
     assert default.footer.show_total is True
 
@@ -63,12 +69,46 @@ def main():
         raise AssertionError("長すぎるフッターを拒否しませんでした")
 
     with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "cover_footer.json"
-        path.write_text(json.dumps({"footer": {"show_text": False}}),
+        tmp_path = Path(tmp)
+        image_path = tmp_path / "assets" / "cover.png"
+        image_path.parent.mkdir()
+        Image.new("RGB", (2000, 900), "#16324F").save(image_path)
+        path = tmp_path / "cover_footer.json"
+        path.write_text(json.dumps({
+            "cover": {"background_image": "assets/cover.png"},
+            "footer": {"show_text": False},
+        }),
                         encoding="utf-8")
         loaded = load_cover_footer_config(path)
         assert loaded.footer.show_text is False
         assert loaded.cover.eyebrow == default.cover.eyebrow
+        assert loaded.cover.background_image == image_path.resolve()
+        _must_fail(
+            {"cover": {"background_image": "assets/missing.png"}},
+            "画像が見つかりません", base_dir=tmp_path,
+        )
+        _must_fail(
+            {"cover": {"background_image": "cover.svg"}},
+            "PNGまたはJPEG", base_dir=tmp_path,
+        )
+
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)
+        prs.slide_height = Inches(7.5)
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        render_cover(
+            slide, {"title": "Title", "subtitle": "Subtitle"},
+            {"title": "T", "footer": "F", "date": "D", "author": "A"},
+            10, loaded,
+            add_text=lambda *args, **kwargs: None,
+            add_rect=lambda *args, **kwargs: None,
+        )
+        picture = slide.shapes[0]
+        assert picture.name == COVER_BACKGROUND_NAME
+        assert picture.width == prs.slide_width
+        assert picture.height == prs.slide_height
+        assert picture.crop_left > 0
+        assert picture.crop_left == picture.crop_right
 
     print("cover/footer tests passed")
 

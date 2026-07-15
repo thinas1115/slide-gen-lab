@@ -1,7 +1,7 @@
 """表紙とフッターの設定・描画。
 
 本文rendererから独立した範囲だけをユーザー設定可能にする。座標は公開せず、
-設定JSONでは文言、表示項目、色だけを扱う。
+設定JSONでは文言、表示項目、色、表紙背景画像だけを扱う。
 """
 import json
 import re
@@ -9,17 +9,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from string import Formatter
 
+from PIL import Image, UnidentifiedImageError
 from pptx.dml.color import RGBColor
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+from pptx.util import Inches
 
 from textfit import fit_font_size, line_height_in, wrap_text
 
 
 _HEX_COLOR = re.compile(r"^[0-9A-Fa-f]{6}$")
 _TEMPLATE_FIELDS = {"title", "footer", "date", "author", "page", "total"}
+COVER_BACKGROUND_NAME = "Cover Background"
 _COVER_KEYS = {
     "eyebrow", "show_date", "show_author", "show_rail", "rail",
-    "background_color", "title_color", "secondary_color",
+    "background_image", "background_color", "title_color", "secondary_color",
 }
 _FOOTER_KEYS = {
     "text", "show_divider", "show_text", "show_page_number", "show_total",
@@ -40,6 +43,7 @@ class CoverConfig:
     show_author: bool
     show_rail: bool
     rail: tuple[RailItem, ...]
+    background_image: Path | None
     background_color: RGBColor
     title_color: RGBColor
     secondary_color: RGBColor
@@ -74,6 +78,7 @@ _DEFAULT_DATA = {
             {"label": "OUTPUT", "value": "PowerPoint"},
             {"label": "QUALITY", "value": "Generate / Validate / Review"},
         ],
+        "background_image": None,
         "background_color": "182C43",
         "title_color": "FFFFFC",
         "secondary_color": "DFEBE8",
@@ -109,6 +114,28 @@ def _expect_color(value, path):
     if not isinstance(value, str) or not _HEX_COLOR.fullmatch(value):
         raise ValueError(f"{path} は6桁のHEX色(RRGGBB)で指定してください")
     return RGBColor.from_string(value.upper())
+
+
+def _expect_optional_image(value, path, *, base_dir):
+    if value is None:
+        return None
+    value = _expect_text(value, path, max_length=500).strip()
+    if not value:
+        raise ValueError(f"{path} は画像ファイルのパスまたは null にしてください")
+    source = Path(value).expanduser()
+    if not source.is_absolute():
+        source = base_dir / source
+    source = source.resolve()
+    if source.suffix.lower() not in {".png", ".jpg", ".jpeg"}:
+        raise ValueError(f"{path} はPNGまたはJPEGを指定してください: {value}")
+    if not source.is_file():
+        raise ValueError(f"{path} の画像が見つかりません: {value}")
+    try:
+        with Image.open(source) as image:
+            image.verify()
+    except (OSError, UnidentifiedImageError) as e:
+        raise ValueError(f"{path} を画像として読み込めません: {value}") from e
+    return source
 
 
 def _validate_template(value, path, *, max_length):
@@ -150,8 +177,9 @@ def _merge_data(data):
     return merged
 
 
-def parse_cover_footer_config(data):
+def parse_cover_footer_config(data, *, base_dir=None):
     """設定dictを検証し、描画用の不変オブジェクトへ変換する。"""
+    base_dir = Path.cwd() if base_dir is None else Path(base_dir)
     merged = _merge_data(data)
     cover = merged["cover"]
     footer = merged["footer"]
@@ -180,6 +208,9 @@ def parse_cover_footer_config(data):
             show_author=_expect_bool(cover["show_author"], "cover.show_author"),
             show_rail=_expect_bool(cover["show_rail"], "cover.show_rail"),
             rail=tuple(rail),
+            background_image=_expect_optional_image(
+                cover["background_image"], "cover.background_image",
+                base_dir=base_dir),
             background_color=_expect_color(
                 cover["background_color"], "cover.background_color"),
             title_color=_expect_color(cover["title_color"], "cover.title_color"),
@@ -216,7 +247,7 @@ def load_cover_footer_config(path=None):
             f"設定JSONが不正です: {source} ({e.lineno}行{e.colno}列)") from e
     except UnicodeDecodeError as e:
         raise ValueError(f"設定JSONはUTF-8で保存してください: {source}") from e
-    return parse_cover_footer_config(data)
+    return parse_cover_footer_config(data, base_dir=source.parent.resolve())
 
 
 def _format(value, meta, *, page, total):
@@ -234,10 +265,33 @@ def _single_line_size(text, width, size, min_size, *, field, weight="regular"):
     return size
 
 
+def _add_cover_background_image(slide, source):
+    """画像比率を維持し、中央を基準にスライド全面へトリミングする。"""
+    with Image.open(source) as image:
+        image_width, image_height = image.size
+    slide_width, slide_height = 13.333, 7.5
+    image_ratio = image_width / image_height
+    slide_ratio = slide_width / slide_height
+    picture = slide.shapes.add_picture(
+        str(source), Inches(0), Inches(0),
+        width=Inches(slide_width), height=Inches(slide_height),
+    )
+    picture.name = COVER_BACKGROUND_NAME
+    if image_ratio > slide_ratio:
+        crop = (1 - slide_ratio / image_ratio) / 2
+        picture.crop_left = picture.crop_right = crop
+    elif image_ratio < slide_ratio:
+        crop = (1 - image_ratio / slide_ratio) / 2
+        picture.crop_top = picture.crop_bottom = crop
+    return picture
+
+
 def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
     """固定レイアウト内で、設定済みの表紙要素を描画する。"""
     cover = config.cover
     add_rect(slide, 0, 0, 13.333, 7.5, cover.background_color)
+    if cover.background_image is not None:
+        _add_cover_background_image(slide, cover.background_image)
     eyebrow = _format(cover.eyebrow, meta, page=1, total=total)
     custom_eyebrow = cover.eyebrow != _DEFAULT_DATA["cover"]["eyebrow"]
     eyebrow_size = 10
