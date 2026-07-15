@@ -196,7 +196,7 @@ python contact_sheet.py out\png_pg                                      # → sh
 
 ## 開発フロー
 
-CLAUDE.md の Issue駆動フローに従う: Issue作成 → `feature/<内容>` ブランチ → 7点セット実装 →
+AGENTS.md の開発フローに従う: Issue作成 → `feature/<内容>` ブランチ → 7点セット実装 →
 品質ゲート → PR(`Closes #N`)。コミットに `Co-Authored-By` は付けない。
 
 レイアウタ関連のバックログ(着手時はこのガイドとIssue本文を読んでから):

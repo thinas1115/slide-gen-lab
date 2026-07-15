@@ -79,7 +79,7 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62, *, label_above=Fal
     if not p.exists():
         raise FileNotFoundError(
             f"アイコン {img} が {ICON_DIR} にありません。extract_aws_icons.py で"
-            f"生成するか、fetch_fluent_icons.py --list で同梱アイコンを確認して"
+            f"AWS公式デッキを指定して生成するか、fetch_fluent_icons.py --list で同梱アイコンを確認して"
             f"ください。")
     slide.shapes.add_picture(str(p), Inches(cx - size / 2),
                              Inches(cy - size / 2), Inches(size), Inches(size))

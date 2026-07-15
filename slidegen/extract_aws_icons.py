@@ -3,14 +3,21 @@
 シェイプ名にサービス名がないため、「ラベルテキストの直上にある最寄りの
 Picture」を対応アイコンとみなして抽出する。
 """
+import sys
 from pathlib import Path
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
-SRC = r"<AWS_ICON_DECK_PATH>"
 DEST = Path(__file__).parent / "assets"
 DEST.mkdir(exist_ok=True)
+
+if len(sys.argv) != 2:
+    raise SystemExit(
+        "使い方: python slidegen/extract_aws_icons.py <AWS公式アイコンデッキ.pptx>")
+src = Path(sys.argv[1]).expanduser()
+if not src.is_file():
+    raise SystemExit(f"入力PPTXが見つかりません: {src}")
 
 # 出力名: (完全一致優先の候補ラベル)
 TARGETS = {
@@ -43,7 +50,7 @@ def walk(shapes, ox=0, oy=0):
                 continue
 
 
-prs = Presentation(SRC)
+prs = Presentation(src)
 found = {}
 for si, slide in enumerate(prs.slides):
     pics, texts = [], []

@@ -1,13 +1,19 @@
 """AWSアイコンデッキの構造調査: アイコンが画像として抽出できるか確認する。"""
+import sys
 from pathlib import Path
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
-SRC = r"<AWS_ICON_DECK_PATH>"
+if len(sys.argv) != 2:
+    raise SystemExit(
+        "使い方: python slidegen/inspect_aws_icons.py <AWS公式アイコンデッキ.pptx>")
+src = Path(sys.argv[1]).expanduser()
+if not src.is_file():
+    raise SystemExit(f"入力PPTXが見つかりません: {src}")
 out = []
 
-prs = Presentation(SRC)
+prs = Presentation(src)
 out.append(f"slides: {len(prs.slides)}")
 
 

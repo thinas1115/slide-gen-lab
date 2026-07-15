@@ -139,7 +139,7 @@ rendererは計測結果を使ってフォントサイズまたは配置領域を
 | `content.json`を作る | [AI_DECK_PROMPT.md](../AI_DECK_PROMPT.md)、[CONTENT_SCHEMA.md](../CONTENT_SCHEMA.md) |
 | 新しいtypeや図解機能を追加する | [EXTENDING.md](../EXTENDING.md) |
 | 配色、表紙、既存rendererのデザインを変更する | [DESIGN_CUSTOMIZATION.md](../DESIGN_CUSTOMIZATION.md) |
-| 開発フローとマージ条件を確認する | [CLAUDE.md](../CLAUDE.md) |
+| 開発フローとマージ条件を確認する | [AGENTS.md](../AGENTS.md) |
 
 設計を変更した場合は、実装だけでなくschema、validator、ギャラリー、品質ゲート、関連文書を
 同じ変更単位で更新する。

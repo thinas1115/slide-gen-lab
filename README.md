@@ -36,13 +36,14 @@
 
 1. リポジトリを clone
 2. `pip install python-pptx pillow`(Python 3.10+)
-3. 前提: Windows + 游ゴシック(`slidegen/textfit.py` が `C:\Windows\Fonts\YuGoth*.ttc` を参照。別OSはこの数行を変更)
+3. 前提: Windows + 游ゴシック(`slidegen/textfit.py` が環境変数`WINDIR`配下のフォントを参照)
 4. 目視用に PowerPoint(`render.ps1` が使用。生成自体には不要)
 
 アイコン素材(AWS 13種 + Fluent 72種)は `slidegen/assets/` に**同梱済み**なので追加作業は不要
 (出典・ライセンスは [assets/CREDITS.md](slidegen/assets/CREDITS.md))。増やす場合のみ:
 
-- AWS: [公式アイコンデッキ(PPTX)](https://aws.amazon.com/jp/architecture/icons/) を入手し `slidegen/extract_aws_icons.py` の SRC を変えて実行
+- AWS: [公式アイコンデッキ(PPTX)](https://aws.amazon.com/jp/architecture/icons/)を入手し、
+  `python slidegen/extract_aws_icons.py "<公式デッキのパス>"`を実行
 - Fluent([Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)、MIT): `pip install svglib reportlab rlPyCairo` のうえ `slidegen/fetch_fluent_icons.py` の ICONS に追記して実行
 
 ## 使い方

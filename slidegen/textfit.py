@@ -3,14 +3,19 @@
 PowerPointに置く前にPillowで游ゴシックの実寸を測り、
 「テキストボックスから溢れない」ことを生成時点で保証する。
 """
+import os
 from functools import lru_cache
+from pathlib import Path
 
 from PIL import ImageFont
 
+if "WINDIR" not in os.environ:
+    raise RuntimeError("游ゴシックの検出にはWindows環境が必要です")
+FONT_DIR = Path(os.environ["WINDIR"]) / "Fonts"
 FONT_PATHS = {
-    "regular": r"C:\Windows\Fonts\YuGothR.ttc",
-    "medium": r"C:\Windows\Fonts\YuGothM.ttc",
-    "bold": r"C:\Windows\Fonts\YuGothB.ttc",
+    "regular": str(FONT_DIR / "YuGothR.ttc"),
+    "medium": str(FONT_DIR / "YuGothM.ttc"),
+    "bold": str(FONT_DIR / "YuGothB.ttc"),
 }
 
 # pt -> px (96dpi)。PowerPoint実測はPillow計測より僅かに広く出ることが
