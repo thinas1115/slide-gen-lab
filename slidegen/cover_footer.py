@@ -1,0 +1,325 @@
+"""表紙とフッターの設定・描画。
+
+本文rendererから独立した範囲だけをユーザー設定可能にする。座標は公開せず、
+設定JSONでは文言、表示項目、色だけを扱う。
+"""
+import json
+import re
+from dataclasses import dataclass
+from pathlib import Path
+from string import Formatter
+
+from pptx.dml.color import RGBColor
+from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+
+from textfit import fit_font_size, line_height_in, wrap_text
+
+
+_HEX_COLOR = re.compile(r"^[0-9A-Fa-f]{6}$")
+_TEMPLATE_FIELDS = {"title", "footer", "date", "author", "page", "total"}
+_COVER_KEYS = {
+    "eyebrow", "show_date", "show_author", "show_rail", "rail",
+    "background_color", "title_color", "secondary_color",
+}
+_FOOTER_KEYS = {
+    "text", "show_divider", "show_text", "show_page_number", "show_total",
+    "text_color", "page_color", "divider_color",
+}
+
+
+@dataclass(frozen=True)
+class RailItem:
+    label: str
+    value: str
+
+
+@dataclass(frozen=True)
+class CoverConfig:
+    eyebrow: str
+    show_date: bool
+    show_author: bool
+    show_rail: bool
+    rail: tuple[RailItem, ...]
+    background_color: RGBColor
+    title_color: RGBColor
+    secondary_color: RGBColor
+
+
+@dataclass(frozen=True)
+class FooterConfig:
+    text: str
+    show_divider: bool
+    show_text: bool
+    show_page_number: bool
+    show_total: bool
+    text_color: RGBColor
+    page_color: RGBColor
+    divider_color: RGBColor
+
+
+@dataclass(frozen=True)
+class CoverFooterConfig:
+    cover: CoverConfig
+    footer: FooterConfig
+
+
+_DEFAULT_DATA = {
+    "cover": {
+        "eyebrow": "SLIDE PATTERN LIBRARY",
+        "show_date": True,
+        "show_author": True,
+        "show_rail": True,
+        "rail": [
+            {"label": "SCOPE", "value": "{total:02d} patterns"},
+            {"label": "OUTPUT", "value": "PowerPoint"},
+            {"label": "QUALITY", "value": "Generate / Validate / Review"},
+        ],
+        "background_color": "182C43",
+        "title_color": "FFFFFC",
+        "secondary_color": "DFEBE8",
+    },
+    "footer": {
+        "text": "{footer}",
+        "show_divider": True,
+        "show_text": True,
+        "show_page_number": True,
+        "show_total": True,
+        "text_color": "666E70",
+        "page_color": "182C43",
+        "divider_color": "D1CFC8",
+    },
+}
+
+
+def _expect_bool(value, path):
+    if not isinstance(value, bool):
+        raise ValueError(f"{path} は true / false で指定してください")
+    return value
+
+
+def _expect_text(value, path, *, max_length):
+    if not isinstance(value, str):
+        raise ValueError(f"{path} は文字列で指定してください")
+    if len(value) > max_length:
+        raise ValueError(f"{path} は {max_length} 文字以内にしてください")
+    return value
+
+
+def _expect_color(value, path):
+    if not isinstance(value, str) or not _HEX_COLOR.fullmatch(value):
+        raise ValueError(f"{path} は6桁のHEX色(RRGGBB)で指定してください")
+    return RGBColor.from_string(value.upper())
+
+
+def _validate_template(value, path, *, max_length):
+    value = _expect_text(value, path, max_length=max_length)
+    try:
+        fields = [name for _, name, _, _ in Formatter().parse(value) if name]
+    except ValueError as e:
+        raise ValueError(f"{path} のプレースホルダーが不正です: {e}") from e
+    for name in fields:
+        if name not in _TEMPLATE_FIELDS:
+            allowed = ", ".join(sorted(_TEMPLATE_FIELDS))
+            raise ValueError(f"{path} の {{{name}}} は使用できません (使用可能: {allowed})")
+    try:
+        value.format(title="title", footer="footer", date="date", author="author",
+                     page=1, total=10)
+    except (KeyError, ValueError) as e:
+        raise ValueError(f"{path} のプレースホルダー書式が不正です: {e}") from e
+    return value
+
+
+def _reject_unknown(data, allowed, path):
+    unknown = sorted(set(data) - allowed)
+    if unknown:
+        raise ValueError(f"{path} に未対応の項目があります: {', '.join(unknown)}")
+
+
+def _merge_data(data):
+    if not isinstance(data, dict):
+        raise ValueError("設定JSONのトップレベルはオブジェクトにしてください")
+    _reject_unknown(data, {"cover", "footer"}, "トップレベル")
+    merged = {section: dict(values) for section, values in _DEFAULT_DATA.items()}
+    for section in ("cover", "footer"):
+        override = data.get(section, {})
+        if not isinstance(override, dict):
+            raise ValueError(f"{section} はオブジェクトにしてください")
+        allowed = _COVER_KEYS if section == "cover" else _FOOTER_KEYS
+        _reject_unknown(override, allowed, section)
+        merged[section].update(override)
+    return merged
+
+
+def parse_cover_footer_config(data):
+    """設定dictを検証し、描画用の不変オブジェクトへ変換する。"""
+    merged = _merge_data(data)
+    cover = merged["cover"]
+    footer = merged["footer"]
+
+    rail_data = cover["rail"]
+    if not isinstance(rail_data, list) or len(rail_data) > 3:
+        raise ValueError("cover.rail は0〜3件の配列にしてください")
+    rail = []
+    for idx, item in enumerate(rail_data):
+        path = f"cover.rail[{idx}]"
+        if not isinstance(item, dict):
+            raise ValueError(f"{path} はオブジェクトにしてください")
+        _reject_unknown(item, {"label", "value"}, path)
+        if set(item) != {"label", "value"}:
+            raise ValueError(f"{path} には label と value が必要です")
+        rail.append(RailItem(
+            _validate_template(item["label"], f"{path}.label", max_length=18),
+            _validate_template(item["value"], f"{path}.value", max_length=42),
+        ))
+
+    return CoverFooterConfig(
+        cover=CoverConfig(
+            eyebrow=_validate_template(
+                cover["eyebrow"], "cover.eyebrow", max_length=48),
+            show_date=_expect_bool(cover["show_date"], "cover.show_date"),
+            show_author=_expect_bool(cover["show_author"], "cover.show_author"),
+            show_rail=_expect_bool(cover["show_rail"], "cover.show_rail"),
+            rail=tuple(rail),
+            background_color=_expect_color(
+                cover["background_color"], "cover.background_color"),
+            title_color=_expect_color(cover["title_color"], "cover.title_color"),
+            secondary_color=_expect_color(
+                cover["secondary_color"], "cover.secondary_color"),
+        ),
+        footer=FooterConfig(
+            text=_validate_template(footer["text"], "footer.text", max_length=100),
+            show_divider=_expect_bool(
+                footer["show_divider"], "footer.show_divider"),
+            show_text=_expect_bool(footer["show_text"], "footer.show_text"),
+            show_page_number=_expect_bool(
+                footer["show_page_number"], "footer.show_page_number"),
+            show_total=_expect_bool(footer["show_total"], "footer.show_total"),
+            text_color=_expect_color(footer["text_color"], "footer.text_color"),
+            page_color=_expect_color(footer["page_color"], "footer.page_color"),
+            divider_color=_expect_color(
+                footer["divider_color"], "footer.divider_color"),
+        ),
+    )
+
+
+def load_cover_footer_config(path=None):
+    """設定JSONを読み込む。pathが未指定なら現行互換の標準設定を返す。"""
+    if path is None:
+        return parse_cover_footer_config({})
+    source = Path(path)
+    try:
+        data = json.loads(source.read_text(encoding="utf-8"))
+    except FileNotFoundError as e:
+        raise ValueError(f"設定ファイルが見つかりません: {source}") from e
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"設定JSONが不正です: {source} ({e.lineno}行{e.colno}列)") from e
+    except UnicodeDecodeError as e:
+        raise ValueError(f"設定JSONはUTF-8で保存してください: {source}") from e
+    return parse_cover_footer_config(data)
+
+
+def _format(value, meta, *, page, total):
+    return value.format(
+        title=meta["title"], footer=meta["footer"], date=meta["date"],
+        author=meta["author"], page=page, total=total,
+    )
+
+
+def _single_line_size(text, width, size, min_size, *, field, weight="regular"):
+    while len(wrap_text(text, width, size, weight)) > 1 and size > min_size:
+        size -= 0.5
+    if len(wrap_text(text, width, size, weight)) > 1:
+        raise ValueError(f"{field} の展開後の文字列が長すぎます: {text}")
+    return size
+
+
+def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
+    """固定レイアウト内で、設定済みの表紙要素を描画する。"""
+    cover = config.cover
+    add_rect(slide, 0, 0, 13.333, 7.5, cover.background_color)
+    eyebrow = _format(cover.eyebrow, meta, page=1, total=total)
+    custom_eyebrow = cover.eyebrow != _DEFAULT_DATA["cover"]["eyebrow"]
+    eyebrow_size = 10
+    if custom_eyebrow:
+        eyebrow_size = _single_line_size(
+            eyebrow, 3.2, 10, 8, field="cover.eyebrow", weight="bold")
+    add_text(slide, 0.9, 0.68, 3.2, 0.3, eyebrow, eyebrow_size,
+             bold=True, color=cover.secondary_color, wrap=not custom_eyebrow)
+    if cover.show_date:
+        add_text(slide, 9.78, 0.68, 2.62, 0.3, meta["date"], 10,
+                 color=cover.secondary_color, align=PP_ALIGN.RIGHT)
+
+    title_size, title_lines = fit_font_size(
+        spec["title"], 8.05, 2.15, 42, min_pt=34, weight="bold", spacing=1.06)
+    title_h = max(1.0, len(title_lines) * line_height_in(title_size, 1.08) + 0.1)
+    add_text(slide, 0.9, 1.72, 8.05, title_h, "\n".join(title_lines), title_size,
+             bold=True, color=cover.title_color, spacing=1.08)
+
+    subtitle_y = min(4.72, 1.72 + title_h + 0.38)
+    subtitle_size, subtitle_lines = fit_font_size(
+        spec["subtitle"], 8.0, 0.8, 17.5, min_pt=15, spacing=1.2)
+    add_text(slide, 0.94, subtitle_y, 8.0, 0.8, "\n".join(subtitle_lines),
+             subtitle_size, color=cover.secondary_color, spacing=1.2)
+
+    if cover.show_rail and cover.rail:
+        rail_height = 1.58 + max(0, len(cover.rail) - 1) * 1.12
+        add_rect(slide, 9.45, 1.68, 0.012, rail_height, cover.secondary_color)
+        for idx, item in enumerate(cover.rail):
+            y = 1.82 + idx * 1.12
+            label = _format(item.label, meta, page=1, total=total)
+            default_item = (_DEFAULT_DATA["cover"]["rail"][idx]
+                            if idx < len(_DEFAULT_DATA["cover"]["rail"]) else {})
+            custom_label = item.label != default_item.get("label")
+            label_size = 8.8
+            if custom_label:
+                label_size = _single_line_size(
+                    label, 2.25, 8.8, 7,
+                    field=f"cover.rail[{idx}].label", weight="bold")
+            add_text(slide, 9.82, y, 2.25, 0.25, label, label_size,
+                     bold=True, color=cover.secondary_color,
+                     wrap=not custom_label)
+            value = _format(item.value, meta, page=1, total=total)
+            custom_value = item.value != default_item.get("value")
+            value_size = 13.5
+            if custom_value:
+                value_size = _single_line_size(
+                    value, 2.35, 13.5, 9,
+                    field=f"cover.rail[{idx}].value", weight="bold")
+            add_text(slide, 9.82, y + 0.34, 2.35, 0.45,
+                     value, value_size, bold=True, color=cover.title_color,
+                     wrap=not custom_value)
+
+    if cover.show_author:
+        add_text(slide, 0.9, 6.5, 4.8, 0.3, meta["author"], 10.5,
+                 bold=True, color=cover.title_color)
+
+
+def render_footer(slide, page, meta, total, config, *, add_text, add_rect):
+    """本文領域を変えずに、設定済みのフッターだけを描画する。"""
+    footer = config.footer
+    digits = max(2, len(str(total)))
+    if footer.show_divider:
+        add_rect(slide, 0.72, 6.92, 11.9, 0.01, footer.divider_color)
+    if footer.show_text:
+        footer_text = _format(footer.text, meta, page=page, total=total)
+        default_text = footer.text == _DEFAULT_DATA["footer"]["text"]
+        footer_size = 8.2
+        if not default_text:
+            footer_size = _single_line_size(
+                footer_text, 7.8, 8.2, 6.5, field="footer.text")
+        add_text(slide, 0.72, 7.01, 7.8, 0.25,
+                 footer_text, footer_size, color=footer.text_color,
+                 anchor=MSO_ANCHOR.MIDDLE, wrap=default_text)
+    if footer.show_page_number:
+        if footer.show_total:
+            add_text(slide, 11.38, 6.98, 0.64, 0.28,
+                     f"{page:0{digits}d}", 11, bold=True,
+                     color=footer.page_color, align=PP_ALIGN.RIGHT)
+            add_text(slide, 12.04, 6.99, 0.58, 0.26,
+                     f"/ {total:0{digits}d}", 8.2,
+                     color=footer.text_color, align=PP_ALIGN.RIGHT)
+        else:
+            add_text(slide, 11.78, 6.98, 0.84, 0.28,
+                     f"{page:0{digits}d}", 11, bold=True,
+                     color=footer.page_color, align=PP_ALIGN.RIGHT)

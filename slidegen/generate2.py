@@ -1,5 +1,5 @@
 """基本デッキに表現力検証スライドを加えた拡張サンプルを生成する。"""
-import sys
+import argparse
 from pathlib import Path
 
 from pptx import Presentation
@@ -25,9 +25,13 @@ RENDER_EXTENDED = dict(generate.RENDER,
                        diagram=s_diagram)
 
 
-def main(out_path):
+def main(out_path, cover_footer_config=None):
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        generate.configure_cover_footer(cover_footer_config)
+    except ValueError as e:
+        raise SystemExit(f"NG: 表紙・フッター設定: {e}") from e
     prs = Presentation()
     prs.slide_width = Inches(generate.SLIDE_W)
     prs.slide_height = Inches(generate.SLIDE_H)
@@ -45,4 +49,9 @@ def main(out_path):
 
 if __name__ == "__main__":
     default_out = Path(__file__).resolve().parent.parent / "out" / "sample_extended.pptx"
-    main(sys.argv[1] if len(sys.argv) > 1 else default_out)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("out_path", nargs="?", default=default_out)
+    parser.add_argument("--cover-footer-config", metavar="PATH",
+                        help="表紙・フッター設定JSON")
+    args = parser.parse_args()
+    main(args.out_path, args.cover_footer_config)

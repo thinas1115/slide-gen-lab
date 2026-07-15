@@ -1,6 +1,6 @@
 """python-pptxとテキスト実測による基本サンプルデッキ生成。"""
+import argparse
 import re
-import sys
 from pathlib import Path
 
 from pptx import Presentation
@@ -13,6 +13,7 @@ from pptx.oxml.ns import qn
 from pptx.util import Emu, Inches, Pt
 
 from content import DECK
+from cover_footer import load_cover_footer_config, render_cover, render_footer
 from textfit import fit_font_size, line_height_in, wrap_text
 
 # ---- テーマ ----
@@ -31,6 +32,13 @@ SLIDE_W, SLIDE_H = 13.333, 7.5
 MARGIN = 0.55
 BODY_W = SLIDE_W - MARGIN * 2
 BODY_TOP, BODY_BOTTOM = 1.58, 6.85
+COVER_FOOTER = load_cover_footer_config()
+
+
+def configure_cover_footer(path=None):
+    """表紙・フッター設定を切り替える。未指定なら標準設定へ戻す。"""
+    global COVER_FOOTER
+    COVER_FOOTER = load_cover_footer_config(path)
 
 
 def set_run(run, size, *, bold=False, color=TEXT):
@@ -105,14 +113,8 @@ def page_label(page):
 
 def footer(slide, page):
     total = len(DECK["slides"])
-    digits = max(2, len(str(total)))
-    add_rect(slide, 0.72, 6.92, 11.9, 0.01, RULE)
-    add_text(slide, 0.72, 7.01, 7.8, 0.25, DECK["meta"]["footer"], 8.2,
-             color=GRAY, anchor=MSO_ANCHOR.MIDDLE)
-    add_text(slide, 11.38, 6.98, 0.64, 0.28, f"{page:0{digits}d}", 11,
-             bold=True, color=NAVY, align=PP_ALIGN.RIGHT)
-    add_text(slide, 12.04, 6.99, 0.58, 0.26, f"/ {total:0{digits}d}", 8.2,
-             color=GRAY, align=PP_ALIGN.RIGHT)
+    render_footer(slide, page, DECK["meta"], total, COVER_FOOTER,
+                  add_text=add_text, add_rect=add_rect)
 
 
 def note_line(slide, note):
@@ -123,41 +125,8 @@ def note_line(slide, note):
 def s_title(slide, spec, page):
     meta = DECK["meta"]
     total = len(DECK["slides"])
-
-    add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, NAVY)
-    add_text(slide, 0.9, 0.68, 3.2, 0.3, "SLIDE PATTERN LIBRARY", 10,
-             bold=True, color=LIGHT)
-    add_text(slide, 9.78, 0.68, 2.62, 0.3, meta["date"], 10,
-             color=LIGHT, align=PP_ALIGN.RIGHT)
-
-    title_size, title_lines = fit_font_size(
-        spec["title"], 8.05, 2.15, 42, min_pt=34, weight="bold", spacing=1.06)
-    title_h = max(1.0, len(title_lines) * line_height_in(title_size, 1.08) + 0.1)
-    add_text(slide, 0.9, 1.72, 8.05, title_h, "\n".join(title_lines), title_size,
-             bold=True, color=WHITE, spacing=1.08)
-
-    subtitle_y = min(4.72, 1.72 + title_h + 0.38)
-    subtitle_size, subtitle_lines = fit_font_size(
-        spec["subtitle"], 8.0, 0.8, 17.5, min_pt=15, spacing=1.2)
-    add_text(slide, 0.94, subtitle_y, 8.0, 0.8, "\n".join(subtitle_lines),
-             subtitle_size, color=LIGHT, spacing=1.2)
-
-    # The right rail is informative, not decorative: it frames the deck's scope.
-    add_rect(slide, 9.45, 1.68, 0.012, 3.82, LIGHT)
-    rail = [
-        ("SCOPE", f"{total:02d} patterns"),
-        ("OUTPUT", "PowerPoint"),
-        ("QUALITY", "Generate / Validate / Review"),
-    ]
-    for i, (label, value) in enumerate(rail):
-        y = 1.82 + i * 1.12
-        add_text(slide, 9.82, y, 2.25, 0.25, label, 8.8,
-                 bold=True, color=LIGHT)
-        add_text(slide, 9.82, y + 0.34, 2.35, 0.45, value, 13.5,
-                 bold=True, color=WHITE)
-
-    add_text(slide, 0.9, 6.5, 4.8, 0.3, meta["author"], 10.5,
-             bold=True, color=WHITE)
+    render_cover(slide, spec, meta, total, COVER_FOOTER,
+                 add_text=add_text, add_rect=add_rect)
 
 
 def s_bullets(slide, spec, page):
@@ -408,9 +377,13 @@ RENDER = {"title": s_title, "bullets": s_bullets, "cards": s_cards,
           "table": s_table, "twocol": s_twocol, "chart": s_chart}
 
 
-def main(out_path):
+def main(out_path, cover_footer_config=None):
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        configure_cover_footer(cover_footer_config)
+    except ValueError as e:
+        raise SystemExit(f"NG: 表紙・フッター設定: {e}") from e
     prs = Presentation()
     prs.slide_width = Inches(SLIDE_W)
     prs.slide_height = Inches(SLIDE_H)
@@ -427,4 +400,9 @@ def main(out_path):
 
 if __name__ == "__main__":
     default_out = Path(__file__).resolve().parent.parent / "out" / "sample_basic.pptx"
-    main(sys.argv[1] if len(sys.argv) > 1 else default_out)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("out_path", nargs="?", default=default_out)
+    parser.add_argument("--cover-footer-config", metavar="PATH",
+                        help="表紙・フッター設定JSON")
+    args = parser.parse_args()
+    main(args.out_path, args.cover_footer_config)

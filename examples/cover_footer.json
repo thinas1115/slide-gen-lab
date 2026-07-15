@@ -1,0 +1,26 @@
+{
+  "cover": {
+    "eyebrow": "CORPORATE PRESENTATION",
+    "show_date": true,
+    "show_author": true,
+    "show_rail": true,
+    "rail": [
+      {"label": "PAGES", "value": "{total:02d} slides"},
+      {"label": "OWNER", "value": "{author}"},
+      {"label": "DATE", "value": "{date}"}
+    ],
+    "background_color": "16324F",
+    "title_color": "FFFDF7",
+    "secondary_color": "BFD7D2"
+  },
+  "footer": {
+    "text": "{author}  |  {title}",
+    "show_divider": true,
+    "show_text": true,
+    "show_page_number": true,
+    "show_total": true,
+    "text_color": "667478",
+    "page_color": "16324F",
+    "divider_color": "C9D4D1"
+  }
+}

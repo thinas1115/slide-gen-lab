@@ -6,6 +6,7 @@
 生成前に validate_content.py の検証を通す。エラーがあればレンダリングせず、
 生成AIにそのまま渡して直させられる粒度のメッセージを出して終了する。
 """
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -37,7 +38,7 @@ RENDER = dict(generate.RENDER,
               diagram=s_diagram)
 
 
-def main(json_path, out_path):
+def main(json_path, out_path, cover_footer_config=None):
     deck = json.loads(Path(json_path).read_text(encoding="utf-8"))
     errors = validate(deck)
     if errors:
@@ -47,6 +48,10 @@ def main(json_path, out_path):
             print(f"  - {e}", file=sys.stderr)
         raise SystemExit(1)
     generate.DECK = deck
+    try:
+        generate.configure_cover_footer(cover_footer_config)
+    except ValueError as e:
+        raise SystemExit(f"NG: 表紙・フッター設定: {e}") from e
 
     prs = Presentation()
     prs.slide_width = Inches(generate.SLIDE_W)
@@ -78,7 +83,10 @@ def main(json_path, out_path):
 
 if __name__ == "__main__":
     project_root = Path(__file__).resolve().parent.parent
-    main(
-        sys.argv[1] if len(sys.argv) > 1 else project_root / "content.json",
-        sys.argv[2] if len(sys.argv) > 2 else project_root / "out" / "from_json.pptx",
-    )
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("json_path", nargs="?", default=project_root / "content.json")
+    parser.add_argument("out_path", nargs="?", default=project_root / "out" / "from_json.pptx")
+    parser.add_argument("--cover-footer-config", metavar="PATH",
+                        help="表紙・フッター設定JSON")
+    args = parser.parse_args()
+    main(args.json_path, args.out_path, args.cover_footer_config)

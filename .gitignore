@@ -4,6 +4,7 @@ out/
 # ローカル専用のAIエージェント設定。端末固有のパスや設定を含み得るため追跡しない
 /CLAUDE.md
 /.claude/
+/cover_footer.local.json
 
 # アイコン素材 (slidegen/assets/) は CREDITS.md のクレジット表記とともにコミットする
 # (AWS: 無改変・技術資料用途の許諾範囲内 / Fluent: MIT)
