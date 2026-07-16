@@ -16,7 +16,7 @@ PATTERN_DECK = {
             "type": "title",
             "pattern": "title",
             "title": "社内スライド\nパターンライブラリ",
-            "subtitle": "意思決定からシステム構成まで、17の標準レイアウトを検証",
+            "subtitle": "意思決定からシステム構成まで、18の標準レイアウトを検証",
         },
         {
             "type": "bullets",
@@ -102,6 +102,17 @@ PATTERN_DECK = {
                     ("生成後 (分)", [13, 42, 85, 28]),
                 ],
             },
+        },
+        {
+            "type": "image",
+            "pattern": "large visual",
+            "kicker": "キービジュアル",
+            "title": "生成・提供・検索画像を、スライドの主役として大きく見せる",
+            "image": "cover/cover-background.png",
+            "fit": "cover",
+            "caption": "画像全体を大胆に使い、説明は短いキャプションへ絞る。",
+            "source": "画像: 社内テンプレート検証用オリジナル素材",
+            "alt": "濃紺と青緑の幾何学的な光で構成された抽象画像",
         },
         {
             "type": "process",

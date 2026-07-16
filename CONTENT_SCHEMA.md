@@ -262,6 +262,49 @@ python slidegen/validate_content.py content.json
 }
 ```
 
+### image
+
+用途: 写真、イラスト、画面キャプチャ、生成画像など、1枚の画像を本文の主役として大きく見せる。
+
+必須:
+
+- `type`: `"image"`
+- `kicker`: string
+- `title`: string
+- `image`: `slidegen/assets/`からの相対PNG/JPEGパス。本文画像は`images/<ファイル名>`を推奨
+
+任意:
+
+- `fit`: `"contain"`または`"cover"`。既定値は`"contain"`
+- `caption`: 画像から読み取るべき要点を示す短い説明
+- `source`: 出典、権利者、ライセンス、取得日などの表示
+- `alt`: 画像を見られない受け手向けの代替説明。PPTX内の画像説明へ設定する
+
+挙動:
+
+- `contain`は画像全体を表示し、余白が生じても縦横比を維持する。画面キャプチャ、図版、資料画像に向く。
+- `cover`は本文枠全体を埋め、中央を基準に上下または左右をトリミングする。写真や背景的なビジュアルに向く。
+- 画像は引き伸ばさない。lead、caption、sourceが増えた場合は、裁量余白、画像、文字の順で縮小し、
+  最小値でも収まらなければ生成を停止する。
+- URLを直接指定しない。画像生成、利用者提供、Web検索のいずれでも、使用可能なファイルを先に
+  `slidegen/assets/images/`へ置いてから参照する。
+- Web画像は取得元と利用条件を確認し、`source`へ記録する。リポジトリへ同梱する場合は
+  `slidegen/assets/CREDITS.md`にも出典とライセンスを記録する。
+
+```json
+{
+  "type": "image",
+  "kicker": "利用イメージ",
+  "title": "完成後の業務画面を大きく見せる",
+  "lead": "利用者が最初に確認する情報と操作導線を示します。",
+  "image": "images/product-screen.png",
+  "fit": "contain",
+  "caption": "主要指標と次のアクションを同じ画面で確認できます。",
+  "source": "出典: プロダクトチーム提供、2026年7月",
+  "alt": "主要指標と操作ボタンが並ぶ業務ダッシュボード画面"
+}
+```
+
 ### process
 
 用途: 手順、業務フロー、導入ステップ。

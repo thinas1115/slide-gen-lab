@@ -14,7 +14,9 @@ import json
 import sys
 from pathlib import Path
 
-from asset_paths import resolve_icon_path
+from PIL import Image
+
+from asset_paths import resolve_icon_path, resolve_image_path
 from generate import BODY_W
 from timeline_layout import resolve_marker, resolve_span
 
@@ -139,6 +141,29 @@ def _v_chart(s):
         elif cats and len(sr[1]) != len(cats):
             s.err(f"series[{i}] の値 ({len(sr[1])}件) を categories "
                   f"({len(cats)}件) と同数にしてください")
+
+
+def _v_image(s):
+    if not s.req_str("image"):
+        return
+    if "fit" in s.spec and s.spec["fit"] not in {"contain", "cover"}:
+        s.err('image.fit は "contain" または "cover" にしてください')
+    for key in ("caption", "source", "alt"):
+        if key in s.spec and not _is_str(s.spec[key]):
+            s.err(f'"{key}" は空でない文字列にしてください')
+    try:
+        image_path = resolve_image_path(s.spec["image"])
+    except ValueError as exc:
+        s.err(str(exc))
+        return
+    if not image_path.is_file():
+        s.err(f"image={s.spec['image']!r} がassets/にありません")
+        return
+    try:
+        with Image.open(image_path) as image:
+            image.verify()
+    except (OSError, ValueError):
+        s.err(f"image={s.spec['image']!r} は有効なPNG/JPEGではありません")
 
 
 def _v_process(s):
@@ -417,6 +442,7 @@ def _v_diagram(s):
 VALIDATORS = {
     "title": _v_title, "bullets": _v_bullets, "cards": _v_cards,
     "table": _v_table, "twocol": _v_twocol, "chart": _v_chart,
+    "image": _v_image,
     "process": _v_process, "roadmap": _v_roadmap,
     "program_roadmap": _v_program_roadmap, "matrix": _v_matrix,
     "hub": _v_hub, "org": _v_org, "diagram": _v_diagram,

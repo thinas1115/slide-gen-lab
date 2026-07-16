@@ -234,6 +234,24 @@ PROGRAM_ROADMAP_STRESS = {
     ],
 }
 
+IMAGE_STRESS = {
+    "type": "image",
+    "kicker": "大判画像",
+    "title": "長い補足情報があっても、画像の視認領域を確保する",
+    "lead": "キャプションと出典が増えた場合の、余白圧縮と画像・文字縮小を確認します。",
+    "image": "cover/cover-background.png",
+    "fit": "contain",
+    "caption": (
+        "生成画像、利用者提供画像、利用許諾済みのWeb画像を同じrendererで扱い、"
+        "縦横比を保ったまま本文領域へ配置します。"
+    ),
+    "source": (
+        "出典: 社内テンプレート検証用オリジナル素材。"
+        "外部画像を利用する場合は、取得元・権利者・利用条件を確認して記録します。"
+    ),
+    "alt": "濃紺と青緑の幾何学的な光で構成された抽象画像",
+}
+
 STRESS_PATTERN_DECK = {
     "meta": {
         "title": "段階的縮小ストレス検証",
@@ -267,5 +285,6 @@ STRESS_PATTERN_DECK = {
         },
         ROADMAP_STRESS,
         PROGRAM_ROADMAP_STRESS,
+        IMAGE_STRESS,
     ],
 }
