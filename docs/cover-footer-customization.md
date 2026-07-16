@@ -21,6 +21,10 @@ python slidegen/check_layout.py out/deck.pptx
 python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-config cover_footer.local.json
 ```
 
+カスタム表紙背景はリポジトリ直下の `assets/cover/` に配置する。ルートの
+`cover_footer.local.json` からは `assets/cover/<ファイル名>`、同梱の
+`examples/cover_footer.json` からは `../assets/cover/<ファイル名>` で参照する。
+
 同じオプションは次のgeneratorでも使用できる。
 
 - `slidegen/generate.py`
@@ -82,7 +86,7 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 {
   "cover": {
     "eyebrow": "QUARTERLY BUSINESS REVIEW",
-    "background_image": "assets/cover.jpg",
+    "background_image": "../assets/cover/cover-background.png",
     "title_color": "FFFFFF",
     "secondary_color": "E5ECEA",
     "show_rail": true,

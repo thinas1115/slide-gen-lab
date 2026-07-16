@@ -33,6 +33,14 @@ def main():
     assert default.footer.text == "{footer}"
     assert default.footer.show_total is True
 
+    repo_root = Path(__file__).resolve().parents[1]
+    example = load_cover_footer_config(repo_root / "examples" / "cover_footer.json")
+    assert example.cover.background_image == (
+        repo_root / "assets" / "cover" / "cover-background.png").resolve()
+    with Image.open(example.cover.background_image) as image:
+        assert image.format == "PNG"
+        assert image.width / image.height > 1.7
+
     custom = parse_cover_footer_config({
         "cover": {
             "eyebrow": "{date} BUSINESS REVIEW",

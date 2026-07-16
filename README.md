@@ -20,6 +20,7 @@
 | `EXTENDING.md` | 新しいtype・エンジン機能を追加するときの不変条件と手順(AI向け拡張ガイド) |
 | `DESIGN_CUSTOMIZATION.md` | 配色・表紙・既存renderer・複数テーマ対応など、デザイン変更時の修正箇所一覧 |
 | `docs/cover-footer-customization.md` | 表紙・フッターだけをユーザー別設定JSONで変更する手順とschema |
+| `assets/cover/` | ユーザーが差し替える表紙背景画像。PNG/JPEGを配置する |
 | `slidegen/` | 本体。Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
 | `slidegen/generate_from_json.py` | `content.json` → PPTX 生成(生成前にschema検証を自動実行) |
 | `slidegen/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・廃止typeの拒否) |

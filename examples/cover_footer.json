@@ -4,7 +4,7 @@
     "show_date": true,
     "show_author": true,
     "show_rail": true,
-    "background_image": null,
+    "background_image": "../assets/cover/cover-background.png",
     "rail": [
       {"label": "TOPIC", "value": "スライド生成基盤"},
       {"label": "AUDIENCE", "value": "社内利用者"},
