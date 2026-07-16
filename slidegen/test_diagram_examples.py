@@ -81,6 +81,12 @@ def main():
     _, cf_y = dense_layout.node_center("cf")
     assert name_label.left.inches + name_label.width.inches < r53_x
     assert name_label.top.inches + name_label.height.inches < cf_y - 0.10
+    loop_axis, loop_x = dense_layout.channel("loop_c")
+    s3_axis, s3_x = dense_layout.channel("s3_lane")
+    assert loop_axis == s3_axis == "v"
+    assert s3_x - loop_x >= 0.20, "S3配線をRDS側ループから分離する"
+    assert s3_x < dense_layout.cont_rect["vpc"][2], \
+        "S3配線はAZ-c境界とVPC境界の間を通す"
 
     deck = {
         "meta": {

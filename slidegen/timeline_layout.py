@@ -1,0 +1,154 @@
+"""ロードマップ系rendererの期間解決・レーン割当・収容計算。"""
+from dataclasses import dataclass
+
+from layout_fit import select_fit, stepped
+
+
+@dataclass(frozen=True)
+class ActivityPlacement:
+    """時間軸上へ正規化し、自動レーンを割り当てた作業。"""
+
+    index: int
+    activity: dict
+    start: float
+    end: float
+    lane: int
+
+
+def _period_index(value, periods, *, end=False, marker=False):
+    if isinstance(value, bool):
+        raise ValueError("真偽値は期間位置に指定できません")
+    if isinstance(value, (int, float)):
+        return float(value)
+    if not isinstance(value, str) or value not in periods:
+        raise ValueError(f"期間ラベル {value!r} が期間一覧にありません")
+    index = periods.index(value)
+    if marker:
+        return index + 0.5
+    return index + (1.0 if end else 0.0)
+
+
+def resolve_span(item, periods):
+    """start/endを時間軸境界へ変換する。文字列のendは指定期間を含む。"""
+    start = _period_index(item.get("start"), periods)
+    end = _period_index(item.get("end"), periods, end=True)
+    if not 0 <= start < end <= len(periods):
+        raise ValueError(
+            f"start={item.get('start')!r} / end={item.get('end')!r} は、"
+            f"0 <= start < end <= {len(periods)} または期間ラベルで指定してください"
+        )
+    return start, end
+
+
+def resolve_marker(value, periods):
+    """マイルストーン位置を解決する。文字列は該当期間の中央へ置く。"""
+    at = _period_index(value, periods, marker=True)
+    if not 0 <= at <= len(periods):
+        raise ValueError(
+            f"at={value!r} は0〜{len(periods)}または期間ラベルで指定してください"
+        )
+    return at
+
+
+def pack_activities(activities, periods):
+    """重なる作業を別レーンへ自動配置する区間彩色。"""
+    normalized = []
+    for index, activity in enumerate(activities):
+        start, end = resolve_span(activity, periods)
+        normalized.append((start, end, index, activity))
+    normalized.sort(key=lambda item: (item[0], item[1], item[2]))
+
+    lane_ends = []
+    placements = []
+    for start, end, index, activity in normalized:
+        lane = next(
+            (i for i, lane_end in enumerate(lane_ends) if start >= lane_end),
+            len(lane_ends),
+        )
+        if lane == len(lane_ends):
+            lane_ends.append(end)
+        else:
+            lane_ends[lane] = end
+        placements.append(ActivityPlacement(index, activity, start, end, lane))
+    placements.sort(key=lambda item: item.index)
+    return placements, len(lane_ends)
+
+
+def fit_roadmap(available, row_count, *, has_note=False):
+    """既存roadmapを最大6行まで段階的に収容する。"""
+    reserve = 0.30 if has_note else 0.0
+    usable = available - reserve
+    candidates = [
+        ("standard", {
+            "top_gap": 0.24, "header_h": 0.48, "row_h": 0.78,
+            "bar_h": 0.30, "period_pt": 10.5, "name_pt": 12.5,
+            "goal_pt": 9.5, "bar_pt": 10.0, "milestone_pt": 8.5,
+        }, 0.24 + 0.48 + row_count * 0.78),
+    ]
+    for row_h in stepped(0.76, 0.70, 0.02):
+        values = {
+            "top_gap": 0.12, "header_h": 0.44, "row_h": row_h,
+            "bar_h": 0.28, "period_pt": 10.0, "name_pt": 12.0,
+            "goal_pt": 9.0, "bar_pt": 9.5, "milestone_pt": 8.0,
+        }
+        candidates.append(("gap", values, 0.12 + 0.44 + row_count * row_h))
+    for row_h in stepped(0.68, 0.56, 0.02):
+        ratio = (row_h - 0.56) / 0.12
+        values = {
+            "top_gap": 0.08, "header_h": 0.42, "row_h": row_h,
+            "bar_h": 0.22 + 0.04 * ratio,
+            "period_pt": 8.5 + 1.0 * ratio,
+            "name_pt": 9.5 + 1.5 * ratio,
+            "goal_pt": 7.5 + 1.0 * ratio,
+            "bar_pt": 8.0 + 1.0 * ratio,
+            "milestone_pt": 7.0 + 0.5 * ratio,
+        }
+        candidates.append(("element", values, 0.08 + 0.42 + row_count * row_h))
+    return select_fit(
+        "roadmap", usable, candidates,
+        guidance="フェーズ名を短くするか、フェーズ数を減らして分割してください。",
+    )
+
+
+def fit_program_roadmap(available, lane_counts, *, has_note=False):
+    """テーマごとに異なるレーン数を自然高さで収容する。"""
+    reserve = 0.30 if has_note else 0.0
+    usable = available - reserve
+    track_count = len(lane_counts)
+
+    def used(values):
+        rows = sum(
+            2 * values["track_pad"] + count * values["lane_pitch"]
+            for count in lane_counts
+        )
+        return (values["top_gap"] + values["header_h"] + rows
+                + max(0, track_count - 1) * values["track_gap"])
+
+    candidates = []
+    standard = {
+        "top_gap": 0.16, "header_h": 0.44, "track_pad": 0.08,
+        "track_gap": 0.03, "lane_pitch": 0.34, "period_pt": 10.0,
+        "track_pt": 11.5, "activity_pt": 9.5, "line_h": 0.025,
+    }
+    candidates.append(("standard", standard, used(standard)))
+    for lane_pitch in stepped(0.32, 0.30, 0.02):
+        values = {
+            "top_gap": 0.10, "header_h": 0.42, "track_pad": 0.06,
+            "track_gap": 0.01, "lane_pitch": lane_pitch,
+            "period_pt": 9.5, "track_pt": 11.0,
+            "activity_pt": 9.0, "line_h": 0.022,
+        }
+        candidates.append(("gap", values, used(values)))
+    for lane_pitch in stepped(0.28, 0.24, 0.02):
+        ratio = (lane_pitch - 0.24) / 0.04
+        values = {
+            "top_gap": 0.08, "header_h": 0.40, "track_pad": 0.05,
+            "track_gap": 0.01, "lane_pitch": lane_pitch,
+            "period_pt": 8.0 + ratio, "track_pt": 9.5 + ratio,
+            "activity_pt": 8.0 + 0.5 * ratio, "line_h": 0.020,
+        }
+        candidates.append(("element", values, used(values)))
+    return select_fit(
+        "program_roadmap", usable, candidates,
+        guidance=("同時並行の作業を減らすか、テーマを複数スライドへ分割してください。"),
+    )

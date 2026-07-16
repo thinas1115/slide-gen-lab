@@ -90,10 +90,9 @@ AWS_MULTIAZ_EXAMPLE = {
     "channels": {
         "loop_a": ["outside_container", ["az_a", "left"]],
         "loop_c": ["outside_container", ["az_c", "right"]],
-        # fg_c->s3をloop_cと同じレーンに通すと、fg_c->rds_cのループと同じ
-        # x座標を共有し、別々の線が1本につながって見える(実際の指摘)。
-        # VPCのさらに外側に専用レーンを設けて視覚的に分離する。
-        "s3_lane": ["outside_container", ["vpc", "right"]],
+        # AZ-c境界とVPC境界の中間にS3向けの専用レーンを確保する。
+        # 標準gapではRDS側ループに近すぎるため、境界から0.34in離す。
+        "s3_lane": ["outside_container", ["az_c", "right", 0.34]],
         # ALB→Fargateの横方向ジョグをAZコンテナのラベル帯のすぐ下(内側)で
         # 行い、ラベルの文字帯を横切らないようにする(自動Zルート任せだと
         # ジョグ位置がラベル帯の高さと重なることがあった。実際に発生した不具合)。
@@ -117,16 +116,12 @@ AWS_MULTIAZ_EXAMPLE = {
          "via": ["loop_c"]},
         {"from": "rds_a", "to": "rds_c", "both": True, "dash": "dash",
          "label": "同期", "label_w": 0.8},
-        # exit="right": Fargateの箱の右辺から出す(実際の指摘: topだと
-        # アイコン直上から出て不自然に見えた)。fg_c->rds_cも同じ右辺から
-        # 出るが、経由するチャネルがloop_c(az_cのすぐ外側)とs3_lane
-        # (vpcのすぐ外側、さらに外)で別レーン=別x座標なので混線しない。
-        # 同一辺からの複数エッジはroute_edges内でSLOT_PITCH自動オフセット
-        # されるため、出口の高さもずれて視覚的に分離される。
-        # label_seg=0: 自動選択(最長区間=S3への垂直区間)だとS3自身の
-        # サブラベル("成果物/静的配信")と重なるため、fg_c直近の短い
-        # 区間に固定する(実際に発生した不具合)。
-        {"from": "fg_c", "to": "s3", "exit": "right", "via": ["s3_lane"],
+        # VPC境界のすぐ外や自動Zの中央へ通すと、VPC/AZ境界またはRDS側
+        # ループと近接する。専用レーンで両者の間を通し、Fargate右辺から
+        # S3左辺へ垂直に接続する。
+        # label_seg=0でFargate直近の水平区間へラベルを固定する。
+        {"from": "fg_c", "to": "s3", "exit": "right", "enter": "left",
+         "via": ["s3_lane"],
          "label": "成果物", "label_w": 0.9, "label_seg": 0},
         {"from": "@vpc", "to": "cw", "from_row": "rds", "dash": "dash"},
     ],
