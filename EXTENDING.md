@@ -255,5 +255,5 @@ AGENTS.md の開発フローに従う: Issue作成 → `feature/<内容>` ブラ
 
 レイアウタ関連のバックログ(着手時はこのガイドとIssue本文を読んでから):
 
-- [#8 体制図・ハブ図を小さな専用レイアウタとして再実装](https://github.com/thinas1115/slide-gen-lab/issues/8)
-- [#9 縦詰めパッキングの共有部品化 → layout type](https://github.com/thinas1115/slide-gen-lab/issues/9)
+- [#8 体制図・ハブ図を小さな専用レイアウタとして再実装](https://github.com/thinas1115/pptxdsl/issues/8)
+- [#9 縦詰めパッキングの共有部品化 → layout type](https://github.com/thinas1115/pptxdsl/issues/9)
