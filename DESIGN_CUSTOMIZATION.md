@@ -39,7 +39,7 @@ rendererと共通部品の範囲に閉じ込めやすい。
 | 比較表 | `generate.py` の `s_table()` / `_cell()` | ヘッダー、行高、交互色、列見出し、文字位置 |
 | 2カラム比較 | `generate.py` の `s_twocol()` | 左右のコントラスト、見出し、箇条書き、区切り |
 | グラフ | `generate.py` の `s_chart()` | グラフ面、系列色、凡例、余白、データラベル |
-| 大判画像 | `slidegen/image_slide.py` の `s_image()` / `fit_image_layout()` | 画像枠、contain/cover、caption/source、縮小限界 |
+| 大判画像 | `slidegen/image_slide.py` の `s_image()` / `fit_image_layout()` | 画像枠、contain/cover、右下影、縮小限界 |
 | 図解共通部品 | `slidegen/diagrams.py` の `LINE` / `add_arrow()` / `arrow_label()` / `container()` / `icon_node()` | アイコンノード、枠、矢印、線上ラベルの見た目 |
 | ハブ図 / 体制図 | `diagrams.py` の `s_hub()` / `s_org()` | 放射配置・組織ツリー専用の造形と強調 |
 | 工程 / ロードマップ / 2軸図 | `slidegen/diagrams2.py` の各 `s_*()` | 各ジャンル固有の線、帯、点、ラベル、余白 |

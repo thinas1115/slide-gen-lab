@@ -105,13 +105,12 @@ PATTERN_DECK = {
         },
         {
             "type": "image",
-            "pattern": "large visual",
-            "kicker": "キービジュアル",
-            "title": "生成・提供・検索画像を、スライドの主役として大きく見せる",
+            "pattern": "large visual / cover",
+            "kicker": "画面イメージ",
+            "title": "画面キャプチャを、スライドの主役として大きく見せる",
             "image": "images/pptxdsl-repository.png",
-            "fit": "contain",
-            "caption": "画面全体を欠けなく見せ、説明は短いキャプションへ絞る。",
-            "source": "画像: 利用者提供のpptxdslリポジトリ画面",
+            "fit": "cover",
+            "shadow": True,
             "alt": "GitHubで公開されているpptxdslリポジトリのトップ画面",
         },
         {

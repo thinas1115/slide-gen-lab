@@ -3,6 +3,7 @@ from copy import deepcopy
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.oxml.ns import qn
 from pptx.util import Inches
 
 import generate
@@ -35,8 +36,6 @@ def main():
     spec = {
         "type": "image", "kicker": "画像", "title": "大判画像",
         "image": "cover/cover-background.png", "fit": "contain",
-        "caption": "画像を主役にして内容を短く補足する。",
-        "source": "出典: 社内テンプレート検証用オリジナル素材",
         "alt": "濃紺を基調とした抽象的な背景画像",
     }
     deck = {
@@ -54,6 +53,7 @@ def main():
     assert contain.crop_left == contain.crop_right == 0
     assert contain.crop_top == contain.crop_bottom == 0
     assert contain._element.nvPicPr.cNvPr.get("descr") == spec["alt"]
+    assert contain._element.spPr.find(qn("a:effectLst")) is None
 
     cover_spec = dict(spec, fit="cover")
     cover_slide = _slide()
@@ -62,15 +62,20 @@ def main():
                  if shape.shape_type == MSO_SHAPE_TYPE.PICTURE)
     assert cover.crop_top > 0 or cover.crop_left > 0
 
-    assert fit_image_layout(5.27, "短い説明", "短い出典").stage == "standard"
-    assert fit_image_layout(3.70, "短い説明", "短い出典").stage == "gap"
-    assert fit_image_layout(3.20, "短い説明", "短い出典").stage == "element"
-    _must_fail(
-        lambda: fit_image_layout(
-            2.70, "説明文を長くして収容限界を確認します。" * 8,
-            "出典情報を長くして停止条件を確認します。" * 8),
-        "最小設定",
-    )
+    shadow_slide = _slide()
+    s_image(shadow_slide, dict(spec, shadow=True), 1)
+    shadow_picture = next(
+        shape for shape in shadow_slide.shapes
+        if shape.shape_type == MSO_SHAPE_TYPE.PICTURE)
+    effect_list = shadow_picture._element.spPr.find(qn("a:effectLst"))
+    shadow = effect_list.find(qn("a:outerShdw"))
+    assert shadow.get("dir") == "2700000"
+    assert shadow.get("dist") == "50800"
+
+    assert fit_image_layout(5.27).stage == "standard"
+    assert fit_image_layout(3.50).stage == "gap"
+    assert fit_image_layout(3.15).stage == "element"
+    _must_fail(lambda: fit_image_layout(2.40), "最小設定")
 
     invalid = deepcopy(deck)
     invalid["slides"][0]["image"] = "../../outside.png"
@@ -81,6 +86,15 @@ def main():
     invalid = deepcopy(deck)
     invalid["slides"][0]["fit"] = "stretch"
     assert any("contain" in error for error in validate(invalid))
+    invalid = deepcopy(deck)
+    invalid["slides"][0]["shadow"] = "yes"
+    assert any("true または false" in error for error in validate(invalid))
+    invalid = deepcopy(deck)
+    invalid["slides"][0]["caption"] = "説明"
+    invalid["slides"][0]["source"] = "出典"
+    errors = validate(invalid)
+    assert any("caption" in error and "lead" in error for error in errors)
+    assert any("source" in error and "削除" in error for error in errors)
 
     print("image slide tests passed")
 

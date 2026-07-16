@@ -5,7 +5,7 @@
 - `icons/aws/`: AWS Architecture Icons
 - `icons/fluent/`: Microsoft Fluent UI System Icons
 - `cover/`: カスタム表紙背景のPNG/JPEG
-- `images/`: 本文へ大きく配置する生成画像・提供画像・利用許諾済み画像
+- `images/`: 本文へ大きく配置する生成画像・手元の画像・利用許諾済み画像
 - `CREDITS.md`: アイコンの出典と利用条件
 
 diagramの `icon` は `icons/aws/<ファイル名>` または
