@@ -5,7 +5,12 @@ from pptx import Presentation
 from pptx.util import Inches
 
 import generate
-from content_stress_patterns import LARGE_DIAGRAM, STRESS_PATTERN_DECK, TABLE_ROWS
+from content_stress_patterns import (
+    LARGE_AWS_DIAGRAM,
+    LARGE_DIAGRAM,
+    STRESS_PATTERN_DECK,
+    TABLE_ROWS,
+)
 from diagram_layout import ICON_SIZE, Layout
 from generate_from_json import RENDER
 from validate_content import validate
@@ -66,6 +71,28 @@ def main():
     assert any(edge.get("dash") for edge in LARGE_DIAGRAM["edges"])
     assert any(len(edge.get("via", [])) > 0 for edge in LARGE_DIAGRAM["edges"])
 
+    aws_spec = STRESS_PATTERN_DECK["slides"][2]
+    aws_area = generate.header(
+        _slide(), aws_spec["kicker"], aws_spec["title"], aws_spec["lead"])
+    aws_layout = Layout(deepcopy(LARGE_AWS_DIAGRAM), content_area=aws_area)
+    assert len(LARGE_AWS_DIAGRAM["nodes"]) >= 16
+    assert len(LARGE_AWS_DIAGRAM["containers"]) >= 3
+    assert all(
+        not node["icon"].startswith("fluent/")
+        for node in LARGE_AWS_DIAGRAM["nodes"].values()
+    )
+    assert aws_layout.fit_stage == "icon", aws_layout.fit_stage
+    assert aws_layout.icon_size < ICON_SIZE, aws_layout.icon_size
+    assert aws_layout.gaps_compressed
+    assert max(rect[3] for rect in aws_layout.cont_rect.values()) \
+        <= generate.BODY_BOTTOM
+    aws_routed = aws_layout.route_edges(LARGE_AWS_DIAGRAM["edges"])
+    aws_layout.validate_edges(LARGE_AWS_DIAGRAM["edges"], aws_routed)
+    assert any(len(points) >= 4 for points in aws_routed)
+    assert any(edge.get("both") for edge in LARGE_AWS_DIAGRAM["edges"])
+    assert any(edge.get("dash") for edge in LARGE_AWS_DIAGRAM["edges"])
+    assert any(len(edge.get("via", [])) > 0 for edge in LARGE_AWS_DIAGRAM["edges"])
+
     generate.DECK = STRESS_PATTERN_DECK
     for idx, spec in enumerate(STRESS_PATTERN_DECK["slides"], 1):
         generate.render_slide(RENDER[spec["type"]], _slide(), spec, idx)
@@ -73,7 +100,8 @@ def main():
     print(
         "shrink behavior tests passed "
         f"(table={table_fit.values['size']:.1f}pt, "
-        f"diagram={diagram_layout.icon_size:.2f}in / {ICON_SIZE:.2f}in)"
+        f"fluent={diagram_layout.icon_size:.2f}in, "
+        f"aws={aws_layout.icon_size:.2f}in / {ICON_SIZE:.2f}in)"
     )
 
 

@@ -71,7 +71,8 @@ def container(slide, x, y, w, h, label, color=LINE, dash=None):
     label_size, _ = fit_text_or_raise(
         "container", "label", label, w - 0.3, 0.28, 10.5,
         min_pt=8.5, weight="bold", spacing=1.1)
-    add_text(slide, x + 0.12, y + 0.06, w - 0.3, 0.28, label, label_size, bold=True,
+    label_w = min(w - 0.3, text_width_in(label, label_size, "bold") + 0.08)
+    add_text(slide, x + 0.12, y + 0.06, label_w, 0.28, label, label_size, bold=True,
              color=color)
 
 
@@ -95,7 +96,8 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62, *, label_above=Fal
     title_size, title_lines = fit_text_or_raise(
         "icon_node", "title", title, 2.1, 0.28, 11,
         min_pt=9.5, weight="bold", spacing=1.1)
-    add_text(slide, cx - 1.05, title_y, 2.1, 0.28,
+    title_w = min(2.1, text_width_in(title, title_size, "bold") + 0.10)
+    add_text(slide, cx - title_w / 2, title_y, title_w, 0.28,
              title, title_size,
              bold=True, color=NAVY, align=PP_ALIGN.CENTER)
     if sub:
@@ -103,7 +105,8 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62, *, label_above=Fal
         sub_size, sub_lines = fit_text_or_raise(
             "icon_node", "sub", sub, 2.1, 0.26, 9,
             min_pt=8, spacing=1.1)
-        add_text(slide, cx - 1.05, sub_y, 2.1, 0.26,
+        sub_w = min(2.1, text_width_in(sub, sub_size) + 0.10)
+        add_text(slide, cx - sub_w / 2, sub_y, sub_w, 0.26,
                  sub, sub_size,
                  color=GRAY, align=PP_ALIGN.CENTER)
 
