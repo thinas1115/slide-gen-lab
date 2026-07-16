@@ -1,4 +1,4 @@
-"""Fluent UI System Icons (MIT) を取得し、図解用PNGに変換して assets/fluent/ に置く。
+"""Fluent UI System Icons (MIT) を取得し、図解用PNGに変換して assets/icons/fluent/ に置く。
 
 使い方:
   python fetch_fluent_icons.py          # ICONS 全部
@@ -10,10 +10,10 @@
 - python-pptx はSVGを挿入できない(PIL依存)ため、svglib+reportlab でPNG化する。
   依存: pip install svglib reportlab rlPyCairo
   (rlPyCairo は reportlab 4.x のPNG描画バックエンド。無いと RenderPMError になる)
-- 生成したPNGは assets/CREDITS.md のクレジット表記とともにリポジトリに同梱する
+- 生成したPNGは slidegen/assets/CREDITS.md のクレジット表記とともにリポジトリに同梱する
   (MITライセンス。リカラー等の改変も許諾範囲内)。
 - PNGは背景透過とし、SVGの実描画領域を256pxキャンバスの中央へ配置する。
-- diagram仕様からは "icon": "fluent/server.png" のように参照する。
+- diagram仕様からは "icon": "icons/fluent/server.png" のように参照する。
 
 アイコンを増やしたいときは ICONS に 出力名: リポジトリのassetsフォルダ名 を
 追加する。フォルダ名は https://github.com/microsoft/fluentui-system-icons/tree/main/assets
@@ -125,7 +125,7 @@ BASE = ("https://raw.githubusercontent.com/microsoft/fluentui-system-icons/"
         "main/assets/{folder}/SVG/ic_fluent_{slug}_{size}_regular.svg")
 COLOR = "#1F3864"   # generate.py の NAVY と合わせる
 PX = 256            # 出力PNGの一辺(スライド上は0.62in≒60-120px で使うので十分)
-OUT_DIR = Path(__file__).parent / "assets" / "fluent"
+OUT_DIR = Path(__file__).parent / "assets" / "icons" / "fluent"
 
 
 def fetch_svg(folder: str) -> str:

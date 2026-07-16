@@ -44,7 +44,7 @@ rendererと共通部品の範囲に閉じ込めやすい。
 | 工程 / ロードマップ / 2軸図 | `slidegen/diagrams2.py` の各 `s_*()` | 各ジャンル固有の線、帯、点、ラベル、余白 |
 | 構成図の色名 | `slidegen/diagram_layout.py` の `COLORS` | diagram specで指定できる離散的な色名と実色の対応 |
 | 構成図レイアウト | `diagram_layout.py` の `Layout` / `render_diagram()` | 座標、行間、配線、コンテナ。色だけの変更では触らない |
-| アイコン | `slidegen/assets/` / `assets/CREDITS.md` | 素材の追加とクレジット。AWSアイコン自体の色・比率・形状は変更禁止 |
+| アイコン | `slidegen/assets/icons/` / `slidegen/assets/CREDITS.md` | 素材の追加とクレジット。AWSアイコン自体の色・比率・形状は変更禁止 |
 | デザイン検証一覧 | `slidegen/content_patterns.py` | 全rendererを1デッキで確認するためのサンプル内容 |
 | 品質検証 | `check_layout.py` / `render.ps1` / `contact_sheet.py` | 衝突検査、PowerPoint実レンダリング、一覧目視 |
 

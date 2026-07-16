@@ -78,7 +78,7 @@ def main():
     assert len(LARGE_AWS_DIAGRAM["nodes"]) >= 16
     assert len(LARGE_AWS_DIAGRAM["containers"]) >= 3
     assert all(
-        not node["icon"].startswith("fluent/")
+        not node["icon"].startswith("icons/fluent/")
         for node in LARGE_AWS_DIAGRAM["nodes"].values()
     )
     assert aws_layout.fit_stage == "icon", aws_layout.fit_stage

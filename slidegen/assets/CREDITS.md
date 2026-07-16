@@ -3,7 +3,7 @@
 このディレクトリのアイコンは、スライド生成パイプラインがアーキテクチャ図・構成図を
 描画するための素材であり、以下の出典・条件に基づいて同梱している。
 
-## AWS Architecture Icons (`*.png`)
+## AWS Architecture Icons (`icons/aws/*.png`)
 
 - 出典: [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/)
   (AWS公式アイコンデッキから `extract_aws_icons.py` で無改変抽出)
@@ -15,7 +15,7 @@
 - 本リポジトリは AWS による後援・承認・提携を受けたものではありません
 - 最新版・追加アイコンが必要な場合は公式デッキを入手して `extract_aws_icons.py` を実行する
 
-## Fluent UI System Icons (`fluent/*.png`)
+## Fluent UI System Icons (`icons/fluent/*.png`)
 
 - 出典: [microsoft/fluentui-system-icons](https://github.com/microsoft/fluentui-system-icons)
 - © Microsoft Corporation — [MIT License](https://github.com/microsoft/fluentui-system-icons/blob/main/LICENSE)

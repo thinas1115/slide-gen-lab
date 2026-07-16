@@ -16,6 +16,7 @@ import json
 import sys
 from pathlib import Path
 
+from asset_paths import resolve_icon_path
 from generate import BODY_W
 
 # 旧固定構成図type。互換性のあるエラーを返すため、廃止名だけ保持する。
@@ -218,7 +219,12 @@ def _v_hub(s):
                 and _is_str(r.get("label")) and _is_str(r.get("icon"))):
             s.err(f"ring[{i}] には name / label / icon (文字列) が必要です")
             continue
-        icon = Path(__file__).parent / "assets" / r["icon"]
+        try:
+            icon = resolve_icon_path(r["icon"])
+        except ValueError:
+            s.err(f"ring[{i}].icon は slidegen/assets/ 内の相対パスに"
+                  "してください")
+            continue
         if not icon.is_file():
             s.err(f"ring[{i}].icon のファイルがありません: {r['icon']}。"
                   "CONTENT_SCHEMA.md のFluentアイコン一覧から選んでください")
@@ -294,10 +300,8 @@ def _v_diagram(s):
             s.err(f"nodes.{name}.icon は必須です。CONTENT_SCHEMA.md の"
                   f"Fluent/AWSアイコン一覧から選んでください")
         else:
-            assets = (Path(__file__).parent / "assets").resolve()
-            icon_path = (assets / n["icon"]).resolve()
             try:
-                icon_path.relative_to(assets)
+                icon_path = resolve_icon_path(n["icon"])
             except ValueError:
                 s.err(f"nodes.{name}.icon は slidegen/assets/ 内の相対パスに"
                       f"してください")

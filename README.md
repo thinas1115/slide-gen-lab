@@ -20,8 +20,8 @@
 | `EXTENDING.md` | 新しいtype・エンジン機能を追加するときの不変条件と手順(AI向け拡張ガイド) |
 | `DESIGN_CUSTOMIZATION.md` | 配色・表紙・既存renderer・複数テーマ対応など、デザイン変更時の修正箇所一覧 |
 | `docs/cover-footer-customization.md` | 表紙・フッターだけをユーザー別設定JSONで変更する手順とschema |
-| `assets/cover/` | ユーザーが差し替える表紙背景画像。PNG/JPEGを配置する |
 | `slidegen/` | 本体。Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
+| `slidegen/assets/cover/` | ユーザーが差し替える表紙背景画像。PNG/JPEGを配置する |
 | `slidegen/generate_from_json.py` | `content.json` → PPTX 生成(生成前にschema検証を自動実行) |
 | `slidegen/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・廃止typeの拒否) |
 | `slidegen/check_layout.py` | 生成済みPPTXの重なり・はみ出しを機械検知する品質ゲート |
@@ -42,8 +42,8 @@
 3. 前提: Windows + 游ゴシック(`slidegen/textfit.py` が環境変数`WINDIR`配下のフォントを参照)
 4. 目視用に PowerPoint(`render.ps1` が使用。生成自体には不要)
 
-アイコン素材(AWS 13種 + Fluent 72種)は `slidegen/assets/` に**同梱済み**なので追加作業は不要
-(出典・ライセンスは [assets/CREDITS.md](slidegen/assets/CREDITS.md))。増やす場合のみ:
+アイコン素材(AWS 13種 + Fluent 72種)は `slidegen/assets/icons/` に**同梱済み**なので追加作業は不要
+(出典・ライセンスは [slidegen/assets/CREDITS.md](slidegen/assets/CREDITS.md))。増やす場合のみ:
 
 - AWS: [公式アイコンデッキ(PPTX)](https://aws.amazon.com/jp/architecture/icons/)を入手し、
   `python slidegen/extract_aws_icons.py "<公式デッキのパス>"`を実行

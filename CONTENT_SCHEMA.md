@@ -400,7 +400,7 @@ python slidegen/validate_content.py content.json
 - `ring`: object の配列
 - `ring[*].name`: string
 - `ring[*].label`: string
-- `ring[*].icon`: string。`fluent/〜.png` を指定する
+- `ring[*].icon`: string。`icons/fluent/〜.png` を指定する
 
 任意:
 
@@ -418,7 +418,7 @@ python slidegen/validate_content.py content.json
   "title": "タイトル",
   "hub": "中央ラベル",
   "ring": [
-      {"name": "周辺ノード", "sub": "補足", "label": "関係ラベル", "icon": "fluent/team.png"}
+      {"name": "周辺ノード", "sub": "補足", "label": "関係ラベル", "icon": "icons/fluent/team.png"}
   ]
 }
 ```
@@ -485,7 +485,7 @@ python slidegen/validate_content.py content.json
   - `title`: 表示名
   - `sub`: 補足ラベル(任意)
   - `icon`: `slidegen/assets/` からの相対PNGパス(必須)。同梱Fluent/AWSアイコンから選ぶ
-    - Fluentアイコン(`fluent/<名前>.png`、72種同梱済み)。次の名前だけを使い、ファイル名を発明しない。`python slidegen/fetch_fluent_icons.py --list` でも確認できる
+    - Fluentアイコン(`icons/fluent/<名前>.png`、72種同梱済み)。次の名前だけを使い、ファイル名を発明しない。`python slidegen/fetch_fluent_icons.py --list` でも確認できる
       - インフラ・端末: `server` `router` `database` `desktop` `laptop` `tablet` `phone` `printer` `hard_drive` `storage`
       - ネットワーク・クラウド: `cloud` `globe` `wifi` `ethernet` `link` `gateway` `sync` `upload` `download` `switch`
       - セキュリティ: `shield` `shield_lock` `shield_check` `lock` `key` `certificate`
@@ -494,7 +494,7 @@ python slidegen/validate_content.py content.json
       - コミュニケーション・業務: `mail` `chat` `video` `call` `send` `calendar` `task` `cart` `money` `chart`
       - 運用・状態: `alert` `warning` `info` `check` `search` `clock` `history` `settings` `toolbox` `wrench` `monitor`
       - 物理移動: `truck` `car` `airplane`
-    - AWSアイコン(同梱済み): `alb.png` `bedrock.png` `cloudfront.png` `cloudwatch.png` `dynamodb.png` `ecr.png` `fargate.png` `rds.png` `route53.png` `s3.png` `sqs.png` `user.png` `users.png` のみ。増やす場合は `extract_aws_icons.py`
+    - AWSアイコン(同梱済み): `icons/aws/alb.png` `icons/aws/bedrock.png` `icons/aws/cloudfront.png` `icons/aws/cloudwatch.png` `icons/aws/dynamodb.png` `icons/aws/ecr.png` `icons/aws/fargate.png` `icons/aws/rds.png` `icons/aws/route53.png` `icons/aws/s3.png` `icons/aws/sqs.png` `icons/aws/user.png` `icons/aws/users.png` のみ。増やす場合は `extract_aws_icons.py`
 - `diagram.edges`: object の配列
   - `from` / `to`: ノード名(または `@コンテナ名`)
   - `label` / `label_w`: 線上ラベルと幅(任意)
@@ -522,9 +522,9 @@ python slidegen/validate_content.py content.json
     "cols": ["user", "gw", "app"],
     "rows": ["main"],
     "nodes": {
-      "pc": {"col": "user", "row": "main", "icon": "fluent/desktop.png", "title": "利用者端末"},
-      "fw": {"col": "gw", "row": "main", "icon": "fluent/shield.png", "title": "ファイアウォール"},
-      "web": {"col": "app", "row": "main", "icon": "fluent/server.png", "title": "業務サーバ", "sub": "アプリ本体"}
+      "pc": {"col": "user", "row": "main", "icon": "icons/fluent/desktop.png", "title": "利用者端末"},
+      "fw": {"col": "gw", "row": "main", "icon": "icons/fluent/shield.png", "title": "ファイアウォール"},
+      "web": {"col": "app", "row": "main", "icon": "icons/fluent/server.png", "title": "業務サーバ", "sub": "アプリ本体"}
     },
     "containers": [
       {"name": "dc", "label": "データセンター", "members": ["fw", "web"]}

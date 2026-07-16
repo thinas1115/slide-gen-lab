@@ -36,7 +36,8 @@ def main():
     repo_root = Path(__file__).resolve().parents[1]
     example = load_cover_footer_config(repo_root / "examples" / "cover_footer.json")
     assert example.cover.background_image == (
-        repo_root / "assets" / "cover" / "cover-background.png").resolve()
+        repo_root / "slidegen" / "assets" / "cover" /
+        "cover-background.png").resolve()
     with Image.open(example.cover.background_image) as image:
         assert image.format == "PNG"
         assert image.width / image.height > 1.7

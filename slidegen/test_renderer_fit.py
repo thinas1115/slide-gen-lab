@@ -83,7 +83,7 @@ def main():
 
     spec = _base("hub")
     spec.update(hub="中心", ring=[{"name": "部門", "label": "連携",
-                                   "icon": "fluent/team.png"}
+                                   "icon": "icons/fluent/team.png"}
                                   for _ in range(5)])
     _must_fail(s_hub, spec, "周辺ノードは6件")
 

@@ -1,6 +1,5 @@
 """図解系スライド: AWS構成図・ステークホルダー調整図・体制図。"""
 import math
-from pathlib import Path
 
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
@@ -8,6 +7,7 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
+from asset_paths import ASSET_DIR, resolve_icon_path
 from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, CANVAS, CORAL, GRAY,
                       LIGHT, MARGIN, NAVY, RULE, TEXT, WHITE, ZEBRA, ContentArea,
                       add_rect, add_text, header, note_line)
@@ -100,18 +100,17 @@ def _masked_node_label(slide, cx, y, text, *, max_w, slot_h, size, min_pt,
     return tb
 
 
-# ---- AWS構成図(公式アイコン使用) ----
-ICON_DIR = Path(__file__).parent / "assets"
+# ---- 構成図アイコンノード ----
 ICON_R = 0.31        # アイコン半径(0.62角の半分)
 EDGE_GAP = 0.06      # 矢印端点とアイコン縁の隙間
 
 
 def icon_node(slide, cx, cy, img, title, sub=None, size=0.62, *, label_above=False):
-    """AWS公式スタイル: アイコン+直下にサービス名ラベル。"""
-    p = ICON_DIR / img
+    """アイコンと直下のサービス名ラベルを描画する。"""
+    p = resolve_icon_path(img)
     if not p.exists():
         raise FileNotFoundError(
-            f"アイコン {img} が {ICON_DIR} にありません。extract_aws_icons.py で"
+            f"アイコン {img} が {ASSET_DIR} にありません。extract_aws_icons.py で"
             f"AWS公式デッキを指定して生成するか、fetch_fluent_icons.py --list で同梱アイコンを確認して"
             f"ください。")
     slide.shapes.add_picture(str(p), Inches(cx - size / 2),
