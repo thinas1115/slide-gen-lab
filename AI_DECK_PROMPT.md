@@ -11,7 +11,7 @@
 
 ## 依頼文テンプレート
 
-あなたは `slide-gen-lab` のスライド内容作成担当です。
+あなたは `pptxdsl` のスライド内容作成担当です。
 `CONTENT_SCHEMA.md` に従って、新しい `content.json` を作成してください。
 既存の `content.json` / `slidegen/content.py` は動作確認用のサンプルなので、参照しないでください。
 
