@@ -237,18 +237,10 @@ PROGRAM_ROADMAP_STRESS = {
 IMAGE_STRESS = {
     "type": "image",
     "kicker": "大判画像",
-    "title": "長い補足情報があっても、画像の視認領域を確保する",
-    "lead": "キャプションと出典が増えた場合の、余白圧縮と画像・文字縮小を確認します。",
+    "title": "lead付きでも、画像の視認領域を最大限に確保する",
+    "lead": "説明はleadへ集約し、画像全体を欠けなく表示するcontainの縮小耐性を確認します。",
     "image": "images/pptxdsl-repository.png",
     "fit": "contain",
-    "caption": (
-        "画面キャプチャ、生成画像、利用許諾済みのWeb画像を同じrendererで扱い、"
-        "縦横比を保ったまま本文領域へ配置します。"
-    ),
-    "source": (
-        "出典: 利用者提供のpptxdslリポジトリ画面。"
-        "外部画像を利用する場合は、取得元・権利者・利用条件を確認して記録します。"
-    ),
     "alt": "GitHubで公開されているpptxdslリポジトリのトップ画面",
 }
 

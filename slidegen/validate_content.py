@@ -147,10 +147,15 @@ def _v_image(s):
     if not s.req_str("image"):
         return
     if "fit" in s.spec and s.spec["fit"] not in {"contain", "cover"}:
-        s.err('image.fit は "contain" または "cover" にしてください')
-    for key in ("caption", "source", "alt"):
-        if key in s.spec and not _is_str(s.spec[key]):
-            s.err(f'"{key}" は空でない文字列にしてください')
+        s.err('image の "fit" は "contain" または "cover" にしてください')
+    if "alt" in s.spec and not _is_str(s.spec["alt"]):
+        s.err('"alt" は空でない文字列にしてください')
+    if "shadow" in s.spec and not isinstance(s.spec["shadow"], bool):
+        s.err('"shadow" は true または false にしてください')
+    if "caption" in s.spec:
+        s.err('imageの "caption" は廃止済みです。説明は "lead" へ移してください')
+    if "source" in s.spec:
+        s.err('imageの "source" は廃止済みです。表示枠を削除し、画像の権利情報はCREDITSへ記録してください')
     try:
         image_path = resolve_image_path(s.spec["image"])
     except ValueError as exc:

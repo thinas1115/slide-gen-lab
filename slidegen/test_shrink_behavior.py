@@ -208,12 +208,9 @@ def main():
     image_area = generate.header(
         _slide(), IMAGE_STRESS["kicker"], IMAGE_STRESS["title"],
         IMAGE_STRESS["lead"])
-    image_fit = fit_image_layout(
-        min(image_area.height, 3.20),
-        IMAGE_STRESS["caption"], IMAGE_STRESS["source"])
+    image_fit = fit_image_layout(min(image_area.height, 3.15))
     assert image_fit.stage == "element", image_fit
-    assert image_fit.values["min_image_h"] < 2.90, image_fit
-    assert image_fit.values["caption_pt"] < 10.5, image_fit
+    assert image_fit.values["min_image_h"] < 3.20, image_fit
 
     generate.DECK = STRESS_PATTERN_DECK
     for idx, spec in enumerate(STRESS_PATTERN_DECK["slides"], 1):
