@@ -239,17 +239,17 @@ IMAGE_STRESS = {
     "kicker": "大判画像",
     "title": "長い補足情報があっても、画像の視認領域を確保する",
     "lead": "キャプションと出典が増えた場合の、余白圧縮と画像・文字縮小を確認します。",
-    "image": "cover/cover-background.png",
+    "image": "images/pptxdsl-repository.png",
     "fit": "contain",
     "caption": (
-        "生成画像、利用者提供画像、利用許諾済みのWeb画像を同じrendererで扱い、"
+        "画面キャプチャ、生成画像、利用許諾済みのWeb画像を同じrendererで扱い、"
         "縦横比を保ったまま本文領域へ配置します。"
     ),
     "source": (
-        "出典: 社内テンプレート検証用オリジナル素材。"
+        "出典: 利用者提供のpptxdslリポジトリ画面。"
         "外部画像を利用する場合は、取得元・権利者・利用条件を確認して記録します。"
     ),
-    "alt": "濃紺と青緑の幾何学的な光で構成された抽象画像",
+    "alt": "GitHubで公開されているpptxdslリポジトリのトップ画面",
 }
 
 STRESS_PATTERN_DECK = {
