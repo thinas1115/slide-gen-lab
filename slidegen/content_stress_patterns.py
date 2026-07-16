@@ -13,39 +13,104 @@ TABLE_ROWS = [
 
 
 def _large_diagram():
-    cols = ["entry", "control", "service", "data", "ops"]
-    rows = ["channel", "application", "platform", "operation"]
-    icons = ["globe", "shield", "app", "database", "monitor"]
-    row_names = ["受付", "業務", "基盤", "運用"]
-    nodes = {}
-    for row_index, row in enumerate(rows):
-        for col_index, col in enumerate(cols):
-            name = f"n{row_index}_{col_index}"
-            nodes[name] = {
-                "col": col,
-                "row": row,
-                "icon": f"fluent/{icons[col_index]}.png",
-                "title": f"{row_names[row_index]}機能 {col_index + 1}",
-                "sub": "処理・監視",
-            }
-    edges = []
-    for row_index in range(len(rows)):
-        for col_index in range(len(cols) - 1):
-            edges.append({
-                "from": f"n{row_index}_{col_index}",
-                "to": f"n{row_index}_{col_index + 1}",
-            })
+    nodes = {
+        "user": {"col": "edge", "row": "north", "icon": "fluent/people.png",
+                 "title": "社内利用者"},
+        "dns": {"col": "ingress", "row": "north", "icon": "fluent/globe.png",
+                "title": "DNS"},
+        "config": {"col": "app_a", "row": "north", "icon": "fluent/settings.png",
+                   "title": "構成管理"},
+        "idp": {"col": "app_b", "row": "north", "icon": "fluent/key.png",
+                "title": "ID基盤"},
+        "audit": {"col": "data", "row": "north", "icon": "fluent/history.png",
+                  "title": "監査サービス"},
+        "cdn": {"col": "edge", "row": "web", "icon": "fluent/cloud.png",
+                "title": "CDN"},
+        "waf": {"col": "ingress", "row": "web", "icon": "fluent/shield.png",
+                "title": "WAF"},
+        "alb": {"col": "app_a", "row": "web", "icon": "fluent/gateway.png",
+                "title": "ロードバランサ"},
+        "api": {"col": "app_b", "row": "web", "icon": "fluent/app.png",
+                "title": "業務API"},
+        "portal": {"col": "data", "row": "web", "icon": "fluent/browser.png",
+                   "title": "業務ポータル"},
+        "notify": {"col": "edge", "row": "async", "icon": "fluent/mail.png",
+                   "title": "通知サービス"},
+        "queue": {"col": "ingress", "row": "async", "icon": "fluent/task.png",
+                  "title": "処理キュー"},
+        "worker_a": {"col": "app_a", "row": "async", "icon": "fluent/server.png",
+                     "title": "ワーカーA"},
+        "worker_b": {"col": "app_b", "row": "async", "icon": "fluent/server.png",
+                     "title": "ワーカーB"},
+        "cache": {"col": "data", "row": "async", "icon": "fluent/storage.png",
+                  "title": "キャッシュ"},
+        "archive": {"col": "edge", "row": "storage", "icon": "fluent/archive.png",
+                    "title": "長期保管"},
+        "backup": {"col": "ingress", "row": "storage", "icon": "fluent/sync.png",
+                   "title": "バックアップ"},
+        "db_a": {"col": "app_a", "row": "storage", "icon": "fluent/database.png",
+                 "title": "DB Primary"},
+        "db_b": {"col": "app_b", "row": "storage", "icon": "fluent/database.png",
+                 "title": "DB Standby"},
+        "monitor": {"col": "data", "row": "storage", "icon": "fluent/monitor.png",
+                    "title": "統合監視"},
+    }
     return {
-        "cols": cols,
-        "rows": rows,
+        "cols": ["edge", "ingress", "app_a", "app_b", "data"],
+        "rows": ["north", "web", "async", "storage"],
         "nodes": nodes,
-        "containers": [{
-            "name": "platform",
-            "label": "全社業務プラットフォーム",
-            "members": list(nodes),
-        }],
-        "channels": {},
-        "edges": edges,
+        "containers": [
+            {"name": "cloud", "label": "業務クラウド",
+             "members": ["dns", "config", "idp", "audit", "cdn", "notify",
+                         "archive", "@public", "@private"]},
+            {"name": "public", "label": "公開サービス",
+             "members": ["waf", "alb", "api", "portal"], "dash": "dash"},
+            {"name": "private", "label": "非公開サービス",
+             "members": ["queue", "worker_a", "worker_b", "cache", "backup",
+                         "db_a", "db_b", "monitor"], "dash": "dash"},
+        ],
+        "channels": {
+            "public_entry": ["outside_container", ["public", "top_inside"]],
+            "private_entry": ["outside_container", ["private", "top_inside"]],
+            "left_of_app_a": ["left_of_col", "app_a"],
+            "right_of_app_b": ["right_of_col", "app_b"],
+            "private_right": ["outside_container", ["private", "right"]],
+            "cloud_right": ["outside_container", ["cloud", "right"]],
+            "public_left": ["outside_container", ["public", "left"]],
+        },
+        "edges": [
+            {"from": "user", "to": "dns", "label": "DNS"},
+            {"from": "dns", "to": "cdn", "exit": "left", "enter": "right",
+             "via": ["public_left"], "dash": "dash"},
+            {"from": "cdn", "to": "waf", "label": "HTTPS"},
+            {"from": "waf", "to": "alb"},
+            {"from": "alb", "to": "api"},
+            {"from": "api", "to": "portal"},
+            {"from": "config", "to": "alb", "exit": "bottom", "enter": "top",
+             "via": ["public_entry"], "dash": "dash"},
+            {"from": "idp", "to": "api", "exit": "bottom", "enter": "top",
+             "via": ["public_entry"], "label": "認証", "dash": "dash"},
+            {"from": "api", "to": "queue", "exit": "bottom", "enter": "top",
+             "via": ["private_entry"]},
+            {"from": "api", "to": "worker_a", "exit": "bottom", "enter": "top",
+             "via": ["private_entry"]},
+            {"from": "api", "to": "worker_b", "exit": "bottom", "enter": "top",
+             "via": ["private_entry"]},
+            {"from": "queue", "to": "notify"},
+            {"from": "worker_b", "to": "cache"},
+            {"from": "worker_a", "to": "db_a", "exit": "left", "enter": "left",
+             "via": ["left_of_app_a"]},
+            {"from": "worker_b", "to": "db_b", "exit": "right", "enter": "right",
+             "via": ["right_of_app_b"]},
+            {"from": "db_a", "to": "db_b", "both": True, "dash": "dash",
+             "label": "同期"},
+            {"from": "db_a", "to": "backup"},
+            {"from": "backup", "to": "archive"},
+            {"from": "audit", "to": "monitor", "exit": "right", "enter": "right",
+             "via": ["cloud_right"], "dash": "dash"},
+            {"from": "cache", "to": "monitor", "exit": "right", "enter": "right",
+             "via": ["private_right"], "dash": "dash"},
+        ],
     }
 
 
@@ -71,8 +136,8 @@ STRESS_PATTERN_DECK = {
         {
             "type": "diagram",
             "kicker": "大規模構成図",
-            "title": "20機能を4層に分けて全体像を俯瞰する",
-            "lead": "20ノードを同一ページへ配置し、余白圧縮後のアイコン縮小を確認します。",
+            "title": "20機能の同期・非同期・監視経路を1枚で俯瞰する",
+            "lead": "分岐・合流・縦接続・外周迂回・入れ子境界を含む構成で縮小耐性を確認します。",
             "diagram": LARGE_DIAGRAM,
         },
     ],

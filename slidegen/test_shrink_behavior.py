@@ -45,9 +45,26 @@ def main():
         _slide(), diagram_spec["kicker"], diagram_spec["title"], diagram_spec["lead"])
     diagram_layout = Layout(deepcopy(LARGE_DIAGRAM), content_area=diagram_area)
     assert len(LARGE_DIAGRAM["nodes"]) == 20
+    assert len(LARGE_DIAGRAM["edges"]) >= 20
+    assert len(LARGE_DIAGRAM["containers"]) >= 3
+    assert any(
+        member.startswith("@")
+        for container in LARGE_DIAGRAM["containers"]
+        for member in container["members"]
+    )
     assert diagram_layout.fit_stage == "icon", diagram_layout.fit_stage
     assert diagram_layout.icon_size < ICON_SIZE, diagram_layout.icon_size
     assert diagram_layout.gaps_compressed
+    assert max(rect[3] for rect in diagram_layout.cont_rect.values()) \
+        <= generate.BODY_BOTTOM
+    assert diagram_layout.cont_rect["private"][1] \
+        - diagram_layout.cont_rect["public"][3] >= 0.10
+    routed = diagram_layout.route_edges(LARGE_DIAGRAM["edges"])
+    diagram_layout.validate_edges(LARGE_DIAGRAM["edges"], routed)
+    assert any(len(points) >= 4 for points in routed)
+    assert any(edge.get("both") for edge in LARGE_DIAGRAM["edges"])
+    assert any(edge.get("dash") for edge in LARGE_DIAGRAM["edges"])
+    assert any(len(edge.get("via", [])) > 0 for edge in LARGE_DIAGRAM["edges"])
 
     generate.DECK = STRESS_PATTERN_DECK
     for idx, spec in enumerate(STRESS_PATTERN_DECK["slides"], 1):

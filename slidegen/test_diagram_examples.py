@@ -73,6 +73,7 @@ def main():
         "containers": [], "channels": {}, "edges": [],
     }
     gap_only = deepcopy(dense)
+    gap_only["nodes"]["n0"].pop("sub")
     gap_only["nodes"]["n1"].pop("sub")
     compact_gap = Layout(gap_only)
     assert compact_gap.fit_stage == "gap"
