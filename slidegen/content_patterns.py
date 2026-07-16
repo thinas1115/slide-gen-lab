@@ -244,18 +244,60 @@ PATTERN_DECK = {
             "type": "org",
             "pattern": "organization chart",
             "kicker": "推進体制",
-            "title": "意思決定・実装・展開の責任範囲を明確にする",
-            "top": {"name": "ステアリングコミッティ", "sub": "月次で投資・方針を判断"},
-            "pm": {"name": "テンプレート整備PM", "sub": "スライド生成基盤の改善責任者"},
-            "teams": [
-                {"name": "業務設計", "sub": "schema / 用途定義",
-                 "members": ["企画 2名", "現場代表 2名"]},
-                {"name": "renderer 実装", "sub": "PPTX生成 / 品質ゲート",
-                 "members": ["開発 2名", "デザイン 1名"]},
-                {"name": "運用展開", "sub": "教育 / レビュー",
-                 "members": ["PMO 1名", "各部門窓口"]},
-            ],
-            "external": {"name": "外部ベンダー", "sub": "技術支援", "label": "助言"},
+            "title": "事業・技術の共同責任者から、実行組織へ権限をつなぐ",
+            "org": {
+                "nodes": {
+                    "business_owner": {
+                        "name": "事業責任者", "sub": "投資・優先度を決定",
+                        "style": "primary"},
+                    "tech_owner": {
+                        "name": "技術責任者", "sub": "技術方針・品質を決定",
+                        "style": "primary"},
+                    "program_pm": {
+                        "name": "プログラムPM", "sub": "全体計画と課題を統括",
+                        "style": "accent"},
+                    "architecture": {
+                        "name": "アーキテクト", "sub": "方式・非機能を統括",
+                        "style": "accent"},
+                    "advisor": {
+                        "name": "外部アドバイザー", "sub": "専門知見を提供",
+                        "style": "external"},
+                    "business_design": {
+                        "name": "業務設計", "sub": "要件・運用設計",
+                        "members": ["企画", "現場代表"]},
+                    "development": {
+                        "name": "開発", "sub": "実装・試験",
+                        "members": ["アプリ", "基盤", "QA"]},
+                    "rollout": {
+                        "name": "展開", "sub": "教育・移行",
+                        "members": ["PMO", "部門窓口"]},
+                    "operation": {
+                        "name": "運用", "sub": "監視・改善"},
+                    "security": {
+                        "name": "セキュリティ", "sub": "審査・監査"},
+                },
+                "levels": [
+                    ["business_owner", "tech_owner"],
+                    ["program_pm", "architecture", "advisor"],
+                    ["business_design", "development", "rollout"],
+                    ["operation", "security"],
+                ],
+                "edges": [
+                    {"from": "business_owner", "to": "program_pm"},
+                    {"from": "tech_owner", "to": "program_pm"},
+                    {"from": "tech_owner", "to": "architecture"},
+                    {"from": "advisor", "to": "program_pm",
+                     "kind": "advice", "label": "助言"},
+                    {"from": "program_pm", "to": "business_design"},
+                    {"from": "program_pm", "to": "development"},
+                    {"from": "program_pm", "to": "rollout"},
+                    {"from": "architecture", "to": "development"},
+                    {"from": "development", "to": "operation"},
+                    {"from": "rollout", "to": "operation"},
+                    {"from": "operation", "to": "security",
+                     "kind": "collaboration", "label": "連携"},
+                ],
+            },
         },
         {
             "type": "diagram",

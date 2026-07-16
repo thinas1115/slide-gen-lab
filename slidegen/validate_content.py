@@ -309,25 +309,94 @@ def _v_hub(s):
 
 
 def _v_org(s):
-    for key in ("top", "pm"):
-        p = s.spec.get(key)
-        if not (isinstance(p, dict) and _is_str(p.get("name"))
-                and _is_str(p.get("sub"))):
-            s.err(f'"{key}" には name / sub (文字列) が必要です')
-    teams = s.req_list("teams", 1, 3, "チーム")
-    for i, t in enumerate(teams or []):
-        if not (isinstance(t, dict) and _is_str(t.get("name"))
-                and _is_str(t.get("sub"))):
-            s.err(f"teams[{i}] には name / sub (文字列) が必要です")
+    if any(key in s.spec for key in ("top", "pm", "teams", "external")):
+        s.err('旧org形式の top / pm / teams / external は廃止しました。'
+              'org.nodes / org.levels / org.edges へ移行してください')
+        return
+
+    org = s.spec.get("org")
+    if not isinstance(org, dict):
+        s.err('"org" (nodes/levels/edges を持つオブジェクト) が必要です')
+        return
+
+    nodes = org.get("nodes")
+    if not isinstance(nodes, dict) or not nodes:
+        s.err("org.nodes は1件以上のノードを持つオブジェクトにしてください")
+        nodes = {}
+    for node_id, node in nodes.items():
+        if not _is_str(node_id):
+            s.err("org.nodes のキーは空でない文字列にしてください")
             continue
-        members = t.get("members", [])
-        if not (isinstance(members, list) and len(members) <= 3
-                and all(_is_str(m) for m in members)):
-            s.err(f"teams[{i}].members は文字列の配列 (最大3件) にしてください")
-    ex = s.spec.get("external")
-    if not (isinstance(ex, dict) and _is_str(ex.get("name"))
-            and _is_str(ex.get("sub")) and _is_str(ex.get("label"))):
-        s.err('"external" には name / sub / label (文字列) が必要です')
+        if not isinstance(node, dict) or not _is_str(node.get("name")):
+            s.err(f"org.nodes.{node_id} には name (文字列) が必要です")
+            continue
+        if "sub" in node and not _is_str(node["sub"]):
+            s.err(f"org.nodes.{node_id}.sub は空でない文字列にしてください")
+        members = node.get("members", [])
+        if not (isinstance(members, list) and len(members) <= 4
+                and all(_is_str(member) for member in members)):
+            s.err(f"org.nodes.{node_id}.members は文字列の配列"
+                  " (最大4件) にしてください")
+        if node.get("style", "standard") not in {
+                "primary", "accent", "standard", "external"}:
+            s.err(f"org.nodes.{node_id}.style は primary / accent / standard / "
+                  "external のいずれかにしてください")
+
+    levels = org.get("levels")
+    if not (isinstance(levels, list) and 1 <= len(levels) <= 6):
+        s.err("org.levels は階層の配列 (1〜6階層) にしてください")
+        levels = []
+    level_of = {}
+    for level_index, level in enumerate(levels):
+        if not (isinstance(level, list) and 1 <= len(level) <= 5
+                and all(_is_str(node_id) for node_id in level)):
+            s.err(f"org.levels[{level_index}] はノードIDの配列"
+                  " (1〜5件) にしてください")
+            continue
+        for node_id in level:
+            if node_id not in nodes:
+                s.err(f"org.levels[{level_index}] が未定義ノード"
+                      f" {node_id!r} を参照しています")
+            if node_id in level_of:
+                s.err(f"org.nodes.{node_id} は複数の階層に配置されています")
+            else:
+                level_of[node_id] = level_index
+    for node_id in nodes:
+        if node_id not in level_of:
+            s.err(f"org.nodes.{node_id} がorg.levelsに配置されていません")
+
+    edges = org.get("edges", [])
+    if not isinstance(edges, list) or len(edges) > 40:
+        s.err("org.edges は関係の配列 (最大40件) にしてください")
+        return
+    seen = set()
+    for edge_index, edge in enumerate(edges):
+        if not isinstance(edge, dict):
+            s.err(f"org.edges[{edge_index}] はオブジェクトにしてください")
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        kind = edge.get("kind", "reporting")
+        if not _is_str(source) or not _is_str(target):
+            s.err(f"org.edges[{edge_index}] には from / to (文字列) が必要です")
+            continue
+        if source == target:
+            s.err(f"org.edges[{edge_index}] は同じノード同士を接続できません")
+        if source not in nodes or target not in nodes:
+            s.err(f"org.edges[{edge_index}] が未定義ノードを参照しています")
+            continue
+        if kind not in {"reporting", "advice", "collaboration"}:
+            s.err(f"org.edges[{edge_index}].kind は reporting / advice / "
+                  "collaboration のいずれかにしてください")
+        if "label" in edge and not _is_str(edge["label"]):
+            s.err(f"org.edges[{edge_index}].label は空でない文字列にしてください")
+        edge_key = (source, target, kind)
+        if edge_key in seen:
+            s.err(f"org.edges[{edge_index}] は同じ関係が重複しています")
+        seen.add(edge_key)
+        if (kind == "reporting" and source in level_of and target in level_of
+                and level_of[target] <= level_of[source]):
+            s.err(f"org.edges[{edge_index}] のreportingは上位階層から"
+                  "下位階層へ接続してください")
 
 
 _EDGE_SIDES = {"left", "right", "top", "bottom"}

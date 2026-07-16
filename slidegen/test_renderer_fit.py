@@ -3,7 +3,8 @@ from pptx import Presentation
 from pptx.util import Inches
 
 import generate
-from diagrams import s_hub, s_org
+from diagrams import s_hub
+from org_layout import s_org
 from diagrams2 import s_matrix, s_process, s_program_roadmap, s_roadmap
 from layout_fit import FitError
 
@@ -96,14 +97,17 @@ def main():
     _must_fail(s_hub, spec, "周辺ノードは6件")
 
     spec = _base("org")
-    spec.update(
-        top={"name": "責任者", "sub": "承認"},
-        pm={"name": "PM", "sub": "推進"},
-        teams=[{"name": "チーム", "sub": "担当", "members": []}
-               for _ in range(4)],
-        external={"name": "外部", "sub": "支援", "label": "連携"},
-    )
-    _must_fail(s_org, spec, "チームは1〜3件")
+    spec["org"] = {
+        "nodes": {
+            f"level{i}": {"name": f"第{i + 1}階層", "sub": "担当範囲",
+                          "members": ["担当A", "担当B"]}
+            for i in range(6)
+        },
+        "levels": [[f"level{i}"] for i in range(6)],
+        "edges": [{"from": f"level{i}", "to": f"level{i + 1}"}
+                  for i in range(5)],
+    }
+    _must_fail(s_org, spec, "最小設定")
 
     print("renderer fit tests passed")
 

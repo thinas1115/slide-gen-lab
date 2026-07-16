@@ -526,45 +526,68 @@ python slidegen/validate_content.py content.json
 
 ### org
 
-用途: 体制図。
+用途: 組織図・プロジェクト体制図・責任分担図。複数の責任者、複数階層、
+分岐・合流、助言関係、横連携を表現できる。
 
 必須:
 
 - `type`: `"org"`
 - `kicker`: string
 - `title`: string
-- `top.name`: string
-- `top.sub`: string
-- `pm.name`: string
-- `pm.sub`: string
-- `teams`: object の配列
-- `teams[*].name`: string
-- `teams[*].sub`: string
-- `external.name`: string
-- `external.sub`: string
-- `external.label`: string
+- `org.nodes`: ノードID → object
+  - `name`: 表示名
+- `org.levels`: 上位から順に並べた階層の配列。各階層はノードIDの配列
 
 任意:
 
-- `teams[*].members`: string の配列
+- `org.nodes[*].sub`: 役割・責任範囲などの補足
+- `org.nodes[*].members`: メンバー名・担当名の配列
+- `org.nodes[*].style`: `"primary" | "accent" | "standard" | "external"`
+- `org.edges`: 関係の配列
+  - `from` / `to`: 接続するノードID
+  - `kind`: `"reporting" | "advice" | "collaboration"`。省略時は`reporting`
+  - `label`: 関係ラベル
 - `note`: string
 
 制約:
 
-- `teams` は3件が最も安定(validatorの範囲は1〜3件。4件は横幅が本文を超える)。
-- `members` は各チーム0〜3件(validator強制。4件目はフッター線に重なる)。
+- `levels` は1〜6階層、1階層あたり1〜5ノード。
+- すべてのノードを`levels`のいずれか1階層へ1回だけ配置する。
+- `members` は各ノード0〜4件。
+- `reporting`は上位階層から下位階層へ接続する。1段飛ばし、複数親、複数子を指定できる。
+- `advice`と`collaboration`は点線。`collaboration`は双方向矢印になる。
+- 座標・箱サイズ・線の経由点は書かない。レイアウタが階層数と情報量から自動計算する。
+- 標準配置で収まらない場合は、階層間余白の圧縮、箱と文字の縮小を順に行う。
+  提出品質を保つ最小値でも収まらない場合は生成を停止する。
 
 ```json
 {
   "type": "org",
   "kicker": "分類",
   "title": "タイトル",
-  "top": {"name": "最上位", "sub": "補足"},
-  "pm": {"name": "中核", "sub": "補足"},
-  "teams": [
-    {"name": "チーム名", "sub": "役割", "members": ["メンバー"]}
-  ],
-  "external": {"name": "外部支援", "sub": "補足", "label": "関係ラベル"}
+  "org": {
+    "nodes": {
+      "owner_a": {"name": "事業責任者", "sub": "投資判断", "style": "primary"},
+      "owner_b": {"name": "技術責任者", "sub": "技術判断", "style": "primary"},
+      "pm": {"name": "プログラムPM", "sub": "全体統括", "style": "accent"},
+      "advisor": {"name": "外部専門家", "sub": "助言", "style": "external"},
+      "team_a": {"name": "業務設計", "sub": "要件・運用", "members": ["企画", "現場"]},
+      "team_b": {"name": "開発", "sub": "実装・試験", "members": ["アプリ", "基盤"]}
+    },
+    "levels": [
+      ["owner_a", "owner_b"],
+      ["pm", "advisor"],
+      ["team_a", "team_b"]
+    ],
+    "edges": [
+      {"from": "owner_a", "to": "pm"},
+      {"from": "owner_b", "to": "pm"},
+      {"from": "advisor", "to": "pm", "kind": "advice", "label": "助言"},
+      {"from": "pm", "to": "team_a"},
+      {"from": "pm", "to": "team_b"},
+      {"from": "team_a", "to": "team_b", "kind": "collaboration", "label": "連携"}
+    ]
+  }
 }
 ```
 

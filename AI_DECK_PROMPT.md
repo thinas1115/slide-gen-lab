@@ -44,7 +44,8 @@
    画像の説明は必要な場合だけ`lead`へ書き、`caption`と`source`は使わない。Web画像は取得元・権利者・
    利用条件を確認し、リポジトリへ含める場合は`slidegen/assets/CREDITS.md`へ記録する。
 10. `type` は `CONTENT_SCHEMA.md` に載っているものだけ使う。件数制約も `validate_content.py` が機械検証する。フェーズ単位の計画は `roadmap`、複数テーマ内の並行作業は `program_roadmap` を使い分ける。
-11. JSON以外の説明文を付けない。
+11. 体制図は`org.nodes / org.levels / org.edges`で記述する。`top / pm / teams / external`の旧形式や座標は使わない。
+12. JSON以外の説明文を付けない。
 
 対応済み `type`:
 
@@ -60,7 +61,7 @@
 - `program_roadmap`
 - `matrix`
 - `hub`
-- `org`
+- `org` (体制図。複数トップ・多段分岐・複数親・横連携に対応)
 - `diagram` (構成図。グリッド仕様から自動レイアウト、座標記述は禁止)
 
 ## 実行コマンド

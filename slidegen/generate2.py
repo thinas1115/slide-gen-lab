@@ -8,7 +8,8 @@ from pptx.util import Inches
 import generate
 from content import DECK
 from content_ext import EXTRA_SLIDES
-from diagrams import s_hub, s_org
+from diagrams import s_hub
+from org_layout import s_org
 from diagrams2 import s_matrix, s_process, s_roadmap
 from diagram_layout import render_diagram
 

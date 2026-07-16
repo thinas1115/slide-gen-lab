@@ -23,9 +23,17 @@ def _plain_line(slide, x1, y1, x2, y2, *, color=LINE, width=1.25, dash=None):
     return conn
 
 
-def route(slide, pts, *, dash=None, width=1.25):
+def route(slide, pts, *, dash=None, width=1.25, both=False):
     """ウェイポイント列を直線で結び、最終セグメントだけ矢印にする。"""
-    for (x1, y1), (x2, y2) in zip(pts[:-2], pts[1:-1]):
+    if both and len(pts) == 2:
+        add_arrow(slide, *pts[0], *pts[1], dash=dash, width=width, both=True)
+        return
+    start = 0
+    if both:
+        # add_arrowの矢印は第2点側へ付くため、始点側だけ逆向きに描く。
+        add_arrow(slide, *pts[1], *pts[0], dash=dash, width=width)
+        start = 1
+    for (x1, y1), (x2, y2) in zip(pts[start:-2], pts[start + 1:-1]):
         _plain_line(slide, x1, y1, x2, y2, dash=dash, width=width)
     (x1, y1), (x2, y2) = pts[-2], pts[-1]
     add_arrow(slide, x1, y1, x2, y2, dash=dash, width=width)
