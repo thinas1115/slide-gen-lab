@@ -93,11 +93,13 @@ def main():
         for edge, points in zip(LARGE_AWS_DIAGRAM["edges"], aws_routed)
         if edge["from"] == "worker_b"
     }
-    assert worker_routes["ddb"][0][1] != worker_routes["rds_b"][0][1]
-    for target in ("ddb", "rds_b"):
-        start, next_point = worker_routes[target][:2]
-        assert next_point[0] > start[0]
-        assert abs(next_point[1] - start[1]) <= 0.01
+    ddb_start, ddb_next = worker_routes["ddb"][:2]
+    assert ddb_next[0] > ddb_start[0]
+    assert abs(ddb_next[1] - ddb_start[1]) <= 0.01
+    rds_start, rds_next = worker_routes["rds_b"][:2]
+    assert abs(rds_next[0] - rds_start[0]) <= 0.01
+    assert rds_next[1] > rds_start[1]
+    assert len(worker_routes["rds_b"]) == 2
     assert any(len(points) >= 4 for points in aws_routed)
     assert any(edge.get("both") for edge in LARGE_AWS_DIAGRAM["edges"])
     assert any(edge.get("dash") for edge in LARGE_AWS_DIAGRAM["edges"])

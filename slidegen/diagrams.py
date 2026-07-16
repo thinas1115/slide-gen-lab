@@ -18,6 +18,10 @@ ORANGE = RGBColor(0xE8, 0x7B, 0x1E)   # compute
 GREEN = RGBColor(0x3F, 0x86, 0x24)    # storage
 PURPLE = RGBColor(0x7D, 0x3F, 0x98)   # ML
 LINE = RGBColor(0x6C, 0x73, 0x72)
+NODE_LABEL_PAD_X = 0.10  # 左右0.05in。配線以外を隠さない最小限のマスク余白
+NODE_LABEL_PAD_Y = 0.04  # 上下0.02in。文字のアンチエイリアス分だけ確保
+EDGE_LABEL_PAD_X = 0.10
+EDGE_LABEL_PAD_Y = 0.04
 
 
 def add_arrow(slide, x1, y1, x2, y2, *, color=LINE, width=1.5, both=False,
@@ -43,13 +47,12 @@ def arrow_label(slide, cx, cy, text, w=1.6, size=9):
     """線をまたぐラベル。白背景マスクは実測テキスト幅に合わせ、wは上限として扱う
     (固定幅だと短い文字列ほど余計な範囲まで線を隠してしまうため)。
     """
-    pad = 0.14
-    box_h = line_height_in(size, 1.1) + 0.02
+    box_h = line_height_in(size, 1.1) + EDGE_LABEL_PAD_Y
     actual_size, _ = fit_text_or_raise(
-        "arrow_label", "text", text, w - pad, box_h, size,
+        "arrow_label", "text", text, w - EDGE_LABEL_PAD_X, box_h, size,
         min_pt=max(7, size - 2), spacing=1.1)
-    actual_w = min(w, text_width_in(text, actual_size) + pad)
-    actual_h = line_height_in(actual_size, 1.1) + 0.08
+    actual_w = min(w, text_width_in(text, actual_size) + EDGE_LABEL_PAD_X)
+    actual_h = line_height_in(actual_size, 1.1) + EDGE_LABEL_PAD_Y
     tb = add_text(slide, cx - actual_w / 2, cy - actual_h / 2, actual_w, actual_h,
                   text, actual_size, color=TEXT, align=PP_ALIGN.CENTER,
                   anchor=MSO_ANCHOR.MIDDLE)
@@ -76,6 +79,27 @@ def container(slide, x, y, w, h, label, color=LINE, dash=None):
              color=color)
 
 
+def _masked_node_label(slide, cx, y, text, *, max_w, slot_h, size, min_pt,
+                       color, bold=False):
+    """配線を背後へ通すため、文字の実測外形だけを背景色でマスクする。"""
+    weight = "bold" if bold else "regular"
+    actual_size, lines = fit_text_or_raise(
+        "icon_node", "title" if bold else "sub", text, max_w, slot_h, size,
+        min_pt=min_pt, weight=weight, spacing=1.1)
+    rendered = "\n".join(lines)
+    actual_w = min(max_w, text_width_in(rendered, actual_size, weight)
+                   + NODE_LABEL_PAD_X)
+    actual_h = min(slot_h, line_height_in(actual_size, 1.1) * len(lines)
+                   + NODE_LABEL_PAD_Y)
+    tb = add_text(
+        slide, cx - actual_w / 2, y + (slot_h - actual_h) / 2,
+        actual_w, actual_h, rendered, actual_size, bold=bold, color=color,
+        align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, spacing=1.1)
+    tb.fill.solid()
+    tb.fill.fore_color.rgb = CANVAS
+    return tb
+
+
 # ---- AWS構成図(公式アイコン使用) ----
 ICON_DIR = Path(__file__).parent / "assets"
 ICON_R = 0.31        # アイコン半径(0.62角の半分)
@@ -93,22 +117,12 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62, *, label_above=Fal
     slide.shapes.add_picture(str(p), Inches(cx - size / 2),
                              Inches(cy - size / 2), Inches(size), Inches(size))
     title_y = cy - size / 2 - 0.59 if label_above else cy + size / 2 + 0.05
-    title_size, title_lines = fit_text_or_raise(
-        "icon_node", "title", title, 2.1, 0.28, 11,
-        min_pt=9.5, weight="bold", spacing=1.1)
-    title_w = min(2.1, text_width_in(title, title_size, "bold") + 0.10)
-    add_text(slide, cx - title_w / 2, title_y, title_w, 0.28,
-             title, title_size,
-             bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+    _masked_node_label(slide, cx, title_y, title, max_w=2.1, slot_h=0.28,
+                       size=11, min_pt=9.5, color=NAVY, bold=True)
     if sub:
         sub_y = cy - size / 2 - 0.31 if label_above else cy + size / 2 + 0.33
-        sub_size, sub_lines = fit_text_or_raise(
-            "icon_node", "sub", sub, 2.1, 0.26, 9,
-            min_pt=8, spacing=1.1)
-        sub_w = min(2.1, text_width_in(sub, sub_size) + 0.10)
-        add_text(slide, cx - sub_w / 2, sub_y, sub_w, 0.26,
-                 sub, sub_size,
-                 color=GRAY, align=PP_ALIGN.CENTER)
+        _masked_node_label(slide, cx, sub_y, sub, max_w=2.1, slot_h=0.26,
+                           size=9, min_pt=8, color=GRAY)
 
 
 def right_of(cx):

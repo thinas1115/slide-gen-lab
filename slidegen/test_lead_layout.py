@@ -57,13 +57,17 @@ def main():
 
     dense = deepcopy(LEAD_PATTERN_DECK["slides"][-1])
     dense["lead"] = LEADS["diagram"]
+    dense["diagram"]["rows"].append("overflow")
+    overflow = deepcopy(next(iter(dense["diagram"]["nodes"].values())))
+    overflow.update(row="overflow", title="追加ノード", sub="追加説明")
+    dense["diagram"]["nodes"]["overflow"] = overflow
     try:
         RENDER["diagram"](_slide(), dense, 1)
     except FitError as e:
         assert "アイコン縮小" in str(e), str(e)
         assert "行数を減らす" in str(e), str(e)
     else:
-        raise AssertionError("2行leadで過密になる高密度diagramを拒否しませんでした")
+        raise AssertionError("2行leadと追加行で過密になるdiagramを拒否しませんでした")
 
     print(f"lead layout tests passed ({len(LEAD_PATTERN_DECK['slides'])} patterns)")
 
