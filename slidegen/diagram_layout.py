@@ -8,11 +8,15 @@ from generate import BODY_TOP, BODY_W, MARGIN, note_line
 from diagrams import (ACCENT, EDGE_GAP, ICON_R, LINE, NAVY, add_arrow,
                       arrow_label, container, icon_node)
 from diagrams3 import route
+from layout_fit import FitError, stepped
 from textfit import line_height_in, text_width_in
 
 AREA = (MARGIN + 0.15, BODY_TOP + 0.05, MARGIN + BODY_W - 0.15, 6.85)
 DENSE_AREA = (AREA[0], BODY_TOP - 0.12, AREA[2], 7.04)
 DENSE_ROW_THRESHOLD = 4
+ICON_SIZE = ICON_R * 2
+MIN_ICON_SIZE = 0.46
+ICON_STEP = 0.04
 LABEL_W = 2.1          # icon_nodeのラベル幅
 TITLE_H = 0.33         # アイコン下端からタイトル行下端まで
 SUB_H = 0.26
@@ -73,7 +77,25 @@ class Layout:
         # 端の列のラベルが領域内に収まるよう内側に寄せて等配置
         self.col_x = dict(zip(cols, _linspace(x0 + LABEL_W / 2,
                                               x1 - LABEL_W / 2, len(cols))))
-        self._auto_rows()
+        last_error = None
+        for icon_size in stepped(ICON_SIZE, MIN_ICON_SIZE, ICON_STEP):
+            self.icon_size = icon_size
+            self.icon_r = icon_size / 2
+            try:
+                self._auto_rows()
+            except FitError as e:
+                last_error = e
+                continue
+            if icon_size < ICON_SIZE:
+                self.fit_stage = "icon"
+            else:
+                self.fit_stage = "gap" if self.gaps_compressed else "standard"
+            break
+        else:
+            raise FitError(
+                "diagram: 余白圧縮とアイコン縮小を行っても縦方向に収まりません。"
+                f"最小アイコンは{MIN_ICON_SIZE:.2f}inです。行数を減らすかsubを"
+                f"減らしてください。詳細: {last_error}") from last_error
         self.cont_rect = {}
         self._resolve_containers()
 
@@ -96,7 +118,7 @@ class Layout:
         """ノードの実効半幅(アイコンとタイトル実測幅の大きい方)。"""
         n = self.spec["nodes"][name]
         tw = text_width_in(n["title"], 11, "bold") + 0.1
-        return max(ICON_R + 0.12, min(LABEL_W, tw) / 2)
+        return max(self.icon_r + 0.12, min(LABEL_W, tw) / 2)
 
     def _auto_rows(self):
         """内容(ラベル深さ・コンテナ帯)に応じて行位置を自動計算する。"""
@@ -117,7 +139,7 @@ class Layout:
                             # コンテナの上端が上に来てしまう(実際に発生:
                             # az_aの上端がALBの下端ポートより上になった)。
                             # 行全体のSUB_H無条件計上のままにしておく。
-            return ICON_R + TITLE_H + (SUB_H if any(
+            return self.icon_r + TITLE_H + (SUB_H if any(
                 nodes[n].get("sub") for n in by_row[r]) else 0) + BOTTOM_PORT_GAP + EDGE_GAP
 
         def x_range(names):
@@ -205,23 +227,24 @@ class Layout:
                        max(x_range([n])[0], b["x"][0]) > OVERLAP_MIN
                        for n in prev):        # ノード単位で重なり判定
                     extra += b["band"]
-            base = bot_ext(self.rows[i - 1]) + ICON_R
+            base = bot_ext(self.rows[i - 1]) + self.icon_r
             if needs_direct_gap(i):
                 mandatory.append(base + DIRECT_GAP)
                 discretionary.append(extra)
             else:
                 mandatory.append(base)
                 discretionary.append(extra + GAP)
-        first = y0 + top_stack + ICON_R
+        first = y0 + top_stack + self.icon_r
         avail = y1 - first - bot_ext(self.rows[-1]) - bot_stack
         need_m, need_d = sum(mandatory), sum(discretionary)
         avail_d = avail - need_m
         if avail_d < 0:
-            raise ValueError(
+            raise FitError(
                 "diagram_layout: 縦方向に収まりません(ラベル+アイコンの必須分だけで"
                 f"{need_m:.2f}in必要、利用可能領域は{avail:.2f}in)。行数を減らすか"
                 "subを減らすか、ラベルを短くしてください。")
-        if need_d > avail_d:                      # 裁量分(余白)だけを圧縮
+        self.gaps_compressed = need_d > avail_d
+        if self.gaps_compressed:                  # 裁量分(余白)だけを圧縮
             discretionary = [d * avail_d / need_d for d in discretionary]
         else:                                      # 余りは45%を上に配って重心を上げる
             first += (avail_d - need_d) * 0.45
@@ -239,23 +262,24 @@ class Layout:
     def _label_bottom(self, name):
         n = self.spec["nodes"][name]
         cy = self.row_y[n["row"]]
-        return cy + ICON_R + TITLE_H + (SUB_H if n.get("sub") else 0)
+        return cy + self.icon_r + TITLE_H + (SUB_H if n.get("sub") else 0)
 
     def node_box(self, name):
         """アイコン+ラベルの外接矩形(コンテナ計算用)。幅はタイトル実測。"""
         cx, cy = self.node_center(name)
         half_w = self._half_w(name)
-        return (cx - half_w, cy - ICON_R, cx + half_w, self._label_bottom(name))
+        return (cx - half_w, cy - self.icon_r,
+                cx + half_w, self._label_bottom(name))
 
     def port(self, name, side, offset=0.0):
         """アイコン縁の矢印端点。bottomはラベルの下から出す。"""
         cx, cy = self.node_center(name)
         if side == "left":
-            return (cx - ICON_R - EDGE_GAP, cy + offset)
+            return (cx - self.icon_r - EDGE_GAP, cy + offset)
         if side == "right":
-            return (cx + ICON_R + EDGE_GAP, cy + offset)
+            return (cx + self.icon_r + EDGE_GAP, cy + offset)
         if side == "top":
-            return (cx + offset, cy - ICON_R - EDGE_GAP)
+            return (cx + offset, cy - self.icon_r - EDGE_GAP)
         return (cx + offset, self._label_bottom(name) + BOTTOM_PORT_GAP)
 
     # ---- コンテナ ----
@@ -512,7 +536,8 @@ def render_diagram(slide, spec, note=None):
                   COLORS.get(c.get("color", "line"), LINE), dash=c.get("dash"))
     for name, n in spec["nodes"].items():
         cx, cy = lay.node_center(name)
-        icon_node(slide, cx, cy, n["icon"], n["title"], n.get("sub"))
+        icon_node(slide, cx, cy, n["icon"], n["title"], n.get("sub"),
+                  size=lay.icon_size)
     for e, pts in zip(edges, routed):
         if len(pts) == 2 and e.get("both"):
             add_arrow(slide, *pts[0], *pts[1], dash=e.get("dash"), both=True)
@@ -553,7 +578,7 @@ def render_diagram(slide, spec, note=None):
                 if len(pts) == 2 and not e["to"].startswith("@"):
                     my = lay.node_center(e["to"])[1]
                 lw = min(e.get("label_w", 1.1), text_width_in(e["label"], 9) + 0.1)
-                cx = mx - ICON_R - EDGE_GAP - 0.04 - lw / 2
+                cx = mx - lay.icon_r - EDGE_GAP - 0.04 - lw / 2
                 arrow_label(slide, cx, my, e["label"], w=lw, size=9)
     if note:
         note_line(slide, note)

@@ -39,7 +39,7 @@ def main(out_path, cover_footer_config=None):
     blank = prs.slide_layouts[6]
     for idx, spec in enumerate(PATTERN_DECK["slides"], 1):
         slide = prs.slides.add_slide(blank)
-        RENDER[spec["type"]](slide, spec, idx)
+        generate.render_slide(RENDER[spec["type"]], slide, spec, idx)
         if spec["type"] != "title":
             generate.footer(slide, idx)
     prs.save(out_path)

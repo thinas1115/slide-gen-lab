@@ -40,7 +40,7 @@ def main(out_path, cover_footer_config=None):
     generate.DECK = {**DECK, "slides": slides}
     for idx, spec in enumerate(slides, 1):
         slide = prs.slides.add_slide(blank)
-        RENDER_EXTENDED[spec["type"]](slide, spec, idx)
+        generate.render_slide(RENDER_EXTENDED[spec["type"]], slide, spec, idx)
         if spec["type"] != "title":
             generate.footer(slide, idx)
     prs.save(out_path)

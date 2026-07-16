@@ -2,8 +2,9 @@
 from copy import deepcopy
 import json
 
-from diagram_layout import Layout
+from diagram_layout import ICON_SIZE, Layout
 from diagram_specs import AWS_MULTIAZ_EXAMPLE, AWS_SIMPLE_EXAMPLE
+from layout_fit import FitError
 from validate_content import validate
 
 
@@ -58,6 +59,38 @@ def main():
     assert any("diagram.area" in error for error in errors)
     assert any(".pad" in error for error in errors)
     assert any("assets/ にありません" in error for error in errors)
+
+    rows = [f"r{i}" for i in range(5)]
+    nodes = {
+        f"n{i}": {
+            "col": "main", "row": row, "icon": "fluent/app.png",
+            "title": f"Node {i}", **({"sub": "sub"} if i < 2 else {}),
+        }
+        for i, row in enumerate(rows)
+    }
+    dense = {
+        "cols": ["main"], "rows": rows, "nodes": nodes,
+        "containers": [], "channels": {}, "edges": [],
+    }
+    gap_only = deepcopy(dense)
+    gap_only["nodes"]["n1"].pop("sub")
+    compact_gap = Layout(gap_only)
+    assert compact_gap.fit_stage == "gap"
+    assert compact_gap.icon_size == ICON_SIZE
+
+    compact = Layout(dense)
+    assert compact.fit_stage == "icon"
+    assert compact.icon_size < ICON_SIZE
+
+    for node in dense["nodes"].values():
+        node["sub"] = "sub"
+    try:
+        Layout(dense)
+    except FitError as e:
+        assert "アイコン縮小" in str(e), str(e)
+        assert "行数を減らす" in str(e), str(e)
+    else:
+        raise AssertionError("最小アイコンでも収まらないdiagramを拒否しませんでした")
     print("OK: 2 inline diagram examples passed schema, layout, and routing checks")
 
 

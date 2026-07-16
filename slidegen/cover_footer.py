@@ -14,7 +14,8 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches
 
-from textfit import fit_font_size, line_height_in, wrap_text
+from layout_fit import fit_text_or_raise
+from textfit import line_height_in, wrap_text
 
 
 _HEX_COLOR = re.compile(r"^[0-9A-Fa-f]{6}$")
@@ -301,18 +302,23 @@ def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
     add_text(slide, 0.9, 0.68, 3.2, 0.3, eyebrow, eyebrow_size,
              bold=True, color=cover.secondary_color, wrap=not custom_eyebrow)
     if cover.show_date:
-        add_text(slide, 9.78, 0.68, 2.62, 0.3, meta["date"], 10,
+        date_size, _ = fit_text_or_raise(
+            "cover", "date", meta["date"], 2.62, 0.3, 10,
+            min_pt=8, spacing=1.1)
+        add_text(slide, 9.78, 0.68, 2.62, 0.3, meta["date"], date_size,
                  color=cover.secondary_color, align=PP_ALIGN.RIGHT)
 
-    title_size, title_lines = fit_font_size(
-        spec["title"], 8.05, 2.15, 42, min_pt=34, weight="bold", spacing=1.06)
+    title_size, title_lines = fit_text_or_raise(
+        "cover", "title", spec["title"], 8.05, 2.15, 42,
+        min_pt=34, weight="bold", spacing=1.08)
     title_h = max(1.0, len(title_lines) * line_height_in(title_size, 1.08) + 0.1)
     add_text(slide, 0.9, 1.72, 8.05, title_h, "\n".join(title_lines), title_size,
              bold=True, color=cover.title_color, spacing=1.08)
 
     subtitle_y = min(4.72, 1.72 + title_h + 0.38)
-    subtitle_size, subtitle_lines = fit_font_size(
-        spec["subtitle"], 8.0, 0.8, 17.5, min_pt=15, spacing=1.2)
+    subtitle_size, subtitle_lines = fit_text_or_raise(
+        "cover", "subtitle", spec["subtitle"], 8.0, 0.8, 17.5,
+        min_pt=15, spacing=1.2)
     add_text(slide, 0.94, subtitle_y, 8.0, 0.8, "\n".join(subtitle_lines),
              subtitle_size, color=cover.secondary_color, spacing=1.2)
 
@@ -345,7 +351,10 @@ def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
                      wrap=not custom_value)
 
     if cover.show_author:
-        add_text(slide, 0.9, 6.5, 4.8, 0.3, meta["author"], 10.5,
+        author_size, _ = fit_text_or_raise(
+            "cover", "author", meta["author"], 4.8, 0.3, 10.5,
+            min_pt=8.5, weight="bold", spacing=1.1)
+        add_text(slide, 0.9, 6.5, 4.8, 0.3, meta["author"], author_size,
                  bold=True, color=cover.title_color)
 
 

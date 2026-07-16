@@ -24,6 +24,7 @@
 | `slidegen/generate_from_json.py` | `content.json` → PPTX 生成(生成前にschema検証を自動実行) |
 | `slidegen/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・廃止typeの拒否) |
 | `slidegen/check_layout.py` | 生成済みPPTXの重なり・はみ出しを機械検知する品質ゲート |
+| `slidegen/layout_fit.py` | 標準配置・裁量余白圧縮・要素縮小・明示停止の共通契約 |
 | `slidegen/diagram_layout.py` | グリッド仕様から構成図の座標・配線を計算するレイアウトエンジン |
 | `slidegen/content*.py` | 基本・拡張・パターンギャラリーの回帰検証用サンプル |
 | `render.ps1` / `contact_sheet.py` | PPTX→PNG書き出し(PowerPoint COM)と一覧画像への合成。目視レビュー用 |
