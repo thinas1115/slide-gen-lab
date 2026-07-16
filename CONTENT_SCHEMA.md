@@ -48,10 +48,25 @@ python slidegen/validate_content.py content.json
 
 - `slides[*].type` は必須。
 - `type: "title"` 以外は `kicker` と `title` が必須。
+- `type: "title"` 以外は `lead` (string) を任意指定できる。タイトル直下に要旨を置き、指定時だけ本文開始位置が下がる。未指定時の本文位置は変わらない。
+- `lead` は本文を読む前に伝える結論・前提・読み方を1〜2行で書く。単なるタイトルの言い換えや本文項目の列挙には使わない。文字数の固定上限はないが、最小フォントでも領域へ収まらない場合は生成を停止する。
 - JSONなので、Pythonのタプルではなく配列を使う。
 - `note` (右下の注記) が描画されるのは `table` / `chart` / `process` / `roadmap` / `matrix` / `hub` / `org` / `diagram` のみ。それ以外のtypeに書いても無視される(validatorがエラーにする)。
 - 構成図は `diagram` type で書く(グリッド仕様のみ、座標の数値は書かない)。
 - `aws` / `aws2` は廃止済みの旧type名であり、`generate_from_json.py` は受け付けない(validatorが拒否する)。
+
+```json
+{
+  "type": "bullets",
+  "kicker": "検討結果",
+  "title": "標準化により資料作成の手戻りを減らせる",
+  "lead": "先に共通の型を定め、例外だけを個別設計する方針が有効です。",
+  "bullets": [
+    ["レビュー観点を揃えられる", null],
+    ["再生成しても配置が変わらない", null]
+  ]
+}
+```
 
 ## 対応type
 

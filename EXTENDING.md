@@ -109,7 +109,8 @@ SLIDE_W=13.333, SLIDE_H=7.5, MARGIN=0.55, BODY_W=12.233, BODY_TOP=1.58, BODY_BOT
 NAVY / ACCENT / CORAL / TEXT / GRAY / LIGHT / ZEBRA / WHITE / CANVAS / RULE
 add_text(slide, x, y, w, h, text, size, *, bold, color, align, anchor, spacing)
 add_rect(slide, x, y, w, h, fill, *, line=None, round_=False)
-header(slide, kicker, title) / footer(slide, page) / note_line(slide, note)
+header(slide, kicker, title, lead=None) -> ContentArea / footer(slide, page) / note_line(slide, note)
+ContentArea.top / bottom / height / map_y(y)  # lead指定時だけ縮小された本文領域
 
 # diagrams.py — 図解部品
 icon_node(slide, cx, cy, img, title, sub)   # アイコン+下ラベル(外形0.62角)
@@ -121,8 +122,8 @@ ICON_R=0.31, EDGE_GAP=0.06
 route(slide, pts, *, dash, width)   # 直角折れ線+終端矢印
 
 # diagram_layout.py
-Layout(spec, reserve_note=False)    # グリッド仕様→座標(port/channel/route_edges/validate_edges)
-render_diagram(slide, spec, note)   # 描画一式
+Layout(spec, reserve_note=False, content_area=None)  # グリッド仕様→座標(port/channel/route_edges/validate_edges)
+render_diagram(slide, spec, note, content_area=None) # 描画一式
 ```
 
 ## 必須の収容ポリシー
@@ -146,6 +147,10 @@ render_diagram(slide, spec, note)   # 描画一式
 
 1. **renderer関数**: シグネチャは `def s_xxx(slide, spec, page)`。配置場所は内容で選ぶ
    (テキスト系→generate.py、図解系→diagrams*.py)。数値はすべて関数内に閉じ込める。
+   冒頭で `area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))` を呼び、
+   本文のY座標・利用可能高さは必ず `area.top` / `area.bottom` / `area.height` から計算する。
+   固定構図は `area.map_y()` で従来座標を写像する。`BODY_TOP` / `BODY_BOTTOM` を直接使い続けて
+   leadと本文を重ねる実装は不可。lead未指定時は従来座標と出力を維持する。
 2. **RENDER登録**: `generate_from_json.py` と `generate_patterns.py` の両方
    (既存サンプルデッキにも使うなら `generate2.py` も)。
 3. **validator**: `validate_content.py` に `_v_xxx` を追加し `VALIDATORS` に登録。
@@ -193,9 +198,12 @@ python slidegen/validate_content.py content.json                       # 新type
 python slidegen/test_layout_fit.py                                     # 共通収容契約
 python slidegen/test_renderer_fit.py                                   # 通常・圧縮・縮小・停止
 python slidegen/test_diagram_examples.py                               # 図解の配置・配線・縮小
+python slidegen/test_lead_layout.py                                    # 全rendererのlead領域・停止
 python slidegen/generate_from_json.py content.json out\deck.pptx       # 新規資料経路
 python slidegen/generate_patterns.py out\pattern_gallery.pptx          # ギャラリー(全type)
+python slidegen/generate_lead_patterns.py out\lead_gallery.pptx        # lead指定時の全type
 python slidegen\check_layout.py out\pattern_gallery.pptx               # exit 0 必須
+python slidegen\check_layout.py out\lead_gallery.pptx                  # exit 0 必須
 powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\pattern_gallery.pptx -OutDir out\png_pg
 python contact_sheet.py out\png_pg                                      # → sheet.png を目視
 ```

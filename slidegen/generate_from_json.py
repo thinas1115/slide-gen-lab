@@ -26,8 +26,10 @@ def s_diagram(slide, spec, page):
 
     仕様はスライド内にインラインで書く。名前付きテンプレート参照は持たない。
     """
-    generate.header(slide, spec["kicker"], spec["title"])
-    render_diagram(slide, spec["diagram"], note=spec.get("note"))
+    area = generate.header(
+        slide, spec["kicker"], spec["title"], spec.get("lead"))
+    render_diagram(slide, spec["diagram"], note=spec.get("note"),
+                   content_area=area if area.shifted else None)
 
 
 # 旧固定構成図typeの aws / aws2 は廃止済み。任意テーマの構成図は
