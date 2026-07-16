@@ -498,6 +498,108 @@ class Layout:
             raise ValueError("diagram_layout: 配線がコンテナ境界を貫通しています:\n  "
                              + "\n  ".join(errors))
         self._validate_segment_lengths(edges, routed)
+        self._validate_edge_contacts(edges, routed)
+
+    @staticmethod
+    def _same_point(a, b, eps=0.01):
+        return abs(a[0] - b[0]) <= eps and abs(a[1] - b[1]) <= eps
+
+    def _shared_route_endpoints(self, edge_a, route_a, edge_b, route_b):
+        """共通ノード上で一致する経路端点だけを、意図した接続として返す。"""
+        candidates = []
+        endpoint_pairs = (
+            ("from", 0, "from", 0),
+            ("from", 0, "to", -1),
+            ("to", -1, "from", 0),
+            ("to", -1, "to", -1),
+        )
+        for key_a, idx_a, key_b, idx_b in endpoint_pairs:
+            node_a, node_b = edge_a[key_a], edge_b[key_b]
+            if node_a.startswith("@") or node_a != node_b:
+                continue
+            if self._same_point(route_a[idx_a], route_b[idx_b]):
+                candidates.append(route_a[idx_a])
+        return candidates
+
+    def _validate_edge_contacts(self, edges, routed):
+        """別エッジが途中で重なる、交差する、T字接触する経路を拒否する。"""
+        eps = 0.01
+        errors = []
+
+        def between(value, a, b):
+            return min(a, b) - eps <= value <= max(a, b) + eps
+
+        def point_allowed(point, allowed):
+            return any(self._same_point(point, candidate, eps) for candidate in allowed)
+
+        for i, (edge_a, route_a) in enumerate(zip(edges, routed)):
+            for edge_b, route_b in zip(edges[i + 1:], routed[i + 1:]):
+                allowed = self._shared_route_endpoints(
+                    edge_a, route_a, edge_b, route_b)
+                pair_failed = False
+                for a1, a2 in zip(route_a[:-1], route_a[1:]):
+                    a_horizontal = abs(a1[1] - a2[1]) <= eps
+                    for b1, b2 in zip(route_b[:-1], route_b[1:]):
+                        b_horizontal = abs(b1[1] - b2[1]) <= eps
+                        if a_horizontal == b_horizontal:
+                            same_axis = (
+                                abs(a1[1] - b1[1]) <= eps if a_horizontal
+                                else abs(a1[0] - b1[0]) <= eps
+                            )
+                            if not same_axis:
+                                continue
+                            a_lo, a_hi = sorted(
+                                (a1[0], a2[0]) if a_horizontal else (a1[1], a2[1]))
+                            b_lo, b_hi = sorted(
+                                (b1[0], b2[0]) if b_horizontal else (b1[1], b2[1]))
+                            overlap_lo, overlap_hi = max(a_lo, b_lo), min(a_hi, b_hi)
+                            if overlap_hi - overlap_lo > eps:
+                                overlap_points = (
+                                    ((overlap_lo, a1[1]), (overlap_hi, a1[1]))
+                                    if a_horizontal
+                                    else ((a1[0], overlap_lo), (a1[0], overlap_hi))
+                                )
+                                # 共通ノード端点から続く部分だけは、分岐・合流の共通幹線。
+                                if any(point_allowed(point, allowed)
+                                       for point in overlap_points):
+                                    allowed.extend(overlap_points)
+                                    continue
+                                errors.append(
+                                    f"edge {edge_a['from']}->{edge_a['to']} と "
+                                    f"{edge_b['from']}->{edge_b['to']} の線分が重複しています")
+                                pair_failed = True
+                                break
+                            if overlap_hi >= overlap_lo - eps:
+                                point = ((overlap_lo, a1[1]) if a_horizontal
+                                         else (a1[0], overlap_lo))
+                                if not point_allowed(point, allowed):
+                                    errors.append(
+                                        f"edge {edge_a['from']}->{edge_a['to']} と "
+                                        f"{edge_b['from']}->{edge_b['to']} が途中接触しています")
+                                    pair_failed = True
+                                    break
+                            continue
+
+                        horizontal = (a1, a2) if a_horizontal else (b1, b2)
+                        vertical = (b1, b2) if a_horizontal else (a1, a2)
+                        point = (vertical[0][0], horizontal[0][1])
+                        if (between(point[0], horizontal[0][0], horizontal[1][0])
+                                and between(point[1], vertical[0][1], vertical[1][1])
+                                and not point_allowed(point, allowed)):
+                            errors.append(
+                                f"edge {edge_a['from']}->{edge_a['to']} と "
+                                f"{edge_b['from']}->{edge_b['to']} が交差しています")
+                            pair_failed = True
+                            break
+                    if pair_failed:
+                        break
+                if pair_failed:
+                    break
+            if errors:
+                break
+        if errors:
+            raise ValueError("diagram_layout: 別エッジ同士が接続して見える経路です:\n  "
+                             + "\n  ".join(errors))
 
     def _validate_segment_lengths(self, edges, routed):
         """経路の中間区間が極端に短くないか、最終区間が逆走していないかを
@@ -513,6 +615,12 @@ class Layout:
         """
         errors = []
         for e, pts in zip(edges, routed):
+            for (x1, y1), (x2, y2) in zip(pts[:-1], pts[1:]):
+                if abs(x2 - x1) > 0.01 and abs(y2 - y1) > 0.01:
+                    errors.append(
+                        f"edge {e['from']}->{e['to']}: segment "
+                        f"({x1:.3f},{y1:.3f})-({x2:.3f},{y2:.3f}) が直角ではありません。"
+                        f"via/exit/enterの組み合わせを見直してください。")
             if len(pts) >= 3:
                 for (x1, y1), (x2, y2) in zip(pts[:-1], pts[1:]):
                     length = abs(x2 - x1) + abs(y2 - y1)
@@ -543,7 +651,7 @@ class Layout:
                         f"edge {e['from']}->{e['to']}: 直結区間の長さ{length:.3f}in "
                         f"はMIN_SEG({MIN_SEG})未満です。行/列の間隔が不足しています。")
         if errors:
-            raise ValueError("diagram_layout: 経路に短すぎる区間があります:\n  "
+            raise ValueError("diagram_layout: 経路に不正な区間があります:\n  "
                              + "\n  ".join(errors))
 
 

@@ -93,6 +93,49 @@ def main():
     assert any(edge.get("dash") for edge in LARGE_AWS_DIAGRAM["edges"])
     assert any(len(edge.get("via", [])) > 0 for edge in LARGE_AWS_DIAGRAM["edges"])
 
+    bad_edges = [
+        {"from": "a", "to": "b"},
+        {"from": "c", "to": "d"},
+    ]
+    bad_routes = [
+        [(0.0, 0.0), (2.0, 0.0)],
+        [(1.0, -1.0), (1.0, 0.0)],
+    ]
+    try:
+        aws_layout._validate_edge_contacts(bad_edges, bad_routes)
+    except ValueError as exc:
+        assert "接続して見える" in str(exc)
+    else:
+        raise AssertionError("別エッジのT字接触が検出されませんでした")
+
+    fanout_edges = [
+        {"from": "a", "to": "b"},
+        {"from": "a", "to": "c"},
+    ]
+    aws_layout._validate_edge_contacts(fanout_edges, [
+        [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)],
+        [(0.0, 0.0), (1.0, 0.0), (1.0, -1.0)],
+    ])
+    try:
+        aws_layout._validate_edge_contacts(fanout_edges, [
+            [(0.0, 0.0), (0.0, 1.0), (2.0, 1.0)],
+            [(0.0, 0.0), (1.0, 0.0), (1.0, 2.0)],
+        ])
+    except ValueError as exc:
+        assert "接続して見える" in str(exc)
+    else:
+        raise AssertionError("同一始点から分岐した後の再交差が検出されませんでした")
+
+    try:
+        aws_layout._validate_segment_lengths(
+            [{"from": "user", "to": "r53"}],
+            [[(0.0, 0.0), (1.0, 1.0)]],
+        )
+    except ValueError as exc:
+        assert "直角ではありません" in str(exc)
+    else:
+        raise AssertionError("斜めの経路区間が検出されませんでした")
+
     generate.DECK = STRESS_PATTERN_DECK
     for idx, spec in enumerate(STRESS_PATTERN_DECK["slides"], 1):
         generate.render_slide(RENDER[spec["type"]], _slide(), spec, idx)

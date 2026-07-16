@@ -113,7 +113,7 @@ AWS_MULTIAZ_EXAMPLE = {
          "via": ["above_az_c"]},
         {"from": "fg_a", "to": "rds_a", "exit": "left", "enter": "left",
          "via": ["loop_a"]},
-        {"from": "fg_c", "to": "rds_c", "exit": "right", "enter": "right",
+        {"from": "fg_c", "to": "rds_c", "exit": "bottom", "enter": "right",
          "via": ["loop_c"]},
         {"from": "rds_a", "to": "rds_c", "both": True, "dash": "dash",
          "label": "同期", "label_w": 0.8},
