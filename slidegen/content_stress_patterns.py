@@ -194,6 +194,46 @@ def _large_aws_diagram():
 
 LARGE_AWS_DIAGRAM = _large_aws_diagram()
 
+ROADMAP_STRESS = {
+    "type": "roadmap",
+    "kicker": "大規模ロードマップ",
+    "title": "12期間・6フェーズを1枚で管理する",
+    "lead": "余白圧縮後に行高・文字・バーを縮小し、年間計画を収容します。",
+    "months": ["4月", "5月", "6月", "7月", "8月", "9月",
+               "10月", "11月", "12月", "1月", "2月", "3月"],
+    "phases": [
+        {"name": f"Phase {i + 1}  検証工程{i + 1}", "goal": "判定条件を確認",
+         "bar": f"工程{i + 1}を実施", "start": i * 2, "end": i * 2 + 2}
+        for i in range(6)
+    ],
+    "milestones": [
+        {"at": i * 2 + 2, "row": i, "label": f"判定{i + 1}"}
+        for i in range(6)
+    ],
+    "note": "roadmapの要素縮小ストレス検証。",
+}
+
+PROGRAM_ROADMAP_STRESS = {
+    "type": "program_roadmap",
+    "kicker": "大規模プログラム工程表",
+    "title": "5テーマ・15作業の同時進行を1枚で俯瞰する",
+    "lead": "各テーマで3作業を重ね、自動レーン割当と要素縮小の発動を確認します。",
+    "periods": ["4月", "5月", "6月", "7月", "8月", "9月",
+                "10月", "11月", "12月", "1月", "2月", "3月"],
+    "tracks": [
+        {
+            "name": f"改善テーマ{i + 1}",
+            "activities": [
+                {"label": f"要件整理{i + 1}", "start": "4月", "end": "7月"},
+                {"label": f"実装検証{i + 1}", "start": "6月", "end": "10月"},
+                {"label": f"展開準備{i + 1}", "start": "7月", "end": "2月",
+                 "emph": i == 4},
+            ],
+        }
+        for i in range(5)
+    ],
+}
+
 STRESS_PATTERN_DECK = {
     "meta": {
         "title": "段階的縮小ストレス検証",
@@ -225,5 +265,7 @@ STRESS_PATTERN_DECK = {
             "lead": "AWS公式アイコンで分岐・冗長化・外周迂回を含む縮小耐性を確認します。",
             "diagram": LARGE_AWS_DIAGRAM,
         },
+        ROADMAP_STRESS,
+        PROGRAM_ROADMAP_STRESS,
     ],
 }

@@ -38,7 +38,7 @@
 6. `aws` / `aws2` は廃止済みの旧type名なので使わない。構成図は `diagram` で新規に書く。
 7. `cards` は、KPI・選択肢・事例など、各項目が独立して比較できる場合に使う。サマリ・事例は `style: "editorial"`、KPIは `style: "metrics"` を選ぶ。情報量が少ないことだけを理由に使わず、フェーズ名や図のノードなど別の構造に属する要素をカード化しない。
 8. 表紙以外では、タイトルと本文の間に要旨が必要な場合だけ任意の `lead` を使う。結論・前提・読み方を1〜2行で書き、タイトルの言い換えや本文の繰り返しは書かない。不要なスライドにはフィールド自体を付けない。
-9. `type` は `CONTENT_SCHEMA.md` に載っているものだけ使う。件数制約(hubのring 6件、roadmapのphases 最大3件など)も `validate_content.py` が機械検証する。
+9. `type` は `CONTENT_SCHEMA.md` に載っているものだけ使う。件数制約も `validate_content.py` が機械検証する。フェーズ単位の計画は `roadmap`、複数テーマ内の並行作業は `program_roadmap` を使い分ける。
 10. JSON以外の説明文を付けない。
 
 対応済み `type`:
@@ -51,6 +51,7 @@
 - `chart`
 - `process`
 - `roadmap`
+- `program_roadmap`
 - `matrix`
 - `hub`
 - `org`

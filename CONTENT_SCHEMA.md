@@ -51,7 +51,7 @@ python slidegen/validate_content.py content.json
 - `type: "title"` 以外は `lead` (string) を任意指定できる。タイトル直下に要旨を置き、指定時だけ本文開始位置が下がる。未指定時の本文位置は変わらない。
 - `lead` は本文を読む前に伝える結論・前提・読み方を1〜2行で書く。単なるタイトルの言い換えや本文項目の列挙には使わない。文字数の固定上限はないが、最小フォントでも領域へ収まらない場合は生成を停止する。
 - JSONなので、Pythonのタプルではなく配列を使う。
-- `note` (右下の注記) が描画されるのは `table` / `chart` / `process` / `roadmap` / `matrix` / `hub` / `org` / `diagram` のみ。それ以外のtypeに書いても無視される(validatorがエラーにする)。
+- `note` (右下の注記) が描画されるのは `table` / `chart` / `process` / `roadmap` / `program_roadmap` / `matrix` / `hub` / `org` / `diagram` のみ。それ以外のtypeに書いても無視される(validatorがエラーにする)。
 - 構成図は `diagram` type で書く(グリッド仕様のみ、座標の数値は書かない)。
 - `aws` / `aws2` は廃止済みの旧type名であり、`generate_from_json.py` は受け付けない(validatorが拒否する)。
 
@@ -299,7 +299,7 @@ python slidegen/validate_content.py content.json
 
 ### roadmap
 
-用途: ガント風ロードマップ。
+用途: フェーズ単位のガント風ロードマップ。1フェーズにつき1本のバーを置く。
 
 必須:
 
@@ -311,18 +311,20 @@ python slidegen/validate_content.py content.json
 - `phases[*].name`: string
 - `phases[*].goal`: string
 - `phases[*].bar`: string
-- `phases[*].start`: number
-- `phases[*].end`: number
+- `phases[*].start`: number または `months` 内の期間ラベル
+- `phases[*].end`: number または `months` 内の期間ラベル
 - `milestones`: object の配列
-- `milestones[*].at`: number
+- `milestones[*].at`: number または `months` 内の期間ラベル
 - `milestones[*].row`: number
 - `milestones[*].label`: string
 
 制約:
 
-- `months` は6件が最も安定(validatorの範囲は4〜8件)。
-- `phases` は最大3件(validator強制。4件は行の高さが本文下端を超える)。
-- `start`, `end`, `at` は月列のindex基準。6か月なら `0` から `6` の範囲(validator強制)。
+- `months` は重複しない3〜12件。月以外に四半期、週、工程名なども使える。
+- `phases` は1〜6件。4件以上ではrendererが余白・行高・文字を段階的に縮小する。
+- 数値の `start`, `end`, `at` は期間列の境界index。12期間なら `0` から `12` の範囲。
+- 期間ラベルの `start` は該当列の開始、`end` は該当列を含む終了、`at` は該当列の中央として扱う。
+- 数値indexと期間ラベルは混在できるが、AI生成では読みやすい期間ラベル指定を推奨する。
 - `milestones[*].row` は対応する `phases` の0始まりindex。不要なら `"milestones": []`。
 
 ```json
@@ -330,13 +332,70 @@ python slidegen/validate_content.py content.json
   "type": "roadmap",
   "kicker": "分類",
   "title": "タイトル",
-  "months": ["7月", "8月", "9月", "10月", "11月", "12月"],
+  "months": ["4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月", "1月", "2月", "3月"],
   "phases": [
-    {"name": "Phase 1", "goal": "目的", "bar": "バー内文言", "start": 0, "end": 2}
+    {"name": "Phase 1", "goal": "目的", "bar": "バー内文言", "start": "4月", "end": "6月"}
   ],
   "milestones": [
-    {"at": 2, "row": 0, "label": "判定"}
+    {"at": "6月", "row": 0, "label": "判定"}
   ]
+}
+```
+
+### program_roadmap
+
+用途: 複数テーマに複数作業があり、同じ時間軸で並行関係を示すプログラム工程表。
+作業期間が重なる場合はrendererが同一テーマ内のレーンを自動で増やす。
+
+必須:
+
+- `type`: `"program_roadmap"`
+- `kicker`: string
+- `title`: string
+- `periods`: 重複しないstringの配列
+- `tracks`: objectの配列
+- `tracks[*].name`: string
+- `tracks[*].activities`: objectの配列
+- `tracks[*].activities[*].label`: string
+- `tracks[*].activities[*].start`: number または `periods` 内の期間ラベル
+- `tracks[*].activities[*].end`: number または `periods` 内の期間ラベル
+
+任意:
+
+- `tracks[*].activities[*].emph`: boolean。重要作業を強調する
+- `note`: string
+
+制約:
+
+- `periods` は3〜12件、`tracks` は1〜6件。
+- 各`activities`は1〜8件、全テーマ合計24件まで。
+- `start` / `end`の数値・期間ラベルの意味は`roadmap`と同じ。
+- 同じテーマ内で重なる作業は入力順や座標指定ではなく、期間の重なりから自動レーン配置する。
+- 最小設定でも収まらない場合は、テーマまたは同時並行作業を減らしてスライドを分割する。
+
+```json
+{
+  "type": "program_roadmap",
+  "kicker": "年間計画",
+  "title": "複数テーマの並行作業を年間計画として俯瞰する",
+  "periods": ["4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月", "1月", "2月", "3月"],
+  "tracks": [
+    {
+      "name": "利用部門の拡大",
+      "activities": [
+        {"label": "対象業務の選定", "start": "4月", "end": "6月"},
+        {"label": "追加部門へ展開", "start": "11月", "end": "3月", "emph": true}
+      ]
+    },
+    {
+      "name": "運用基盤の再設計",
+      "activities": [
+        {"label": "移行方針の策定", "start": "6月", "end": "9月"},
+        {"label": "新環境の構築", "start": "7月", "end": "10月"}
+      ]
+    }
+  ],
+  "note": "作業期間の重なりからレーン数を自動計算する。"
 }
 ```
 

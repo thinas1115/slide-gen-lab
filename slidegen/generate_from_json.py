@@ -16,7 +16,7 @@ from pptx.util import Inches
 
 import generate
 from diagrams import s_hub, s_org
-from diagrams2 import s_matrix, s_process, s_roadmap
+from diagrams2 import s_matrix, s_process, s_program_roadmap, s_roadmap
 from diagram_layout import render_diagram
 from validate_content import validate
 
@@ -36,7 +36,8 @@ def s_diagram(slide, spec, page):
 # diagram type(宣言的レイアウトエンジン)で生成する。
 RENDER = dict(generate.RENDER,
               hub=s_hub, org=s_org,
-              process=s_process, roadmap=s_roadmap, matrix=s_matrix,
+              process=s_process, roadmap=s_roadmap,
+              program_roadmap=s_program_roadmap, matrix=s_matrix,
               diagram=s_diagram)
 
 

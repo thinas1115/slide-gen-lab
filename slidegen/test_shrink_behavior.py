@@ -8,11 +8,14 @@ import generate
 from content_stress_patterns import (
     LARGE_AWS_DIAGRAM,
     LARGE_DIAGRAM,
+    PROGRAM_ROADMAP_STRESS,
+    ROADMAP_STRESS,
     STRESS_PATTERN_DECK,
     TABLE_ROWS,
 )
 from diagram_layout import ICON_SIZE, Layout
 from generate_from_json import RENDER
+from timeline_layout import fit_program_roadmap, fit_roadmap, pack_activities
 from validate_content import validate
 
 
@@ -158,6 +161,26 @@ def main():
     else:
         raise AssertionError("接続辺に対して垂直でない開始区間が検出されませんでした")
 
+    roadmap_area = generate.header(
+        _slide(), ROADMAP_STRESS["kicker"], ROADMAP_STRESS["title"],
+        ROADMAP_STRESS["lead"])
+    roadmap_fit = fit_roadmap(
+        roadmap_area.height, len(ROADMAP_STRESS["phases"]), has_note=True)
+    assert roadmap_fit.stage == "element", roadmap_fit
+    assert roadmap_fit.values["row_h"] < 0.70, roadmap_fit
+
+    program_area = generate.header(
+        _slide(), PROGRAM_ROADMAP_STRESS["kicker"],
+        PROGRAM_ROADMAP_STRESS["title"], PROGRAM_ROADMAP_STRESS["lead"])
+    lane_counts = [
+        pack_activities(track["activities"], PROGRAM_ROADMAP_STRESS["periods"])[1]
+        for track in PROGRAM_ROADMAP_STRESS["tracks"]
+    ]
+    assert lane_counts == [3, 3, 3, 3, 3]
+    program_fit = fit_program_roadmap(program_area.height, lane_counts)
+    assert program_fit.stage == "element", program_fit
+    assert program_fit.values["lane_pitch"] < 0.30, program_fit
+
     generate.DECK = STRESS_PATTERN_DECK
     for idx, spec in enumerate(STRESS_PATTERN_DECK["slides"], 1):
         generate.render_slide(RENDER[spec["type"]], _slide(), spec, idx)
@@ -166,7 +189,9 @@ def main():
         "shrink behavior tests passed "
         f"(table={table_fit.values['size']:.1f}pt, "
         f"fluent={diagram_layout.icon_size:.2f}in, "
-        f"aws={aws_layout.icon_size:.2f}in / {ICON_SIZE:.2f}in)"
+        f"aws={aws_layout.icon_size:.2f}in / {ICON_SIZE:.2f}in, "
+        f"roadmap={roadmap_fit.values['row_h']:.2f}in, "
+        f"program={program_fit.values['lane_pitch']:.2f}in)"
     )
 
 

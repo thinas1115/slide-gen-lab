@@ -289,7 +289,7 @@ class Layout:
             # 指すレーン。同じ列を共有するノード間のローカルループに使う
             # (列基準のチャネルを流用すると、隣接する無関係な列まで大回りして
             # 他コンテナの境界線を貫通する。実際に2箇所で発生した不具合)。
-            ref_id, side = ref
+            ref_id, side, *gap_spec = ref
             if isinstance(ref_id, (list, tuple)):
                 # コンテナ化されていないノード群: 自前で外接矩形を計算
                 boxes = [self.node_box(n) for n in ref_id]
@@ -297,7 +297,7 @@ class Layout:
                      max(b[2] for b in boxes), max(b[3] for b in boxes))
             else:
                 r = self.cont_rect[ref_id]
-            gap = 0.12
+            gap = gap_spec[0] if gap_spec else 0.12
             if side == "top_inside":
                 # コンテナの外側ではなく「ラベル帯のすぐ下・内側」を指す。
                 # ALB→Fargateのような「上のノードから、下のコンテナの中へ
