@@ -2,6 +2,7 @@
 from copy import deepcopy
 
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.util import Inches
 
 import generate
@@ -14,6 +15,7 @@ from content_stress_patterns import (
     TABLE_ROWS,
 )
 from diagram_layout import ICON_SIZE, Layout
+from diagrams2 import PROGRAM_LINE_PT
 from generate_from_json import RENDER
 from timeline_layout import fit_program_roadmap, fit_roadmap, pack_activities
 from validate_content import validate
@@ -180,6 +182,26 @@ def main():
     program_fit = fit_program_roadmap(program_area.height, lane_counts)
     assert program_fit.stage == "element", program_fit
     assert program_fit.values["lane_pitch"] < 0.30, program_fit
+
+    program_slide = _slide()
+    generate.render_slide(
+        RENDER["program_roadmap"], program_slide, PROGRAM_ROADMAP_STRESS, 1)
+    track_names = {track["name"] for track in PROGRAM_ROADMAP_STRESS["tracks"]}
+    track_shapes = [
+        shape for shape in program_slide.shapes
+        if shape.has_text_frame and shape.text_frame.text in track_names
+    ]
+    assert len(track_shapes) == len(track_names)
+    assert all(shape.text_frame.word_wrap is False for shape in track_shapes)
+    assert max(shape.width.inches for shape in track_shapes) - min(
+        shape.width.inches for shape in track_shapes) < 0.01
+    activity_lines = [
+        shape for shape in program_slide.shapes
+        if shape.shape_type == MSO_SHAPE_TYPE.LINE
+        and shape.line.width is not None
+        and abs(shape.line.width.pt - PROGRAM_LINE_PT) < 0.01
+    ]
+    assert len(activity_lines) == 15
 
     generate.DECK = STRESS_PATTERN_DECK
     for idx, spec in enumerate(STRESS_PATTERN_DECK["slides"], 1):

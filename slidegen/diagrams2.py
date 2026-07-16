@@ -7,10 +7,13 @@ from pptx.util import Inches, Pt
 
 from generate import (ACCENT, CORAL, GRAY, LIGHT, NAVY, RULE, TEXT, WHITE,
                       ZEBRA, ContentArea, add_rect, add_text, header, note_line)
+from diagrams import add_arrow
 from layout_fit import FitError, ensure_within, fit_text_or_raise
 from textfit import text_width_in
 from timeline_layout import (fit_program_roadmap, fit_roadmap, pack_activities,
                              resolve_marker, resolve_span)
+
+PROGRAM_LINE_PT = 1.4
 
 
 def _grid_line(slide, x1, y1, x2, y2):
@@ -19,6 +22,16 @@ def _grid_line(slide, x1, y1, x2, y2):
         MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2))
     line.line.color.rgb = RULE
     line.line.width = Pt(0.6)
+    line.shadow.inherit = False
+    return line
+
+
+def _activity_line(slide, x1, y, x2, color):
+    """工程表の作業期間を描く。矩形ではなく固定pt幅で見え方を揃える。"""
+    line = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y), Inches(x2), Inches(y))
+    line.line.color.rgb = color
+    line.line.width = Pt(PROGRAM_LINE_PT)
     line.shadow.inherit = False
     return line
 
@@ -217,8 +230,8 @@ def s_program_roadmap(slide, spec, page):
         area.height, lane_counts, has_note=bool(spec.get("note")))
     values = fitted.values
 
-    label_x, label_w = 0.72, 2.78
-    grid_x, grid_w = label_x + label_w, 9.09
+    label_x, track_col_w = 0.72, 2.78
+    grid_x, grid_w = label_x + track_col_w, 9.09
     period_w = grid_w / len(periods)
     top = area.top + values["top_gap"]
     header_h = values["header_h"]
@@ -228,8 +241,8 @@ def s_program_roadmap(slide, spec, page):
     ]
     grid_h = header_h + sum(row_heights) + values["track_gap"] * (len(tracks) - 1)
 
-    add_rect(slide, label_x, top, label_w, header_h, NAVY)
-    add_text(slide, label_x + 0.18, top + 0.07, label_w - 0.36, 0.28,
+    add_rect(slide, label_x, top, track_col_w, header_h, NAVY)
+    add_text(slide, label_x + 0.18, top + 0.07, track_col_w - 0.36, 0.28,
              "テーマ", values["period_pt"], bold=True, color=WHITE)
     add_rect(slide, grid_x, top, grid_w, header_h, NAVY)
     for index, period in enumerate(periods):
@@ -245,7 +258,7 @@ def s_program_roadmap(slide, spec, page):
     cursor = top + header_h
     for index, row_h in enumerate(row_heights):
         row_tops.append(cursor)
-        add_rect(slide, label_x, cursor, label_w + grid_w, row_h,
+        add_rect(slide, label_x, cursor, track_col_w + grid_w, row_h,
                  WHITE if index % 2 == 0 else ZEBRA)
         cursor += row_h + values["track_gap"]
 
@@ -255,20 +268,19 @@ def s_program_roadmap(slide, spec, page):
                    grid_x + index * period_w, top + grid_h)
     for index, row_top in enumerate(row_tops):
         _grid_line(slide, label_x, row_top,
-                   label_x + label_w + grid_w, row_top)
+                   label_x + track_col_w + grid_w, row_top)
         track = tracks[index]
         row_h = row_heights[index]
         add_text(slide, label_x + 0.12, row_top + 0.11, 0.38, 0.25,
                  f"{index + 1:02d}", values["track_pt"], bold=True,
                  color=ACCENT)
-        track_size, _ = fit_text_or_raise(
+        track_size = _fit_single_line(
             "program_roadmap", f"tracks[{index}].name", track["name"],
-            label_w - 0.66, min(0.42, row_h - 0.14), values["track_pt"],
-            min_pt=8.5, weight="bold", spacing=1.08)
+            track_col_w - 0.66, values["track_pt"], 8.5, bold=True)
         add_text(slide, label_x + 0.52, row_top + 0.09,
-                 label_w - 0.66, min(0.42, row_h - 0.14),
+                 track_col_w - 0.66, min(0.28, row_h - 0.14),
                  track["name"], track_size, bold=True, color=NAVY,
-                 spacing=1.08)
+                 spacing=1.0, wrap=False)
 
         placements, _lane_count = packed[index]
         lane_neighbors = {}
@@ -288,8 +300,7 @@ def s_program_roadmap(slide, spec, page):
             x1 = grid_x + placement.start * period_w + 0.035
             x2 = grid_x + placement.end * period_w - 0.035
             color = CORAL if activity.get("emph") else ACCENT
-            add_rect(slide, x1, lane_top + 0.035, x2 - x1,
-                     values["line_h"], color)
+            _activity_line(slide, x1, lane_top + 0.035, x2, color)
             text_h = values["lane_pitch"] - 0.07
             previous, following = lane_neighbors[placement.index]
             left_bound = grid_x if previous is None else (
@@ -297,26 +308,27 @@ def s_program_roadmap(slide, spec, page):
             right_bound = grid_x + grid_w if following is None else (
                 grid_x + (placement.end + following.start) * period_w / 2)
             available_label_w = right_bound - left_bound
-            label_w = min(1.45, available_label_w)
+            activity_label_w = min(1.45, available_label_w)
             label_center = (x1 + x2) / 2
             activity_label_x = min(
-                max(label_center - label_w / 2, left_bound),
-                right_bound - label_w,
+                max(label_center - activity_label_w / 2, left_bound),
+                right_bound - activity_label_w,
             )
             activity_size = _fit_single_line(
                 "program_roadmap",
                 f"tracks[{index}].activities[{placement.index}].label",
-                activity["label"], label_w - 0.04, values["activity_pt"], 7.5,
+                activity["label"], activity_label_w - 0.04,
+                values["activity_pt"], 7.5,
                 bold=bool(activity.get("emph")))
             label = add_text(
-                slide, activity_label_x + 0.02, lane_top + 0.07, label_w - 0.04,
-                text_h, activity["label"], activity_size,
+                slide, activity_label_x + 0.02, lane_top + 0.07,
+                activity_label_w - 0.04, text_h, activity["label"], activity_size,
                 bold=bool(activity.get("emph")), color=TEXT,
                 align=PP_ALIGN.CENTER, spacing=1.0, wrap=False)
             label.fill.solid()
             label.fill.fore_color.rgb = WHITE if index % 2 == 0 else ZEBRA
     _grid_line(slide, label_x, cursor - values["track_gap"],
-               label_x + label_w + grid_w, cursor - values["track_gap"])
+               label_x + track_col_w + grid_w, cursor - values["track_gap"])
     if spec.get("note"):
         note_line(slide, spec["note"])
 
