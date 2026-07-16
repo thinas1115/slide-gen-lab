@@ -88,6 +88,16 @@ def main():
         <= generate.BODY_BOTTOM
     aws_routed = aws_layout.route_edges(LARGE_AWS_DIAGRAM["edges"])
     aws_layout.validate_edges(LARGE_AWS_DIAGRAM["edges"], aws_routed)
+    worker_routes = {
+        edge["to"]: points
+        for edge, points in zip(LARGE_AWS_DIAGRAM["edges"], aws_routed)
+        if edge["from"] == "worker_b"
+    }
+    assert worker_routes["ddb"][0][1] != worker_routes["rds_b"][0][1]
+    for target in ("ddb", "rds_b"):
+        start, next_point = worker_routes[target][:2]
+        assert next_point[0] > start[0]
+        assert abs(next_point[1] - start[1]) <= 0.01
     assert any(len(points) >= 4 for points in aws_routed)
     assert any(edge.get("both") for edge in LARGE_AWS_DIAGRAM["edges"])
     assert any(edge.get("dash") for edge in LARGE_AWS_DIAGRAM["edges"])
@@ -135,6 +145,16 @@ def main():
         assert "直角ではありません" in str(exc)
     else:
         raise AssertionError("斜めの経路区間が検出されませんでした")
+
+    try:
+        aws_layout._validate_segment_lengths(
+            [{"from": "user", "to": "r53", "exit": "bottom", "enter": "top"}],
+            [[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]],
+        )
+    except ValueError as exc:
+        assert "垂直外向きではありません" in str(exc)
+    else:
+        raise AssertionError("接続辺に対して垂直でない開始区間が検出されませんでした")
 
     generate.DECK = STRESS_PATTERN_DECK
     for idx, spec in enumerate(STRESS_PATTERN_DECK["slides"], 1):

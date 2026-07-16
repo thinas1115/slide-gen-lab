@@ -29,6 +29,9 @@ BOTTOM_PORT_GAP = 0.03  # bottom側ポートがラベル下端からさらに離
 MIN_SEG = 0.12          # via指定後の最終進入区間の最短長。これより短い/逆走
                         # する場合はp1側にクランプする(実際に0.04inの逆走が
                         # 発生し、矢印の向きが逆に見える不具合になった)
+PORT_STUB = 0.05         # via方向が接続辺に対して接線方向になる場合、最初に
+                        # アイコン辺から垂直に離す長さ。圧縮時の隣接行間にも
+                        # 収まり、接続先を誤認しない見た目を両立する。
 DIRECT_GAP = 0.30       # via無しで隣接行・同一列を直結するエッジ(例:
                         # Route53<->CloudFront)に確保する行間の必須ギャップ。
                         # MIN_SEGは「経路の最短長」の下限であって「視認できる
@@ -406,6 +409,21 @@ class Layout:
                 p0 = self.port(src, exit_d, off((src, exit_d, "out"), id(e)))
             p1 = self.port(dst, enter_d, off((dst, enter_d, "in"), id(e)))
             pts, cur = [p0], p0
+            if e.get("via") and not src.startswith("@"):
+                first_axis, _ = self.channel(e["via"][0])
+                tangential = (
+                    exit_d in ("top", "bottom") and first_axis == "v"
+                    or exit_d in ("left", "right") and first_axis == "h"
+                )
+                if tangential:
+                    dx, dy = {
+                        "top": (0.0, -PORT_STUB),
+                        "bottom": (0.0, PORT_STUB),
+                        "left": (-PORT_STUB, 0.0),
+                        "right": (PORT_STUB, 0.0),
+                    }[exit_d]
+                    cur = (cur[0] + dx, cur[1] + dy)
+                    pts.append(cur)
             for ch in e.get("via", []):
                 axis, v = self.channel(ch)
                 cur = (v, cur[1]) if axis == "v" else (cur[0], v)
@@ -621,18 +639,35 @@ class Layout:
                         f"edge {e['from']}->{e['to']}: segment "
                         f"({x1:.3f},{y1:.3f})-({x2:.3f},{y2:.3f}) が直角ではありません。"
                         f"via/exit/enterの組み合わせを見直してください。")
+            exit_d, enter_d = self._sides(e)
+            if not e["from"].startswith("@"):
+                (x1, y1), (x2, y2) = pts[0], pts[1]
+                starts_outward = {
+                    "top": y2 < y1,
+                    "bottom": y2 > y1,
+                    "left": x2 < x1,
+                    "right": x2 > x1,
+                }[exit_d]
+                if not starts_outward:
+                    errors.append(
+                        f"edge {e['from']}->{e['to']}: 開始区間が exit=\"{exit_d}\" "
+                        f"に対して垂直外向きではありません"
+                        f"({x1:.3f},{y1:.3f})->({x2:.3f},{y2:.3f})。"
+                        f"接続辺または最初のviaを見直してください。")
             if len(pts) >= 3:
-                for (x1, y1), (x2, y2) in zip(pts[:-1], pts[1:]):
+                for idx, ((x1, y1), (x2, y2)) in enumerate(
+                        zip(pts[:-1], pts[1:])):
                     length = abs(x2 - x1) + abs(y2 - y1)
-                    if length < MIN_SEG - 0.01:
+                    minimum = (PORT_STUB if idx == 0
+                               and not e["from"].startswith("@") else MIN_SEG)
+                    if length < minimum - 0.01:
                         errors.append(
                             f"edge {e['from']}->{e['to']}: segment "
                             f"({x1:.3f},{y1:.3f})-({x2:.3f},{y2:.3f}) の長さ"
-                            f"{length:.3f}in はMIN_SEG({MIN_SEG})未満です。"
+                            f"{length:.3f}in は最小値({minimum})未満です。"
                             f"via/exit/enterの組み合わせを見直してください。")
-            if e["from"].startswith("@") or e["to"].startswith("@"):
+            if e["to"].startswith("@"):
                 continue
-            _, enter_d = self._sides(e)
             (x1, y1), (x2, y2) = pts[-2], pts[-1]
             ok = {"top": y2 > y1, "bottom": y2 < y1,
                  "left": x2 > x1, "right": x2 < x1}[enter_d]
