@@ -9,8 +9,8 @@ from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
 from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, CANVAS, CORAL, GRAY,
-                      LIGHT, MARGIN, NAVY, RULE, TEXT, WHITE, ZEBRA, add_rect, add_text,
-                      header, note_line)
+                      LIGHT, MARGIN, NAVY, RULE, TEXT, WHITE, ZEBRA, ContentArea,
+                      add_rect, add_text, header, note_line)
 from layout_fit import FitError, ensure_within, fit_text_or_raise
 from textfit import line_height_in, text_width_in
 
@@ -18,6 +18,10 @@ ORANGE = RGBColor(0xE8, 0x7B, 0x1E)   # compute
 GREEN = RGBColor(0x3F, 0x86, 0x24)    # storage
 PURPLE = RGBColor(0x7D, 0x3F, 0x98)   # ML
 LINE = RGBColor(0x6C, 0x73, 0x72)
+NODE_LABEL_PAD_X = 0.10  # 左右0.05in。配線以外を隠さない最小限のマスク余白
+NODE_LABEL_PAD_Y = 0.04  # 上下0.02in。文字のアンチエイリアス分だけ確保
+EDGE_LABEL_PAD_X = 0.10
+EDGE_LABEL_PAD_Y = 0.04
 
 
 def add_arrow(slide, x1, y1, x2, y2, *, color=LINE, width=1.5, both=False,
@@ -43,13 +47,12 @@ def arrow_label(slide, cx, cy, text, w=1.6, size=9):
     """線をまたぐラベル。白背景マスクは実測テキスト幅に合わせ、wは上限として扱う
     (固定幅だと短い文字列ほど余計な範囲まで線を隠してしまうため)。
     """
-    pad = 0.14
-    box_h = line_height_in(size, 1.1) + 0.02
+    box_h = line_height_in(size, 1.1) + EDGE_LABEL_PAD_Y
     actual_size, _ = fit_text_or_raise(
-        "arrow_label", "text", text, w - pad, box_h, size,
+        "arrow_label", "text", text, w - EDGE_LABEL_PAD_X, box_h, size,
         min_pt=max(7, size - 2), spacing=1.1)
-    actual_w = min(w, text_width_in(text, actual_size) + pad)
-    actual_h = line_height_in(actual_size, 1.1) + 0.08
+    actual_w = min(w, text_width_in(text, actual_size) + EDGE_LABEL_PAD_X)
+    actual_h = line_height_in(actual_size, 1.1) + EDGE_LABEL_PAD_Y
     tb = add_text(slide, cx - actual_w / 2, cy - actual_h / 2, actual_w, actual_h,
                   text, actual_size, color=TEXT, align=PP_ALIGN.CENTER,
                   anchor=MSO_ANCHOR.MIDDLE)
@@ -71,8 +74,30 @@ def container(slide, x, y, w, h, label, color=LINE, dash=None):
     label_size, _ = fit_text_or_raise(
         "container", "label", label, w - 0.3, 0.28, 10.5,
         min_pt=8.5, weight="bold", spacing=1.1)
-    add_text(slide, x + 0.12, y + 0.06, w - 0.3, 0.28, label, label_size, bold=True,
+    label_w = min(w - 0.3, text_width_in(label, label_size, "bold") + 0.08)
+    add_text(slide, x + 0.12, y + 0.06, label_w, 0.28, label, label_size, bold=True,
              color=color)
+
+
+def _masked_node_label(slide, cx, y, text, *, max_w, slot_h, size, min_pt,
+                       color, bold=False):
+    """配線を背後へ通すため、文字の実測外形だけを背景色でマスクする。"""
+    weight = "bold" if bold else "regular"
+    actual_size, lines = fit_text_or_raise(
+        "icon_node", "title" if bold else "sub", text, max_w, slot_h, size,
+        min_pt=min_pt, weight=weight, spacing=1.1)
+    rendered = "\n".join(lines)
+    actual_w = min(max_w, text_width_in(rendered, actual_size, weight)
+                   + NODE_LABEL_PAD_X)
+    actual_h = min(slot_h, line_height_in(actual_size, 1.1) * len(lines)
+                   + NODE_LABEL_PAD_Y)
+    tb = add_text(
+        slide, cx - actual_w / 2, y + (slot_h - actual_h) / 2,
+        actual_w, actual_h, rendered, actual_size, bold=bold, color=color,
+        align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, spacing=1.1)
+    tb.fill.solid()
+    tb.fill.fore_color.rgb = CANVAS
+    return tb
 
 
 # ---- AWS構成図(公式アイコン使用) ----
@@ -92,20 +117,12 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62, *, label_above=Fal
     slide.shapes.add_picture(str(p), Inches(cx - size / 2),
                              Inches(cy - size / 2), Inches(size), Inches(size))
     title_y = cy - size / 2 - 0.59 if label_above else cy + size / 2 + 0.05
-    title_size, title_lines = fit_text_or_raise(
-        "icon_node", "title", title, 2.1, 0.28, 11,
-        min_pt=9.5, weight="bold", spacing=1.1)
-    add_text(slide, cx - 1.05, title_y, 2.1, 0.28,
-             title, title_size,
-             bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+    _masked_node_label(slide, cx, title_y, title, max_w=2.1, slot_h=0.28,
+                       size=11, min_pt=9.5, color=NAVY, bold=True)
     if sub:
         sub_y = cy - size / 2 - 0.31 if label_above else cy + size / 2 + 0.33
-        sub_size, sub_lines = fit_text_or_raise(
-            "icon_node", "sub", sub, 2.1, 0.26, 9,
-            min_pt=8, spacing=1.1)
-        add_text(slide, cx - 1.05, sub_y, 2.1, 0.26,
-                 sub, sub_size,
-                 color=GRAY, align=PP_ALIGN.CENTER)
+        _masked_node_label(slide, cx, sub_y, sub, max_w=2.1, slot_h=0.26,
+                           size=9, min_pt=8, color=GRAY)
 
 
 def right_of(cx):
@@ -122,17 +139,22 @@ def left_of(cx):
 
 # ---- ステークホルダー調整図(ハブ型) ----
 def s_hub(slide, spec, page):
-    header(slide, spec["kicker"], spec["title"])
-    cx, cy = 6.67, 4.2
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
+    if spec.get("note") and area.shifted:
+        area = ContentArea(area.top, area.bottom - 0.30, area.shifted)
+    y = area.map_y
+    cx, cy = 6.67, y(4.2)
     hw, hh = 2.45, 1.05
     # 周辺ノード: (x, y, タイトル, 出す矢印ラベル, 戻り矢印ラベル)
     ring = spec["ring"]
     if len(ring) != 6:
         raise FitError(
             "hub: 周辺ノードは6件必要です。項目を6件に整理してください。")
-    pos = [(2.15, 2.72), (11.18, 2.72),
-           (2.15, 5.42), (11.18, 5.42),
-           (6.67, 2.42), (6.67, 5.84)]
+    pos = [(2.15, y(2.72)), (11.18, y(2.72)),
+           (2.15, y(5.42)), (11.18, y(5.42)),
+           (6.67, y(2.42)), (6.67, y(5.84))]
+    icon_size = 0.64 if not area.shifted else max(
+        0.54, 0.64 * area.height / (BODY_BOTTOM - BODY_TOP))
 
     # Connectors first: lines stay behind the icon and its labels.
     routes = []
@@ -153,7 +175,7 @@ def s_hub(slide, spec, page):
 
     for i, ((nx, ny), item) in enumerate(zip(pos, ring)):
         icon_node(slide, nx, ny, item["icon"], item["name"], item.get("sub"),
-                  size=0.64, label_above=i == 4)
+                  size=icon_size, label_above=i == 4)
 
     # 中心ハブ
     sp = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(cx - hw / 2), Inches(cy - hh / 2),
@@ -168,8 +190,9 @@ def s_hub(slide, spec, page):
     add_text(slide, cx - hw / 2, cy - 0.31, hw, 0.62,
              spec["hub"], hub_size, bold=True,
              color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    max_bottom = max(pos[2][1], pos[3][1], pos[5][1]) + icon_size / 2 + 0.59
     ensure_within(
-        "hub", 6.43 - BODY_TOP, BODY_BOTTOM - BODY_TOP,
+        "hub", max_bottom - area.top, area.height,
         guidance="周辺ノードのラベルを短くしてください。")
     if spec.get("note"):
         note_line(slide, spec["note"])
@@ -177,7 +200,10 @@ def s_hub(slide, spec, page):
 
 # ---- 体制図 ----
 def s_org(slide, spec, page):
-    header(slide, spec["kicker"], spec["title"])
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
+    if spec.get("note") and area.shifted:
+        area = ContentArea(area.top, area.bottom - 0.30, area.shifted)
+    y = area.map_y
 
     def box(x, y, w, h, title, sub=None, fill=WHITE, tcolor=NAVY,
             border=LINE, members=None):
@@ -209,10 +235,10 @@ def s_org(slide, spec, page):
         add_arrow(slide, x, y1, x, y2, width=1.25)
 
     cx = 6.67
-    box(cx - 2.05, 1.86, 4.1, 0.86, spec["top"]["name"], spec["top"]["sub"],
+    box(cx - 2.05, y(1.86), 4.1, 0.86, spec["top"]["name"], spec["top"]["sub"],
         NAVY, WHITE, NAVY)
-    vline(cx, 2.72, 3.08)
-    box(cx - 2.05, 3.08, 4.1, 0.9, spec["pm"]["name"], spec["pm"]["sub"],
+    vline(cx, y(2.72), y(3.08))
+    box(cx - 2.05, y(3.08), 4.1, 0.9, spec["pm"]["name"], spec["pm"]["sub"],
         WHITE, NAVY, ACCENT)
     teams = spec["teams"]
     n = len(teams)
@@ -222,8 +248,8 @@ def s_org(slide, spec, page):
     tw, gap = 3.25, 0.38
     total = n * tw + (n - 1) * gap
     x0 = cx - total / 2
-    trunk_y = 4.35
-    slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(cx), Inches(3.98),
+    trunk_y = y(4.35)
+    slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(cx), Inches(y(3.98)),
                                Inches(cx), Inches(trunk_y)).line.color.rgb = LINE
     hl = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT,
                                     Inches(x0 + tw / 2), Inches(trunk_y),
@@ -231,15 +257,15 @@ def s_org(slide, spec, page):
     hl.line.color.rgb = LINE
     for i, t in enumerate(teams):
         x = x0 + i * (tw + gap)
-        vline(x + tw / 2, trunk_y, 4.62)
-        box(x, 4.62, tw, 1.62, t["name"], t["sub"], WHITE,
+        vline(x + tw / 2, trunk_y, y(4.62))
+        box(x, y(4.62), tw, 1.62, t["name"], t["sub"], WHITE,
             NAVY, RULE, t.get("members", []))
     ex = spec["external"]
-    box(10.6, 3.08, 2.05, 0.9, ex["name"], ex["sub"], ZEBRA, NAVY, RULE)
-    add_arrow(slide, cx + 2.05, 3.53, 10.6, 3.53, dash="dash", width=1.25)
-    arrow_label(slide, (cx + 2.05 + 10.6) / 2, 3.33, ex["label"], w=1.7)
+    box(10.6, y(3.08), 2.05, 0.9, ex["name"], ex["sub"], ZEBRA, NAVY, RULE)
+    add_arrow(slide, cx + 2.05, y(3.53), 10.6, y(3.53), dash="dash", width=1.25)
+    arrow_label(slide, (cx + 2.05 + 10.6) / 2, y(3.33), ex["label"], w=1.7)
     ensure_within(
-        "org", 6.24 - BODY_TOP, BODY_BOTTOM - BODY_TOP,
+        "org", y(4.62) + 1.62 - area.top, area.height,
         guidance="チーム数またはメンバー数を減らしてください。")
     if spec.get("note"):
         note_line(slide, spec["note"])

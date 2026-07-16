@@ -400,6 +400,10 @@ def validate(deck):
         if t != "title":
             s.req_str("kicker")
             s.req_str("title")
+            if "lead" in spec and not _is_str(spec["lead"]):
+                s.err('"lead" は空でない文字列にしてください')
+        elif "lead" in spec:
+            s.err('"lead" は表紙以外のスライドでのみ指定できます')
         if "note" in spec and t not in NOTE_TYPES:
             s.err(f'"note" は {", ".join(sorted(NOTE_TYPES))} でのみ描画され'
                   f"ます (このtypeでは無視されるため削除してください)")

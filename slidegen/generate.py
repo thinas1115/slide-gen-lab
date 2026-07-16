@@ -1,6 +1,7 @@
 """python-pptxとテキスト実測による基本サンプルデッキ生成。"""
 import argparse
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 from pptx import Presentation
@@ -33,7 +34,32 @@ SLIDE_W, SLIDE_H = 13.333, 7.5
 MARGIN = 0.55
 BODY_W = SLIDE_W - MARGIN * 2
 BODY_TOP, BODY_BOTTOM = 1.58, 6.85
+LEAD_Y, LEAD_MAX_H = 1.58, 0.56
+TABLE_HEADER_H = 0.72
+TABLE_TOP_GAP = 0.38
+TABLE_BOTTOM_GAP = 0.15
+TABLE_NOTE_H = 0.30
 COVER_FOOTER = load_cover_footer_config()
+
+
+@dataclass(frozen=True)
+class ContentArea:
+    """ヘッダー下のrenderer描画領域。leadなしでは従来値を保持する。"""
+
+    top: float = BODY_TOP
+    bottom: float = BODY_BOTTOM
+    shifted: bool = False
+
+    @property
+    def height(self):
+        return self.bottom - self.top
+
+    def map_y(self, y):
+        """固定構図の従来Y座標を、lead指定時の本文領域へ写像する。"""
+        if not self.shifted:
+            return y
+        scale = self.height / (BODY_BOTTOM - BODY_TOP)
+        return self.top + (y - BODY_TOP) * scale
 
 
 def configure_cover_footer(path=None):
@@ -90,7 +116,7 @@ def add_rect(slide, x, y, w, h, fill, *, line=None, round_=False):
     return sp
 
 
-def header(slide, kicker, title):
+def header(slide, kicker, title, lead=None):
     add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, CANVAS)
     kicker_size, _ = fit_text_or_raise(
         "header", "kicker", kicker, 4.8, 0.32, 11.5,
@@ -108,6 +134,16 @@ def header(slide, kicker, title):
             min_pt=16, weight="bold", spacing=1.12)
     add_text(slide, 0.72, 0.67, 11.9, 0.86, "\n".join(lines), size,
              bold=True, color=NAVY, spacing=1.12)
+    if not lead:
+        return ContentArea()
+
+    lead_size, lead_lines = fit_text_or_raise(
+        "header", "lead", lead, 11.9, LEAD_MAX_H, 14,
+        min_pt=11.5, spacing=1.18)
+    lead_h = len(lead_lines) * line_height_in(lead_size, 1.18) + 0.03
+    add_text(slide, 0.72, LEAD_Y, 11.9, lead_h, "\n".join(lead_lines),
+             lead_size, color=GRAY, spacing=1.18)
+    return ContentArea(top=LEAD_Y + lead_h + 0.17, shifted=True)
 
 
 def page_label(page):
@@ -140,9 +176,9 @@ def s_title(slide, spec, page):
 
 
 def s_bullets(slide, spec, page):
-    header(slide, spec["kicker"], spec["title"])
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
     bullets = spec["bullets"]
-    area_h = BODY_BOTTOM - BODY_TOP - 0.22
+    area_h = area.height - 0.22
     tx = 1.68
     tw = 10.15
     def measure(size, gap):
@@ -166,7 +202,7 @@ def s_bullets(slide, spec, page):
     )
     size, gap = fitted.values["size"], fitted.values["gap"]
     heights, total = measure(size, gap)
-    y = BODY_TOP + 0.38 + max(0.0, (area_h - total) * 0.22)
+    y = area.top + 0.38 + max(0.0, (area_h - total) * 0.22)
     for i, ((text, _), bh) in enumerate(zip(bullets, heights), 1):
         add_text(slide, 0.78, y - 0.07, 0.62, 0.45, f"{i:02d}", 15,
                  bold=True, color=GRAY, align=PP_ALIGN.RIGHT)
@@ -178,7 +214,7 @@ def s_bullets(slide, spec, page):
 
 def s_cards(slide, spec, page):
     """Render purpose-specific cards instead of one universal panel pattern."""
-    header(slide, spec["kicker"], spec["title"])
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
     cards = spec["cards"]
     n = len(cards)
     style = spec.get("style", "editorial")
@@ -187,7 +223,7 @@ def s_cards(slide, spec, page):
     if style == "metrics":
         gap = 0.56
         cw = (usable_w - gap * (n - 1)) / n
-        ch, top = 3.0, BODY_TOP + 0.76
+        ch, top = 3.0, area.top + 0.76
         body_size = min(
             fit_text_or_raise(
                 "cards.metrics", f"cards[{i}].body", body,
@@ -215,7 +251,7 @@ def s_cards(slide, spec, page):
 
     if style == "editorial" and n == 4:
         lead_head, lead_body = cards[0]
-        top = BODY_TOP + 0.46
+        top = area.top + 0.46
         add_text(slide, 0.8, top, 0.58, 0.36, "01", 15,
                  bold=True, color=GRAY)
         lead_head_size, _ = fit_text_or_raise(
@@ -254,7 +290,7 @@ def s_cards(slide, spec, page):
     rows = 2 if n == 4 else 1
     gap_x, gap_y = 0.72, 0.44
     cw = (usable_w - gap_x * (cols - 1)) / cols
-    area_h = BODY_BOTTOM - BODY_TOP - 0.62
+    area_h = area.height - 0.62
     fit_available = area_h if rows == 2 else min(3.32, area_h)
 
     def measure(size, candidate_gap):
@@ -286,7 +322,7 @@ def s_cards(slide, spec, page):
     body_size = fitted.values["size"]
     gap_y = fitted.values["gap"]
     ch = ((area_h - gap_y) / 2 if rows == 2 else min(3.32, area_h))
-    top = BODY_TOP + (0.42 if rows == 2 else 0.72)
+    top = area.top + (0.42 if rows == 2 else 0.72)
     for i, (head, body) in enumerate(cards):
         row, col = divmod(i, cols)
         x = left + col * (cw + gap_x)
@@ -312,13 +348,8 @@ def _split_metric_head(head):
     return head, ""
 
 
-def s_table(slide, spec, page):
-    header(slide, spec["kicker"], spec["title"])
-    cols, rows = spec["columns"], spec["rows"]
-    widths = spec["col_widths"]
-    assert abs(sum(widths) - BODY_W) < 0.6, f"列幅合計={sum(widths)}"
-    hdr_h = 0.72
-    avail = BODY_BOTTOM - BODY_TOP - 0.15 - hdr_h - (0.3 if spec.get("note") else 0)
+def _fit_table(rows, widths, avail):
+    """表の余白圧縮・フォント縮小を選び、行高と判定結果を返す。"""
     min_row_h = min(1.04, max(0.64, avail / max(1, len(rows))))
 
     def measure(size, pad):
@@ -343,10 +374,25 @@ def s_table(slide, spec, page):
         "table", avail, candidates(),
         guidance="表の行を減らすかセル内の文言を短くしてください。",
     )
+    row_hs, _used = measure(fitted.values["size"], fitted.values["pad"])
+    return fitted, row_hs
+
+
+def s_table(slide, spec, page):
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
+    cols, rows = spec["columns"], spec["rows"]
+    widths = spec["col_widths"]
+    assert abs(sum(widths) - BODY_W) < 0.6, f"列幅合計={sum(widths)}"
+    hdr_h = TABLE_HEADER_H
+    table_available = (
+        area.height - TABLE_TOP_GAP - TABLE_BOTTOM_GAP
+        - (TABLE_NOTE_H if spec.get("note") else 0)
+    )
+    avail = table_available - hdr_h
+    fitted, row_hs = _fit_table(rows, widths, avail)
     size, pad = fitted.values["size"], fitted.values["pad"]
-    row_hs, _used = measure(size, pad)
     table_h = hdr_h + sum(row_hs)
-    top = BODY_TOP + 0.38 + max(0.0, (avail - table_h) * 0.12)
+    top = area.top + TABLE_TOP_GAP + max(0.0, (table_available - table_h) * 0.12)
     gt = slide.shapes.add_table(len(rows) + 1, len(cols), Inches(MARGIN),
                                 Inches(top), Inches(BODY_W), Inches(table_h))
     table = gt.table
@@ -391,11 +437,11 @@ def _cell(cell, text, size, *, bold=False, color=TEXT, fill=WHITE, center=False)
 
 def s_twocol(slide, spec, page):
     """Render a purposeful before/after comparison, not generic cards."""
-    header(slide, spec["kicker"], spec["title"])
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
     gap = 0.46
     left = 0.76
     cw = (11.82 - gap) / 2
-    max_ch = BODY_BOTTOM - BODY_TOP - 0.15
+    max_ch = area.height - 0.15
     panels = [spec["left"], spec["right"]]
     tw = cw - 0.76
     def measure(size, bgap):
@@ -419,7 +465,7 @@ def s_twocol(slide, spec, page):
     size, bgap = fitted.values["size"], fitted.values["gap"]
     cont, _used = measure(size, bgap)
     body_h = max(cont) + 0.28
-    top = BODY_TOP + 0.34
+    top = area.top + 0.34
     for i, p in enumerate(panels):
         x = left + i * (cw + gap)
         fill = ZEBRA if i == 0 else LIGHT
@@ -444,7 +490,7 @@ def s_twocol(slide, spec, page):
 
 
 def s_chart(slide, spec, page):
-    header(slide, spec["kicker"], spec["title"])
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
     categories = spec["chart"]["categories"]
     series = spec["chart"]["series"]
     if not 1 <= len(categories) <= 6 or not 1 <= len(series) <= 2:
@@ -456,8 +502,8 @@ def s_chart(slide, spec, page):
     for name, vals in series:
         cd.add_series(name, vals)
     gf = slide.shapes.add_chart(
-        XL_CHART_TYPE.BAR_CLUSTERED, Inches(0.9), Inches(BODY_TOP + 0.22),
-        Inches(11.8), Inches(BODY_BOTTOM - BODY_TOP - 0.48), cd)
+        XL_CHART_TYPE.BAR_CLUSTERED, Inches(0.9), Inches(area.top + 0.22),
+        Inches(11.8), Inches(area.height - 0.48), cd)
     ch = gf.chart
     ch.has_title = False
     ch.has_legend = True

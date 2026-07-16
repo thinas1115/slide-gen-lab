@@ -15,8 +15,10 @@ from diagram_layout import render_diagram
 
 def s_diagram(slide, spec, page):
     """content.json と同じインライン仕様による図解スライド。"""
-    generate.header(slide, spec["kicker"], spec["title"])
-    render_diagram(slide, spec["diagram"], note=spec.get("note"))
+    area = generate.header(
+        slide, spec["kicker"], spec["title"], spec.get("lead"))
+    render_diagram(slide, spec["diagram"], note=spec.get("note"),
+                   content_area=area if area.shifted else None)
 
 
 RENDER_EXTENDED = dict(generate.RENDER,

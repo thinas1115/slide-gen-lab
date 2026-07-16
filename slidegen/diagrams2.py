@@ -6,9 +6,9 @@ from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
 
-from generate import (ACCENT, BODY_TOP, BODY_BOTTOM, BODY_W, CANVAS, CORAL, GRAY,
-                      LIGHT, MARGIN, NAVY, RULE, TEXT, WHITE, ZEBRA, add_rect,
-                      add_text, header, note_line)
+from generate import (ACCENT, BODY_W, CANVAS, CORAL, GRAY,
+                      LIGHT, MARGIN, NAVY, RULE, TEXT, WHITE, ZEBRA, ContentArea,
+                      add_rect, add_text, header, note_line)
 from diagrams import LINE, add_arrow, arrow_label
 from layout_fit import FitError, ensure_within, fit_text_or_raise, select_fit, stepped
 
@@ -17,7 +17,10 @@ MID = RGBColor(0x9D, 0xC3, 0xE6)
 
 # ---- 番号付きプロセスタイムライン ----
 def s_process(slide, spec, page):
-    header(slide, spec["kicker"], spec["title"])
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
+    if spec.get("note") and area.shifted:
+        area = ContentArea(area.top, area.bottom - 0.30, area.shifted)
+    y = area.map_y
     steps = spec["steps"]
     n = len(steps)
     if not 3 <= n <= 6:
@@ -25,7 +28,7 @@ def s_process(slide, spec, page):
             "process: 工程は3〜6件までです。工程を統合または分割してください。")
     left, usable_w = 0.78, 11.72
     w = usable_w / n
-    line_y = 2.42
+    line_y = y(2.42)
     add_rect(slide, left + w / 2, line_y, usable_w - w, 0.035, RULE)
     for i, st in enumerate(steps):
         x = left + i * w
@@ -44,25 +47,25 @@ def s_process(slide, spec, page):
         name_size, name_lines = fit_text_or_raise(
             "process", f"steps[{i}].name", st["name"], w - 0.2, 0.42,
             15.5, min_pt=12.5, weight="bold", spacing=1.1)
-        add_text(slide, x + 0.1, 2.94, w - 0.2, 0.42,
+        add_text(slide, x + 0.1, y(2.94), w - 0.2, 0.42,
                  st["name"], name_size,
                  bold=True, color=NAVY, align=PP_ALIGN.CENTER)
         size, desc_lines = fit_text_or_raise(
             "process", f"steps[{i}].desc", st["desc"],
             w - 0.34, 1.35, 13.5, min_pt=11.5, spacing=1.2)
-        add_text(slide, x + 0.17, 3.56, w - 0.34, 1.35,
+        add_text(slide, x + 0.17, y(3.56), w - 0.34, 1.35,
                  st["desc"], size,
                  color=TEXT, align=PP_ALIGN.CENTER, spacing=1.2)
-        add_text(slide, x + 0.15, 5.27, w - 0.3, 0.22, "OWNER", 9.5,
+        add_text(slide, x + 0.15, y(5.27), w - 0.3, 0.22, "OWNER", 9.5,
                  bold=True, color=GRAY, align=PP_ALIGN.CENTER)
         actor_size, actor_lines = fit_text_or_raise(
             "process", f"steps[{i}].actor", st["actor"],
             w - 0.3, 0.3, 11.5, min_pt=9.5, weight="bold", spacing=1.1)
-        add_text(slide, x + 0.15, 5.56, w - 0.3, 0.3,
+        add_text(slide, x + 0.15, y(5.56), w - 0.3, 0.3,
                  st["actor"], actor_size,
                  bold=True, color=color, align=PP_ALIGN.CENTER)
     ensure_within(
-        "process", 5.86 - BODY_TOP, BODY_BOTTOM - BODY_TOP,
+        "process", y(5.86) - area.top, area.height,
         guidance="工程説明を短くしてください。")
     if spec.get("note"):
         note_line(slide, spec["note"])
@@ -70,18 +73,18 @@ def s_process(slide, spec, page):
 
 # ---- ロードマップ(ガントライト) ----
 def s_roadmap(slide, spec, page):
-    header(slide, spec["kicker"], spec["title"])
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
     months = spec["months"]
     label_x, label_w = 0.76, 2.34
     grid_x = 3.34
     grid_w = 9.22
     mw = grid_w / len(months)
-    top, hdr_h = BODY_TOP + 0.4, 0.52
+    top, hdr_h = area.top + 0.4, 0.52
     rows = spec["phases"]
     if not 1 <= len(rows) <= 3:
         raise FitError(
             "roadmap: フェーズは1〜3件までです。フェーズを統合してください。")
-    available = BODY_BOTTOM - top - (0.30 if spec.get("note") else 0)
+    available = area.bottom - top - (0.30 if spec.get("note") else 0)
 
     def candidates():
         for row_h in stepped(1.22, 1.04, 0.03):
@@ -159,12 +162,15 @@ def s_roadmap(slide, spec, page):
 
 # ---- 2軸ポジショニングマップ ----
 def s_matrix(slide, spec, page):
-    header(slide, spec["kicker"], spec["title"])
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
+    if spec.get("note") and area.shifted:
+        area = ContentArea(area.top, area.bottom - 0.30, area.shifted)
+    y = area.map_y
     if not 1 <= len(spec["points"]) <= 8:
         raise FitError(
             "matrix: 点は1〜8件までです。点をまとめるかスライドを分割してください。")
-    ox, oy = 1.68, 6.24
-    aw, ah = 10.5, 4.02
+    ox, oy = 1.68, y(6.24)
+    aw, ah = 10.5, oy - y(2.22)
     mid_x, mid_y = ox + aw / 2, oy - ah / 2
 
     quadrants = spec.get("quadrants")
@@ -225,7 +231,7 @@ def s_matrix(slide, spec, page):
                  bold=bool(p.get("emph")), color=CORAL if p.get("emph") else TEXT,
                  align=PP_ALIGN.CENTER)
     ensure_within(
-        "matrix", oy - BODY_TOP, BODY_BOTTOM - BODY_TOP,
+        "matrix", oy - area.top, area.height,
         guidance="軸ラベルまたは点の名称を短くしてください。")
     if spec.get("note"):
         note_line(slide, spec["note"])
