@@ -7,7 +7,8 @@ from pptx.util import Inches
 
 import generate
 from content_patterns import PATTERN_DECK
-from diagrams import s_hub, s_org
+from diagrams import s_hub
+from org_layout import s_org
 from diagrams2 import s_matrix, s_process, s_program_roadmap, s_roadmap
 from diagram_layout import render_diagram
 from image_slide import s_image

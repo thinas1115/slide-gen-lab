@@ -58,7 +58,7 @@
 | 層 | 責務 | 主な実装 | 再利用範囲 |
 |---|---|---|---|
 | L0 測定・描画部品 | 文字計測、収容候補の選択、矩形、線、矢印、アイコン、ラベル | `textfit.py`、`layout_fit.py`、`generate.py`、`diagrams.py` | 全type |
-| L1 レイアウト計算 | ジャンル固有の位置・サイズ・配線計算 | `diagram_layout.py`、`timeline_layout.py`、`image_slide.py`、`diagrams2.py`、各renderer | 同一ジャンル内 |
+| L1 レイアウト計算 | ジャンル固有の位置・サイズ・配線計算 | `diagram_layout.py`、`org_layout.py`、`timeline_layout.py`、`image_slide.py`、`diagrams2.py`、各renderer | 同一ジャンル内 |
 | L2 入力境界 | schema、入力検証、renderer選択 | `CONTENT_SCHEMA.md`、`validate_content.py`、`generate_from_json.py` | 全type |
 | L3 品質保証 | PPTX検査、PNG化、一覧確認 | `check_layout.py`、`render.ps1`、`contact_sheet.py` | 全type |
 
@@ -70,8 +70,8 @@
 カタログの単位はrenderer関数の数ではなく、独立した制約を持つスライドジャンルである。
 
 例えば、グリッド構成図ではノードの行列、コンテナ境界、接続ポート、直角配線を計算する。
-ロードマップでは期間軸、バーの始点と終点、判定ポイントを計算する。組織図では親子関係と
-階層間隔を計算する。これらを1つのアルゴリズムへ統合すると、設定項目と例外分岐が増え、
+ロードマップでは期間軸、バーの始点と終点、判定ポイントを計算する。体制図では`levels`から
+箱を配置し、`edges`から分岐・合流・横連携を直角配線する。これらを1つのアルゴリズムへ統合すると、設定項目と例外分岐が増え、
 各ジャンルで保証すべき条件が不明確になる。
 
 新しい表現を追加するときは、次の基準で実装先を決める。
