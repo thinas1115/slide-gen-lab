@@ -22,6 +22,7 @@
 | `docs/cover-footer-customization.md` | 表紙・フッターだけをユーザー別設定JSONで変更する手順とschema |
 | `slidegen/` | 本体。Python + python-pptx。Pillowで游ゴシックの実寸を測って配置 |
 | `slidegen/assets/cover/` | ユーザーが差し替える表紙背景画像。PNG/JPEGを配置する |
+| `slidegen/assets/images/` | 本文へ大きく配置する生成画像・提供画像・利用許諾済み画像 |
 | `slidegen/generate_from_json.py` | `content.json` → PPTX 生成(生成前にschema検証を自動実行) |
 | `slidegen/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・廃止typeの拒否) |
 | `slidegen/check_layout.py` | 生成済みPPTXの重なり・はみ出しを機械検知する品質ゲート |
@@ -74,6 +75,10 @@
 
 表紙以外では、必要なスライドにだけ任意の `lead` を指定できる。leadはタイトル直下の要旨として描画され、
 指定時だけ各rendererの本文領域が下がる。詳しい用途とJSON例は `CONTENT_SCHEMA.md` を参照する。
+
+画像を主役にするページは `image` typeを使う。生成AIで作った画像、利用者提供画像、利用許諾済みのWeb画像を
+`slidegen/assets/images/`へ配置し、`content.json`から相対パスで参照する。縦横比を保つ表示方法や
+出典・代替テキストの指定は `CONTENT_SCHEMA.md` を参照する。
 
 ### 2. 生成・検証する
 

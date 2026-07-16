@@ -9,6 +9,7 @@ import generate
 from content_stress_patterns import (
     LARGE_AWS_DIAGRAM,
     LARGE_DIAGRAM,
+    IMAGE_STRESS,
     PROGRAM_ROADMAP_STRESS,
     ROADMAP_STRESS,
     STRESS_PATTERN_DECK,
@@ -17,6 +18,7 @@ from content_stress_patterns import (
 from diagram_layout import ICON_SIZE, Layout
 from diagrams2 import PROGRAM_LINE_PT
 from generate_from_json import RENDER
+from image_slide import fit_image_layout
 from timeline_layout import fit_program_roadmap, fit_roadmap, pack_activities
 from validate_content import validate
 
@@ -203,6 +205,16 @@ def main():
     ]
     assert len(activity_lines) == 15
 
+    image_area = generate.header(
+        _slide(), IMAGE_STRESS["kicker"], IMAGE_STRESS["title"],
+        IMAGE_STRESS["lead"])
+    image_fit = fit_image_layout(
+        min(image_area.height, 3.20),
+        IMAGE_STRESS["caption"], IMAGE_STRESS["source"])
+    assert image_fit.stage == "element", image_fit
+    assert image_fit.values["min_image_h"] < 2.90, image_fit
+    assert image_fit.values["caption_pt"] < 10.5, image_fit
+
     generate.DECK = STRESS_PATTERN_DECK
     for idx, spec in enumerate(STRESS_PATTERN_DECK["slides"], 1):
         generate.render_slide(RENDER[spec["type"]], _slide(), spec, idx)
@@ -213,7 +225,8 @@ def main():
         f"fluent={diagram_layout.icon_size:.2f}in, "
         f"aws={aws_layout.icon_size:.2f}in / {ICON_SIZE:.2f}in, "
         f"roadmap={roadmap_fit.values['row_h']:.2f}in, "
-        f"program={program_fit.values['lane_pitch']:.2f}in)"
+        f"program={program_fit.values['lane_pitch']:.2f}in, "
+        f"image={image_fit.values['min_image_h']:.2f}in)"
     )
 
 
