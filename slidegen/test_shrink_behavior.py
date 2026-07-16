@@ -1,0 +1,64 @@
+"""大規模な表・構成図で段階的縮小が実際に発動することを検証する。"""
+from copy import deepcopy
+
+from pptx import Presentation
+from pptx.util import Inches
+
+import generate
+from content_stress_patterns import LARGE_DIAGRAM, STRESS_PATTERN_DECK, TABLE_ROWS
+from diagram_layout import ICON_SIZE, Layout
+from generate_from_json import RENDER
+from validate_content import validate
+
+
+def _slide():
+    prs = Presentation()
+    prs.slide_width = Inches(generate.SLIDE_W)
+    prs.slide_height = Inches(generate.SLIDE_H)
+    return prs.slides.add_slide(prs.slide_layouts[6])
+
+
+def main():
+    errors = validate(deepcopy(STRESS_PATTERN_DECK))
+    assert not errors, "\n".join(errors)
+
+    table_spec = STRESS_PATTERN_DECK["slides"][0]
+    table_area = generate.header(
+        _slide(), table_spec["kicker"], table_spec["title"], table_spec["lead"])
+    table_available = (
+        table_area.height - generate.TABLE_TOP_GAP - generate.TABLE_BOTTOM_GAP
+    )
+    table_avail = table_available - generate.TABLE_HEADER_H
+    table_fit, _row_hs = generate._fit_table(
+        TABLE_ROWS, table_spec["col_widths"], table_avail)
+    assert table_fit.stage == "font", table_fit
+    assert table_fit.values["size"] < 13.5, table_fit
+    assert table_fit.values["size"] >= 10.5, table_fit
+
+    table_slide = _slide()
+    generate.s_table(table_slide, table_spec, 1)
+    table_shape = next(shape for shape in table_slide.shapes if shape.has_table)
+    assert table_shape.top + table_shape.height <= Inches(table_area.bottom)
+
+    diagram_spec = STRESS_PATTERN_DECK["slides"][1]
+    diagram_area = generate.header(
+        _slide(), diagram_spec["kicker"], diagram_spec["title"], diagram_spec["lead"])
+    diagram_layout = Layout(deepcopy(LARGE_DIAGRAM), content_area=diagram_area)
+    assert len(LARGE_DIAGRAM["nodes"]) == 20
+    assert diagram_layout.fit_stage == "icon", diagram_layout.fit_stage
+    assert diagram_layout.icon_size < ICON_SIZE, diagram_layout.icon_size
+    assert diagram_layout.gaps_compressed
+
+    generate.DECK = STRESS_PATTERN_DECK
+    for idx, spec in enumerate(STRESS_PATTERN_DECK["slides"], 1):
+        generate.render_slide(RENDER[spec["type"]], _slide(), spec, idx)
+
+    print(
+        "shrink behavior tests passed "
+        f"(table={table_fit.values['size']:.1f}pt, "
+        f"diagram={diagram_layout.icon_size:.2f}in / {ICON_SIZE:.2f}in)"
+    )
+
+
+if __name__ == "__main__":
+    main()

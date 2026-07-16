@@ -35,6 +35,10 @@ MARGIN = 0.55
 BODY_W = SLIDE_W - MARGIN * 2
 BODY_TOP, BODY_BOTTOM = 1.58, 6.85
 LEAD_Y, LEAD_MAX_H = 1.58, 0.56
+TABLE_HEADER_H = 0.72
+TABLE_TOP_GAP = 0.38
+TABLE_BOTTOM_GAP = 0.15
+TABLE_NOTE_H = 0.30
 COVER_FOOTER = load_cover_footer_config()
 
 
@@ -344,13 +348,8 @@ def _split_metric_head(head):
     return head, ""
 
 
-def s_table(slide, spec, page):
-    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
-    cols, rows = spec["columns"], spec["rows"]
-    widths = spec["col_widths"]
-    assert abs(sum(widths) - BODY_W) < 0.6, f"列幅合計={sum(widths)}"
-    hdr_h = 0.72
-    avail = area.height - 0.15 - hdr_h - (0.3 if spec.get("note") else 0)
+def _fit_table(rows, widths, avail):
+    """表の余白圧縮・フォント縮小を選び、行高と判定結果を返す。"""
     min_row_h = min(1.04, max(0.64, avail / max(1, len(rows))))
 
     def measure(size, pad):
@@ -375,10 +374,25 @@ def s_table(slide, spec, page):
         "table", avail, candidates(),
         guidance="表の行を減らすかセル内の文言を短くしてください。",
     )
+    row_hs, _used = measure(fitted.values["size"], fitted.values["pad"])
+    return fitted, row_hs
+
+
+def s_table(slide, spec, page):
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
+    cols, rows = spec["columns"], spec["rows"]
+    widths = spec["col_widths"]
+    assert abs(sum(widths) - BODY_W) < 0.6, f"列幅合計={sum(widths)}"
+    hdr_h = TABLE_HEADER_H
+    table_available = (
+        area.height - TABLE_TOP_GAP - TABLE_BOTTOM_GAP
+        - (TABLE_NOTE_H if spec.get("note") else 0)
+    )
+    avail = table_available - hdr_h
+    fitted, row_hs = _fit_table(rows, widths, avail)
     size, pad = fitted.values["size"], fitted.values["pad"]
-    row_hs, _used = measure(size, pad)
     table_h = hdr_h + sum(row_hs)
-    top = area.top + 0.38 + max(0.0, (avail - table_h) * 0.12)
+    top = area.top + TABLE_TOP_GAP + max(0.0, (table_available - table_h) * 0.12)
     gt = slide.shapes.add_table(len(rows) + 1, len(cols), Inches(MARGIN),
                                 Inches(top), Inches(BODY_W), Inches(table_h))
     table = gt.table
