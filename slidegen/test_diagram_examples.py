@@ -108,11 +108,22 @@ def main():
     errors = validate(json_roundtrip)
     assert not errors, "\n".join(errors)
 
+    legacy = deepcopy(json_roundtrip)
+    for spec in legacy["slides"]:
+        for node in spec["diagram"]["nodes"].values():
+            icon = node["icon"]
+            if icon.startswith("icons/fluent/"):
+                node["icon"] = icon.removeprefix("icons/")
+            elif icon.startswith("icons/aws/"):
+                node["icon"] = icon.removeprefix("icons/aws/")
+    errors = validate(legacy)
+    assert not errors, "旧アイコンパス互換:\n" + "\n".join(errors)
+
     invalid = deepcopy(json_roundtrip)
     invalid["slides"][0]["diagram"]["area"] = [0, 0, 1, 1]
     invalid["slides"][0]["diagram"]["containers"][0]["pad"] = 0.1
     invalid["slides"][0]["diagram"]["nodes"]["user"]["icon"] = (
-        "fluent/not_defined.png")
+        "icons/fluent/not_defined.png")
     errors = validate(invalid)
     assert any("diagram.area" in error for error in errors)
     assert any(".pad" in error for error in errors)
@@ -121,7 +132,7 @@ def main():
     rows = [f"r{i}" for i in range(5)]
     nodes = {
         f"n{i}": {
-            "col": "main", "row": row, "icon": "fluent/app.png",
+            "col": "main", "row": row, "icon": "icons/fluent/app.png",
             "title": f"Node {i}", **({"sub": "sub"} if i < 2 else {}),
         }
         for i, row in enumerate(rows)

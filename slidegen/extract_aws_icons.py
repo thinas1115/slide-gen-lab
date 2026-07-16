@@ -9,8 +9,8 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
-DEST = Path(__file__).parent / "assets"
-DEST.mkdir(exist_ok=True)
+DEST = Path(__file__).parent / "assets" / "icons" / "aws"
+DEST.mkdir(parents=True, exist_ok=True)
 
 if len(sys.argv) != 2:
     raise SystemExit(
