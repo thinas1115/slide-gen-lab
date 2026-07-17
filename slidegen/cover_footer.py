@@ -194,7 +194,7 @@ def parse_cover_footer_config(data, *, base_dir=None):
             raise ValueError(f"{path} には label と value が必要です")
         rail.append(RailItem(
             _validate_template(item["label"], f"{path}.label", max_length=18),
-            _validate_template(item["value"], f"{path}.value", max_length=42),
+            _validate_template(item["value"], f"{path}.value", max_length=72),
         ))
 
     show_date = _expect_bool(cover["show_date"], "cover.show_date")
@@ -275,6 +275,23 @@ def _single_line_size(text, width, size, min_size, *, field, weight="regular"):
     return size
 
 
+def _rail_value_layout(text, *, field, max_lines):
+    """右欄の値を指定行数内へ収め、描画用の文字サイズ・行・高さを返す。"""
+    spacing = 1.08
+    size = 13.5
+    while size >= 9.0 - 0.01:
+        lines = wrap_text(text, 2.35, size, "bold")
+        if len(lines) <= max_lines:
+            height = max(
+                0.30,
+                len(lines) * line_height_in(size, spacing) + 0.04,
+            )
+            return size, lines, height
+        size -= 0.5
+    raise ValueError(
+        f"{field} の展開後の文字列が{max_lines}行以内に収まりません: {text}")
+
+
 def _add_cover_background_image(slide, source):
     """画像比率を維持し、中央を基準にスライド全面へトリミングする。"""
     with Image.open(source) as image:
@@ -333,32 +350,45 @@ def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
              subtitle_size, color=cover.secondary_color, spacing=1.2)
 
     if cover.show_rail and cover.rail:
-        rail_height = 1.58 + max(0, len(cover.rail) - 1) * 1.12
-        add_rect(slide, 9.45, 1.68, 0.012, rail_height, cover.secondary_color)
+        rail_items = []
         for idx, item in enumerate(cover.rail):
-            y = 1.82 + idx * 1.12
             label = _format(item.label, meta, page=1, total=total)
-            default_item = (_DEFAULT_DATA["cover"]["rail"][idx]
-                            if idx < len(_DEFAULT_DATA["cover"]["rail"]) else {})
-            custom_label = item.label != default_item.get("label")
-            label_size = 8.8
-            if custom_label:
-                label_size = _single_line_size(
-                    label, 2.25, 8.8, 7,
-                    field=f"cover.rail[{idx}].label", weight="bold")
+            label_size = _single_line_size(
+                label, 2.25, 8.8, 7,
+                field=f"cover.rail[{idx}].label", weight="bold")
+            value = _format(item.value, meta, page=1, total=total)
+            max_lines = 3 if label.strip().upper() in {
+                "ORG", "ORGANIZATION", "OWNER"
+            } else 1
+            value_size, value_lines, value_h = _rail_value_layout(
+                value, field=f"cover.rail[{idx}].value",
+                max_lines=max_lines)
+            rail_items.append((
+                label, label_size, value_lines, value_size, value_h,
+            ))
+
+        item_heights = [0.34 + item[4] for item in rail_items]
+        if len(rail_items) > 1:
+            item_gap = min(
+                0.55,
+                max(0.30, (3.45 - sum(item_heights))
+                    / (len(rail_items) - 1)),
+            )
+        else:
+            item_gap = 0.0
+        block_h = sum(item_heights) + item_gap * (len(rail_items) - 1)
+        rail_height = 0.14 + block_h + 0.18
+        add_rect(slide, 9.45, 1.68, 0.012, rail_height, cover.secondary_color)
+        y = 1.82
+        for idx, item in enumerate(rail_items):
+            label, label_size, value_lines, value_size, value_h = item
             add_text(slide, 9.82, y, 2.25, 0.25, label, label_size,
                      bold=True, color=cover.secondary_color,
-                     wrap=not custom_label)
-            value = _format(item.value, meta, page=1, total=total)
-            custom_value = item.value != default_item.get("value")
-            value_size = 13.5
-            if custom_value:
-                value_size = _single_line_size(
-                    value, 2.35, 13.5, 9,
-                    field=f"cover.rail[{idx}].value", weight="bold")
-            add_text(slide, 9.82, y + 0.34, 2.35, 0.45,
-                     value, value_size, bold=True, color=cover.title_color,
-                     wrap=not custom_value)
+                     wrap=False)
+            add_text(slide, 9.82, y + 0.34, 2.35, value_h,
+                     "\n".join(value_lines), value_size, bold=True,
+                     color=cover.title_color, spacing=1.08, wrap=False)
+            y += item_heights[idx] + item_gap
 
     if cover.show_author:
         author_size, _ = fit_text_or_raise(

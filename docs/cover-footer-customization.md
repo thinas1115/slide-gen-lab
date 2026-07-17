@@ -80,11 +80,16 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 `title_color` と `secondary_color` も指定する。背景には16:9で十分な解像度の画像を推奨する。
 画像は生成時にPPTXへ埋め込まれるため、生成後の閲覧時に元画像は不要。
 標準表紙は、タイトル、サブタイトル、日付、作成者だけを表示する。右側の補足情報を使う場合は
-`DATE / ORG / OWNER` に統一する。
+`DATE / ORGANIZATION / OWNER` に統一する。
 
 - `DATE`: `{date}` を指定する。右上の日付と重複するため `show_date` は `false` にする。
-- `ORG`: 部署名または組織名を表紙設定へ固定値で記載する。資料ごとに生成AIへ作文させない。
+- `ORGANIZATION`: 会社名、部門名、チーム名を表紙設定へ固定値で記載する。資料ごとに生成AIへ作文させない。
 - `OWNER`: `{author}` を指定する。左下の作成者と重複するため `show_author` は `false` にする。
+
+`ORGANIZATION`と`OWNER`の値は最大3行。JSON文字列内の`\n`で改行位置を指定でき、改行を
+指定しない長い文言も幅に合わせて自動折り返しする。会社名・部門名・チーム名、または氏名・役職を
+別の行へ分ける。4行以上になる場合は文字を潰して描画せず、生成を停止する。`DATE`などそれ以外の
+補足値は1行で表示する。
 
 `SCOPE`へページ数やパターン数、`OUTPUT`へPowerPointやPDF、`QUALITY`へ生成・検証工程を書く例は、
 受け手の判断情報にならないため使用しない。左上の`eyebrow`は「経営会議資料」「計画書」「レビュー版」
@@ -103,8 +108,8 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
     "show_rail": true,
     "rail": [
       {"label": "DATE", "value": "{date}"},
-      {"label": "ORG", "value": "業務改善推進部"},
-      {"label": "OWNER", "value": "{author}"}
+      {"label": "ORGANIZATION", "value": "業務企画本部\n業務改革部\n業務改善推進チーム"},
+      {"label": "OWNER", "value": "{author}\nテンプレート整備責任者"}
     ]
   },
   "footer": {
