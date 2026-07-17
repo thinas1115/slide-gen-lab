@@ -45,11 +45,11 @@ def main():
         raise AssertionError("rendererエラーにスライド位置が付与されませんでした")
 
     spec = _base("cards")
-    spec.update(style="editorial", cards=[[f"項目{i}", LONG] for i in range(4)])
-    _must_fail(generate.s_cards, spec, "文言を短く")
+    spec.update(style="editorial", cards=[[f"項目{i}", LONG] for i in range(7)])
+    _must_fail(generate.s_cards, spec, "カード本文")
 
     spec = _base("table")
-    spec.update(columns=["項目", "説明"], col_widths=[3.0, 9.2],
+    spec.update(columns=["項目", "説明"],
                 rows=[[f"行{i}", LONG] for i in range(8)])
     _must_fail(generate.s_table, spec, "表の行を減らす")
 
@@ -60,10 +60,10 @@ def main():
 
     spec = _base("chart")
     spec["chart"] = {
-        "categories": [str(i) for i in range(7)],
-        "series": [["実績", [1] * 7]],
+        "categories": [str(i) for i in range(13)],
+        "series": [["実績", [1] * 13]],
     }
-    _must_fail(generate.s_chart, spec, "カテゴリ1〜6件")
+    _must_fail(generate.s_chart, spec, "カテゴリ1〜12件")
 
     spec = _base("process")
     spec.update(steps=[{"name": "工程", "desc": "説明", "actor": "担当"}
@@ -93,8 +93,8 @@ def main():
     spec = _base("hub")
     spec.update(hub="中心", ring=[{"name": "部門", "label": "連携",
                                    "icon": "icons/fluent/team.png"}
-                                  for _ in range(5)])
-    _must_fail(s_hub, spec, "周辺ノードは6件")
+                                  for _ in range(9)])
+    _must_fail(s_hub, spec, "周辺ノードは3〜8件")
 
     spec = _base("org")
     spec["org"] = {

@@ -7,14 +7,95 @@ from pptx.util import Inches, Pt
 
 from generate import (ACCENT, CORAL, GRAY, LIGHT, NAVY, RULE, TEXT, WHITE,
                       ZEBRA, ContentArea, add_rect, add_text, header, note_line)
-from diagrams import add_arrow
-from layout_fit import FitError, ensure_within, fit_text_or_raise
+from diagrams import add_arrow, arrow_label
+from diagrams3 import route
+from layout_fit import FitError, ensure_within, fit_text_or_raise, select_fit
 from textfit import text_width_in
 from timeline_layout import (centered_label_box, fit_program_roadmap,
                              fit_roadmap, pack_activities, resolve_marker,
                              resolve_span)
 
 PROGRAM_LINE_PT = 1.4
+
+
+def _rects_overlap(a, b, gap=0.04):
+    return not (a[2] + gap <= b[0] or b[2] + gap <= a[0]
+                or a[3] + gap <= b[1] or b[3] + gap <= a[1])
+
+
+def _matrix_label_positions(
+        points, ox, top, aw, ah, *, label_w=2.0, gap=0.04, barriers=()):
+    """点ラベルを周囲8方向へ自動配置し、衝突しない矩形を返す。"""
+    point_xy = [(ox + point["x"] * aw, top + (1 - point["y"]) * ah)
+                for point in points]
+    point_boxes = [(x - 0.17, y - 0.17, x + 0.17, y + 0.17)
+                   for x, y in point_xy]
+    placed = {}
+    order = sorted(
+        range(len(points)),
+        key=lambda i: (
+            -sum(abs(point_xy[i][0] - x) < 2.2 and abs(point_xy[i][1] - y) < 0.7
+                 for x, y in point_xy),
+            -int(bool(points[i].get("emph"))),
+            i,
+        ),
+    )
+    label_h = 0.31
+    offsets = [
+        (-label_w / 2, -0.49), (-label_w / 2, 0.18),
+        (0.22, -label_h / 2), (-label_w - 0.22, -label_h / 2),
+        (0.18, -0.43), (-label_w - 0.18, -0.43),
+        (0.18, 0.14), (-label_w - 0.18, 0.14),
+    ]
+    for index in order:
+        px, py = point_xy[index]
+        manual = (points[index].get("lx"), points[index].get("ly"))
+        candidates = offsets
+        if manual[0] is not None or manual[1] is not None:
+            candidates = [(-label_w / 2 + (manual[0] or 0.0),
+                           manual[1] if manual[1] is not None else -0.36)]
+        for dx, dy in candidates:
+            rect = (px + dx, py + dy, px + dx + label_w, py + dy + label_h)
+            inside = (rect[0] >= ox + 0.04 and rect[2] <= ox + aw - 0.04
+                      and rect[1] >= top + 0.04 and rect[3] <= top + ah - 0.04)
+            if not inside:
+                continue
+            if any(rect[0] < barrier < rect[2] for barrier in barriers[:1]):
+                continue
+            if any(rect[1] < barrier < rect[3] for barrier in barriers[1:2]):
+                continue
+            if any(_rects_overlap(rect, other, gap)
+                   for other_index, other in enumerate(point_boxes)
+                   if other_index != index):
+                continue
+            if any(_rects_overlap(rect, other, gap) for other in placed.values()):
+                continue
+            placed[index] = rect
+            break
+        else:
+            raise FitError(
+                f"matrix.points[{index}]: {points[index]['name']!r} のラベルを"
+                "他の点と重ならずに配置できません。点を減らすか座標の粒度を"
+                "見直してください。")
+    return point_xy, placed
+
+
+def fit_matrix_labels(points, ox, top, aw, ah, *, barriers=()):
+    """ラベル間隔を圧縮し、その後ラベル幅を縮めて配置を試す。"""
+    last_error = None
+    for stage, width, gap in (
+            ("standard", 2.0, 0.05),
+            ("gap", 2.0, 0.015),
+            ("element", 1.65, 0.015)):
+        try:
+            point_xy, labels = _matrix_label_positions(
+                points, ox, top, aw, ah, label_w=width, gap=gap,
+                barriers=barriers)
+            return stage, width, point_xy, labels
+        except FitError as exc:
+            last_error = exc
+    raise FitError(
+        f"matrix: 最小ラベル幅でも衝突を解消できません。{last_error}")
 
 
 def _grid_line(slide, x1, y1, x2, y2):
@@ -53,6 +134,8 @@ def _fit_single_line(renderer, field, text, width, max_pt, min_pt, *, bold=False
 
 # ---- 番号付きプロセスタイムライン ----
 def s_process(slide, spec, page):
+    if "flow" in spec:
+        return _s_process_flow(slide, spec, page)
     area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
     if spec.get("note") and area.shifted:
         area = ContentArea(area.top, area.bottom - 0.30, area.shifted)
@@ -103,6 +186,127 @@ def s_process(slide, spec, page):
     ensure_within(
         "process", y(5.86) - area.top, area.height,
         guidance="工程説明を短くしてください。")
+    if spec.get("note"):
+        note_line(slide, spec["note"])
+
+
+def _fit_process_flow(area_h, levels):
+    max_rows = max(len(level) for level in levels)
+
+    def candidates():
+        values = [
+            ("standard", 1.02, 0.34, 12.5),
+            ("gap", 1.02, 0.22, 12.5),
+            ("element", 0.88, 0.18, 11.0),
+        ]
+        for stage, node_h, gap_y, font in values:
+            used = max_rows * node_h + max(0, max_rows - 1) * gap_y + 0.42
+            yield stage, {"node_h": node_h, "gap_y": gap_y, "font": font}, used
+
+    return select_fit(
+        "process.flow", area_h, candidates(),
+        guidance="工程ノードを減らすか、分岐フローを複数スライドへ分割してください。",
+    )
+
+
+def _s_process_flow(slide, spec, page):
+    """levelsとedgesから分岐・合流・戻り線を持つ工程図を描画する。"""
+    area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
+    if spec.get("note") and area.shifted:
+        area = ContentArea(area.top, area.bottom - 0.30, area.shifted)
+    flow = spec["flow"]
+    nodes, levels, edges = flow["nodes"], flow["levels"], flow["edges"]
+    fitted = _fit_process_flow(area.height, levels)
+    node_h = fitted.values["node_h"]
+    gap_y = fitted.values["gap_y"]
+    body_size = fitted.values["font"]
+    left, usable_w, gap_x = 0.72, 11.90, 0.42
+    level_count = len(levels)
+    node_w = (usable_w - gap_x * (level_count - 1)) / level_count
+    if node_w < 1.55:
+        raise FitError(
+            f"process.flow: {level_count}列では箱幅が{node_w:.2f}inとなり"
+            "最小1.55inを下回ります。工程階層を減らしてください。")
+
+    rects = {}
+    for level_index, level in enumerate(levels):
+        used_h = len(level) * node_h + max(0, len(level) - 1) * gap_y
+        top = area.top + 0.22 + max(0, (area.height - 0.42 - used_h) / 2)
+        x = left + level_index * (node_w + gap_x)
+        for row_index, node_id in enumerate(level):
+            y = top + row_index * (node_h + gap_y)
+            rects[node_id] = (x, y, node_w, node_h)
+
+    feedback_count = 0
+    routed = []
+    level_of = {node_id: index for index, level in enumerate(levels)
+                for node_id in level}
+    for edge in edges:
+        source, target = edge["from"], edge["to"]
+        sx, sy, sw, sh = rects[source]
+        tx, ty, tw, th = rects[target]
+        if level_of[target] > level_of[source]:
+            start = (sx + sw, sy + sh / 2)
+            end = (tx, ty + th / 2)
+            trunk = (start[0] + end[0]) / 2
+            points = [start, (trunk, start[1]), (trunk, end[1]), end]
+            if abs(start[1] - end[1]) < 0.03:
+                points = [start, end]
+        else:
+            lane_y = area.bottom - 0.16 - feedback_count * 0.12
+            feedback_count += 1
+            start = (sx + sw / 2, sy + sh)
+            end = (tx + tw / 2, ty + th)
+            points = [start, (start[0], lane_y), (end[0], lane_y), end]
+        route(slide, points, dash="dash" if edge.get("kind") == "feedback" else None,
+              width=1.25)
+        routed.append((edge, points))
+
+    for node_id, (x, y, w, h) in rects.items():
+        node = nodes[node_id]
+        style = node.get("style", "standard")
+        fill = LIGHT if style == "decision" else WHITE
+        line = ACCENT if style in {"accent", "decision"} else RULE
+        add_rect(slide, x, y, w, h, fill, line=line)
+        title_size, _ = fit_text_or_raise(
+            "process.flow", f"nodes.{node_id}.name", node["name"],
+            w - 0.28, 0.32, 14, min_pt=11.5, weight="bold", spacing=1.1)
+        add_text(slide, x + 0.14, y + 0.13, w - 0.28, 0.32, node["name"],
+                 title_size, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+        desc = node.get("desc")
+        if desc:
+            desc_h = 0.34 if node.get("actor") else h - 0.52
+            desc_size, lines = fit_text_or_raise(
+                "process.flow", f"nodes.{node_id}.desc", desc,
+                w - 0.30, desc_h, body_size, min_pt=9.5, spacing=1.12)
+            add_text(slide, x + 0.15, y + 0.50, w - 0.30, desc_h,
+                     "\n".join(lines), desc_size, color=TEXT,
+                     align=PP_ALIGN.CENTER, spacing=1.12)
+        if node.get("actor"):
+            actor_size, _ = fit_text_or_raise(
+                "process.flow", f"nodes.{node_id}.actor", node["actor"],
+                w - 0.30, 0.24, 9.5, min_pt=8.0, weight="bold", spacing=1.05)
+            add_text(slide, x + 0.15, y + h - 0.27, w - 0.30, 0.22,
+                     node["actor"], actor_size, bold=True, color=ACCENT,
+                     align=PP_ALIGN.CENTER)
+
+    for edge, points in routed:
+        if not edge.get("label"):
+            continue
+        if edge.get("kind") == "feedback":
+            segments = list(zip(points[:-1], points[1:]))
+            start, end = max(
+                segments,
+                key=lambda segment: abs(segment[1][0] - segment[0][0])
+                + abs(segment[1][1] - segment[0][1]),
+            )
+            label_x, label_y, label_w = (
+                (start[0] + end[0]) / 2, (start[1] + end[1]) / 2, 1.35)
+        else:
+            end = points[-1]
+            label_x, label_y, label_w = end[0] - 0.33, end[1], 0.70
+        arrow_label(slide, label_x, label_y, edge["label"],
+                    w=label_w, size=8.5)
     if spec.get("note"):
         note_line(slide, spec["note"])
 
@@ -382,9 +586,10 @@ def s_matrix(slide, spec, page):
              bold=True, color=TEXT, align=PP_ALIGN.RIGHT)
     add_text(slide, ox - 0.02, oy - ah - 0.38, 3.0, 0.3, spec["y_axis"], y_axis_size,
              bold=True, color=TEXT)
-    for p in spec["points"]:
-        px = ox + p["x"] * aw
-        py = oy - p["y"] * ah
+    _stage, label_w, point_xy, labels = fit_matrix_labels(
+        spec["points"], ox, oy - ah, aw, ah,
+        barriers=(mid_x, mid_y) if quadrants else ())
+    for p, (px, py) in zip(spec["points"], point_xy):
         r = 0.15
         sp = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(px - r), Inches(py - r),
                                     Inches(2 * r), Inches(2 * r))
@@ -393,12 +598,13 @@ def s_matrix(slide, spec, page):
         sp.line.color.rgb = WHITE
         sp.line.width = Pt(1.0)
         sp.shadow.inherit = False
-        dx, dy = p.get("lx", 0.0), p.get("ly", -0.36)
+    for index, p in enumerate(spec["points"]):
+        left, top, right, bottom = labels[index]
         point_size, point_lines = fit_text_or_raise(
-            "matrix", "points.name", p["name"], 2.0, 0.3, 11,
+            "matrix", "points.name", p["name"], label_w, 0.3, 11,
             min_pt=9, weight="bold" if p.get("emph") else "regular",
             spacing=1.1)
-        add_text(slide, px - 1.0 + dx, py + dy, 2.0, 0.3,
+        add_text(slide, left, top, right - left, bottom - top,
                  p["name"], point_size,
                  bold=bool(p.get("emph")), color=CORAL if p.get("emph") else TEXT,
                  align=PP_ALIGN.CENTER)

@@ -16,7 +16,7 @@ PATTERN_DECK = {
             "type": "title",
             "pattern": "title",
             "title": "社内スライド\nパターンライブラリ",
-            "subtitle": "意思決定からシステム構成まで、18の標準レイアウトを検証",
+            "subtitle": "意思決定からシステム構成まで、21の標準レイアウトを検証",
         },
         {
             "type": "bullets",
@@ -24,9 +24,9 @@ PATTERN_DECK = {
             "kicker": "検証方針",
             "title": "LLMは構造化、rendererは提出品質を担う",
             "bullets": [
-                ("文言・項目・強調は content 側に寄せ、座標や余白は renderer 側に閉じ込める", None),
-                ("汎用エンジン化しすぎず、よく使うスライド種別をカタログとして増やす", None),
-                ("PowerPoint 実レンダリングと機械検知を品質ゲートにして、崩れを早期に発見する", None),
+                ["文言・項目・強調は content 側に寄せ、座標や余白は renderer 側に閉じ込める", None],
+                ["汎用エンジン化しすぎず、よく使うスライド種別をカタログとして増やす", None],
+                ["PowerPoint 実レンダリングと機械検知を品質ゲートにして、崩れを早期に発見する", None],
             ],
         },
         {
@@ -36,10 +36,11 @@ PATTERN_DECK = {
             "kicker": "要点整理",
             "title": "判断に必要な4つの要点を、読み順に沿って整理する",
             "cards": [
-                ("目的", "何を判断してほしいかを1文で示し、読み手の視点を揃える。"),
-                ("現状", "事実・制約・既に分かっていることを短く置く。"),
-                ("示唆", "現状から言えることを、推測と事実を分けて整理する。"),
-                ("次アクション", "誰が・いつまでに・何をするかを明確にする。"),
+                {"heading": "目的", "body": "何を判断してほしいかを1文で示し、読み手の視点を揃える。",
+                 "emphasis": True},
+                {"heading": "現状", "body": "事実・制約・既に分かっていることを短く置く。"},
+                {"heading": "示唆", "body": "現状から言えることを、推測と事実を分けて整理する。"},
+                {"heading": "次アクション", "body": "誰が・いつまでに・何をするかを明確にする。"},
             ],
         },
         {
@@ -49,9 +50,13 @@ PATTERN_DECK = {
             "kicker": "KPIスナップショット",
             "title": "KPIは数値を主役にし、判断材料を添える",
             "cards": [
-                ("作成時間 -72%", "週次報告の作成時間が平均45分から13分に短縮。下書き作成の自動化が主因。"),
-                ("手直し 8分", "生成後の確認と語尾修正に平均8分。テンプレート崩れは検出なし。"),
-                ("再利用率 64%", "一度作った構造化データを翌週も流用でき、定型資料ほど効果が高い。"),
+                {"heading": "作成時間", "value": "-72%",
+                 "body": "週次報告の作成時間が平均45分から13分に短縮。下書き作成の自動化が主因。",
+                 "emphasis": True},
+                {"heading": "手直し", "value": "8分",
+                 "body": "生成後の確認と語尾修正に平均8分。テンプレート崩れは検出なし。"},
+                {"heading": "再利用率", "value": "64%",
+                 "body": "一度作った構造化データを翌週も流用でき、定型資料ほど効果が高い。"},
             ],
         },
         {
@@ -60,6 +65,7 @@ PATTERN_DECK = {
             "kicker": "Before / After",
             "title": "導入前後の違いを、同じ観点で比較する",
             "left": {
+                "label": "現状",
                 "heading": "導入前",
                 "bullets": [
                     "担当者ごとにスライド構成がばらつき、レビュー観点も揃わない",
@@ -68,6 +74,7 @@ PATTERN_DECK = {
                 ],
             },
             "right": {
+                "label": "目標状態",
                 "heading": "導入後",
                 "bullets": [
                     "入力schemaに沿って文言を作るため、構成の揺れを抑えられる",
@@ -82,7 +89,6 @@ PATTERN_DECK = {
             "kicker": "方式比較",
             "title": "選定理由と見送り理由を、同じ粒度で比較する",
             "columns": ["方式", "向いている用途", "強み", "注意点"],
-            "col_widths": [2.0, 3.1, 3.1, 4.0],
             "rows": [
                 ["renderer カタログ", "社内標準資料・定型報告", "品質を詰めた型を再利用できる", "新しい型は実装が必要"],
                 ["万能宣言レイアウト", "図の大量バリエーション", "座標指定を減らせる", "エンジンが複雑化しやすい"],
@@ -98,10 +104,44 @@ PATTERN_DECK = {
             "chart": {
                 "categories": ["週次報告", "月次レビュー", "調査サマリ", "役員向け抜粋"],
                 "series": [
-                    ("従来 (分)", [45, 120, 240, 90]),
-                    ("生成後 (分)", [13, 42, 85, 28]),
+                    ["従来 (分)", [45, 120, 240, 90]],
+                    ["生成後 (分)", [13, 42, 85, 28]],
                 ],
             },
+        },
+        {
+            "type": "chart",
+            "pattern": "line chart",
+            "kicker": "利用推移",
+            "title": "月次利用率は、試行開始から継続的に上昇",
+            "chart": {
+                "kind": "line",
+                "categories": ["4月", "5月", "6月", "7月", "8月", "9月",
+                               "10月", "11月", "12月"],
+                "series": [
+                    ["利用率", [12, 18, 25, 31, 44, 52, 61, 67, 74]],
+                    ["目標", [20, 25, 30, 35, 40, 50, 60, 70, 80]],
+                ],
+                "show_values": False,
+            },
+            "note": "値は検証用のサンプルデータ。",
+        },
+        {
+            "type": "chart",
+            "pattern": "stacked column chart",
+            "kicker": "工数内訳",
+            "title": "自動化後は、作成よりレビューへ時間を配分できる",
+            "chart": {
+                "kind": "stacked_column",
+                "categories": ["導入前", "試行中", "標準化後"],
+                "series": [
+                    ["作成", [70, 38, 18]],
+                    ["レビュー", [20, 32, 42]],
+                    ["意思決定", [10, 30, 40]],
+                ],
+                "number_format": "0\"%\"",
+            },
+            "note": "構成比を示すサンプル。",
         },
         {
             "type": "image",
@@ -126,6 +166,36 @@ PATTERN_DECK = {
                 {"name": "提出", "desc": "contentを直して再生成し、提出する。", "actor": "人間"},
             ],
             "emph": [3],
+        },
+        {
+            "type": "process",
+            "pattern": "branched process flow",
+            "kicker": "承認フロー",
+            "title": "審査結果に応じた分岐・差戻し・再申請を1枚で示す",
+            "flow": {
+                "nodes": {
+                    "request": {"name": "申請", "desc": "必要事項を登録", "actor": "申請部門"},
+                    "check": {"name": "形式確認", "desc": "不足項目を確認", "actor": "事務局"},
+                    "review": {"name": "内容審査", "desc": "リスクと効果を評価", "actor": "審査会",
+                               "style": "decision"},
+                    "approve": {"name": "承認", "desc": "実施条件を確定", "style": "accent"},
+                    "revise": {"name": "修正", "desc": "指摘事項を反映", "actor": "申請部門"},
+                    "execute": {"name": "実施", "desc": "計画に沿って着手", "actor": "実行責任者"},
+                },
+                "levels": [
+                    ["request"], ["check"], ["review"],
+                    ["approve", "revise"], ["execute"],
+                ],
+                "edges": [
+                    {"from": "request", "to": "check"},
+                    {"from": "check", "to": "review"},
+                    {"from": "review", "to": "approve", "label": "承認"},
+                    {"from": "review", "to": "revise", "label": "要修正"},
+                    {"from": "approve", "to": "execute"},
+                    {"from": "revise", "to": "check", "kind": "feedback",
+                     "label": "再申請"},
+                ],
+            },
         },
         {
             "type": "roadmap",
@@ -219,8 +289,8 @@ PATTERN_DECK = {
             "points": [
                 {"name": "タイトル", "x": 0.18, "y": 0.58},
                 {"name": "要点列", "x": 0.72, "y": 0.76, "emph": True},
-                {"name": "比較表", "x": 0.68, "y": 0.66, "ly": 0.16},
-                {"name": "ロードマップ", "x": 0.44, "y": 0.62, "lx": -1.0},
+                {"name": "比較表", "x": 0.68, "y": 0.66},
+                {"name": "ロードマップ", "x": 0.44, "y": 0.62},
                 {"name": "高密度構成図", "x": 0.35, "y": 0.86},
                 {"name": "自由配置図", "x": 0.20, "y": 0.32},
             ],
@@ -230,7 +300,7 @@ PATTERN_DECK = {
             "type": "hub",
             "pattern": "stakeholder hub",
             "kicker": "関係者調整",
-            "title": "運用事務局を中心に、6部門の役割をつなぐ",
+            "title": "運用事務局を中心に、5部門の役割をつなぐ",
             "hub": "テンプレート\n運用事務局",
             "ring": [
                 {"name": "経営層", "sub": "方針承認", "label": "効果報告", "icon": "icons/fluent/briefcase.png"},
@@ -238,7 +308,6 @@ PATTERN_DECK = {
                 {"name": "現場部門", "sub": "利用者", "label": "要件 / 評価", "icon": "icons/fluent/team.png"},
                 {"name": "法務", "sub": "規程確認", "label": "利用ルール", "icon": "icons/fluent/shield_check.png"},
                 {"name": "広報", "sub": "ブランド", "label": "表現基準", "icon": "icons/fluent/send.png"},
-                {"name": "外部支援", "sub": "技術相談", "label": "実装支援", "icon": "icons/fluent/toolbox.png"},
             ],
         },
         {

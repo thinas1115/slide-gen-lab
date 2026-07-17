@@ -41,8 +41,10 @@ def main():
         table_area.height - generate.TABLE_TOP_GAP - generate.TABLE_BOTTOM_GAP
     )
     table_avail = table_available - generate.TABLE_HEADER_H
+    table_widths = generate._auto_table_widths(
+        table_spec["columns"], table_spec["rows"])
     table_fit, _row_hs = generate._fit_table(
-        TABLE_ROWS, table_spec["col_widths"], table_avail)
+        TABLE_ROWS, table_widths, table_avail)
     assert table_fit.stage == "font", table_fit
     assert table_fit.values["size"] < 13.5, table_fit
     assert table_fit.values["size"] >= 10.5, table_fit

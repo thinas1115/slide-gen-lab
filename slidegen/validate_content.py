@@ -74,19 +74,37 @@ def _v_bullets(s):
 
 
 def _v_cards(s):
-    items = s.req_list("cards", 2, 4, "[見出し, 本文]")
-    if "style" in s.spec and s.spec["style"] not in {"editorial", "metrics"}:
+    items = s.req_list("cards", 2, 6, "カード")
+    style = s.spec.get("style", "editorial")
+    if style not in {"editorial", "metrics"}:
         s.err('cards.style は "editorial" または "metrics" にしてください')
     for i, c in enumerate(items or []):
-        if not (isinstance(c, list) and len(c) == 2
-                and _is_str(c[0]) and _is_str(c[1])):
-            s.err(f'cards[{i}] は ["見出し", "本文"] の2要素配列にしてください')
+        if isinstance(c, list):
+            if not (len(c) == 2 and _is_str(c[0]) and _is_str(c[1])):
+                s.err(f'cards[{i}] は ["見出し", "本文"] の2要素配列、または'
+                      ' heading / bodyを持つオブジェクトにしてください')
+            continue
+        if not (isinstance(c, dict) and _is_str(c.get("heading"))
+                and _is_str(c.get("body"))):
+            s.err(f"cards[{i}] には heading / body (文字列) が必要です")
+            continue
+        if "value" in c and not _is_str(c["value"]):
+            s.err(f"cards[{i}].value は空でない文字列にしてください")
+        if "emphasis" in c and not isinstance(c["emphasis"], bool):
+            s.err(f"cards[{i}].emphasis は真偽値にしてください")
+        if style == "metrics" and not _is_str(c.get("value")):
+            s.err(f"cards[{i}].value はmetricsで必須です")
 
 
 def _v_table(s):
     # 列数上限8: 既存サンプルの7列表が提出品質で通っている実績に合わせる
     cols = s.req_list("columns", 2, 8, "列名")
-    widths = s.req_list("col_widths", 2, 8, "列幅(インチ)")
+    widths = s.spec.get("col_widths")
+    if widths is not None and not (
+            isinstance(widths, list) and 2 <= len(widths) <= 8):
+        s.err("col_widthsは互換入力として2〜8件の数値配列にしてください。"
+              "新規入力では省略すると自動計算されます")
+        widths = None
     rows = s.req_list("rows", 1, 8, "行")
     if cols and widths:
         if len(cols) != len(widths):
@@ -113,6 +131,8 @@ def _v_twocol(s):
             continue
         if not _is_str(p.get("heading")):
             s.err(f'{side}.heading (文字列) が必要です')
+        if "label" in p and not _is_str(p["label"]):
+            s.err(f"{side}.label は空でない文字列にしてください")
         b = p.get("bullets")
         if not (isinstance(b, list) and 1 <= len(b) <= 6
                 and all(_is_str(x) for x in b)):
@@ -125,14 +145,23 @@ def _v_chart(s):
         s.err('"chart" (categories と series を持つオブジェクト) が必要です')
         return
     cats = ch.get("categories")
-    if not (isinstance(cats, list) and 1 <= len(cats) <= 6
+    if not (isinstance(cats, list) and 1 <= len(cats) <= 12
             and all(_is_str(c) for c in cats)):
-        s.err("chart.categories は文字列の配列 (1〜6件) にしてください")
+        s.err("chart.categories は文字列の配列 (1〜12件) にしてください")
         cats = None
     series = ch.get("series")
-    if not (isinstance(series, list) and 1 <= len(series) <= 2):
-        s.err("chart.series は [系列名, 値配列] の配列 (1〜2件) にしてください")
+    if not (isinstance(series, list) and 1 <= len(series) <= 4):
+        s.err("chart.series は [系列名, 値配列] の配列 (1〜4件) にしてください")
         return
+    if ch.get("kind", "bar") not in {
+            "bar", "column", "line", "stacked_bar", "stacked_column"}:
+        s.err("chart.kind は bar / column / line / stacked_bar / "
+              "stacked_column のいずれかにしてください")
+    for key in ("show_legend", "show_values"):
+        if key in ch and not isinstance(ch[key], bool):
+            s.err(f"chart.{key} は真偽値にしてください")
+    if "number_format" in ch and not _is_str(ch["number_format"]):
+        s.err("chart.number_format は空でない文字列にしてください")
     for i, sr in enumerate(series):
         ok = (isinstance(sr, list) and len(sr) == 2 and _is_str(sr[0])
               and isinstance(sr[1], list) and all(_is_num(v) for v in sr[1]))
@@ -172,6 +201,11 @@ def _v_image(s):
 
 
 def _v_process(s):
+    if "flow" in s.spec:
+        if "steps" in s.spec or "emph" in s.spec:
+            s.err("process.flow と旧steps/emphは同時に指定できません")
+        _v_process_flow(s, s.spec["flow"])
+        return
     steps = s.req_list("steps", 3, 6, "工程")
     for i, st in enumerate(steps or []):
         if not (isinstance(st, dict) and _is_str(st.get("name"))
@@ -183,6 +217,77 @@ def _v_process(s):
                 and all(isinstance(i, int) and 0 <= i < len(steps) for i in emph)):
             s.err(f"emph は steps の0始まりindex (0〜{len(steps) - 1}) の配列に"
                   f"してください")
+
+
+def _v_process_flow(s, flow):
+    if not isinstance(flow, dict):
+        s.err("process.flow はnodes / levels / edgesを持つオブジェクトにしてください")
+        return
+    nodes = flow.get("nodes")
+    if not isinstance(nodes, dict) or not 2 <= len(nodes) <= 12:
+        s.err("process.flow.nodes は2〜12件のノードを持つオブジェクトにしてください")
+        nodes = {}
+    for node_id, node in nodes.items():
+        if not (_is_str(node_id) and isinstance(node, dict)
+                and _is_str(node.get("name"))):
+            s.err(f"process.flow.nodes.{node_id} にはname (文字列) が必要です")
+            continue
+        for key in ("desc", "actor"):
+            if key in node and not _is_str(node[key]):
+                s.err(f"process.flow.nodes.{node_id}.{key} は空でない文字列にしてください")
+        if node.get("style", "standard") not in {
+                "standard", "accent", "decision"}:
+            s.err(f"process.flow.nodes.{node_id}.style はstandard / accent / "
+                  "decisionのいずれかにしてください")
+    levels = flow.get("levels")
+    if not (isinstance(levels, list) and 2 <= len(levels) <= 6):
+        s.err("process.flow.levels は2〜6列の配列にしてください")
+        levels = []
+    placed = set()
+    level_of = {}
+    for level_index, level in enumerate(levels):
+        if not (isinstance(level, list) and 1 <= len(level) <= 3
+                and all(_is_str(node_id) for node_id in level)):
+            s.err(f"process.flow.levels[{level_index}] はノードIDの配列"
+                  " (1〜3件) にしてください")
+            continue
+        for node_id in level:
+            if node_id not in nodes:
+                s.err(f"process.flow.levels[{level_index}] が未定義ノード"
+                      f" {node_id!r} を参照しています")
+            if node_id in placed:
+                s.err(f"process.flow.nodes.{node_id} は複数列へ配置されています")
+            placed.add(node_id)
+            level_of[node_id] = level_index
+    for node_id in nodes:
+        if node_id not in placed:
+            s.err(f"process.flow.nodes.{node_id} がlevelsに配置されていません")
+    edges = flow.get("edges")
+    if not (isinstance(edges, list) and 1 <= len(edges) <= 20):
+        s.err("process.flow.edges は1〜20件の関係配列にしてください")
+        return
+    seen = set()
+    for edge_index, edge in enumerate(edges):
+        if not isinstance(edge, dict):
+            s.err(f"process.flow.edges[{edge_index}] はオブジェクトにしてください")
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        if source not in nodes or target not in nodes:
+            s.err(f"process.flow.edges[{edge_index}] が未定義ノードを参照しています")
+            continue
+        if source == target:
+            s.err(f"process.flow.edges[{edge_index}] は同じノードへ接続できません")
+        if (source, target) in seen:
+            s.err(f"process.flow.edges[{edge_index}] は同じ接続が重複しています")
+        seen.add((source, target))
+        if "label" in edge and not _is_str(edge["label"]):
+            s.err(f"process.flow.edges[{edge_index}].label は空でない文字列にしてください")
+        kind = edge.get("kind", "forward")
+        if kind not in {"forward", "feedback"}:
+            s.err(f"process.flow.edges[{edge_index}].kind はforward / feedbackにしてください")
+        if (source in level_of and target in level_of
+                and level_of[target] <= level_of[source] and kind != "feedback"):
+            s.err(f"process.flow.edges[{edge_index}] の戻り接続にはkind=feedbackを指定してください")
 
 
 def _v_roadmap(s):
@@ -267,7 +372,7 @@ def _v_program_roadmap(s):
 
 
 def _v_matrix(s):
-    for key in ("x_axis", "y_axis", "target_label"):
+    for key in ("x_axis", "y_axis"):
         s.req_str(key)
     points = s.req_list("points", 1, 8, "点")
     quadrants = s.spec.get("quadrants")
@@ -275,6 +380,8 @@ def _v_matrix(s):
             isinstance(quadrants, list) and len(quadrants) == 4
             and all(_is_str(label) for label in quadrants)):
         s.err("quadrants は [左下, 右下, 左上, 右上] の4文字列にしてください")
+    if quadrants is None:
+        s.req_str("target_label")
     for i, p in enumerate(points or []):
         if not (isinstance(p, dict) and _is_str(p.get("name"))
                 and _is_num(p.get("x")) and _is_num(p.get("y"))):
@@ -290,8 +397,7 @@ def _v_matrix(s):
 
 def _v_hub(s):
     s.req_str("hub")
-    # rendererの周辺ノード配置は6件固定。少ないと欠け、多いと黙って切り捨てられる
-    ring = s.req_list("ring", 6, 6, "周辺ノード")
+    ring = s.req_list("ring", 3, 8, "周辺ノード")
     for i, r in enumerate(ring or []):
         if not (isinstance(r, dict) and _is_str(r.get("name"))
                 and _is_str(r.get("label")) and _is_str(r.get("icon"))):
