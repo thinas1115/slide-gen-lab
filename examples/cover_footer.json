@@ -1,13 +1,13 @@
 {
   "cover": {
-    "eyebrow": "CORPORATE PRESENTATION",
-    "show_date": true,
-    "show_author": true,
+    "eyebrow": "社内検討資料",
+    "show_date": false,
+    "show_author": false,
     "show_rail": true,
     "background_image": "../slidegen/assets/cover/cover-background.png",
     "rail": [
-      {"label": "TOPIC", "value": "スライド生成基盤"},
-      {"label": "AUDIENCE", "value": "社内利用者"},
+      {"label": "DATE", "value": "{date}"},
+      {"label": "ORG", "value": "業務改善推進部"},
       {"label": "OWNER", "value": "{author}"}
     ],
     "background_color": "16324F",

@@ -28,7 +28,9 @@ def _must_fail(data, expected, **kwargs):
 
 def main():
     default = parse_cover_footer_config({})
-    assert default.cover.eyebrow == "SLIDE PATTERN LIBRARY"
+    assert default.cover.eyebrow == ""
+    assert default.cover.show_rail is False
+    assert default.cover.rail == ()
     assert default.cover.background_image is None
     assert default.footer.text == "{footer}"
     assert default.footer.show_total is True
@@ -41,6 +43,10 @@ def main():
     with Image.open(example.cover.background_image) as image:
         assert image.format == "PNG"
         assert image.width / image.height > 1.7
+    assert example.cover.show_date is False
+    assert example.cover.show_author is False
+    assert [item.label for item in example.cover.rail] == [
+        "DATE", "ORG", "OWNER"]
 
     custom = parse_cover_footer_config({
         "cover": {
@@ -60,6 +66,14 @@ def main():
     _must_fail({"footer": {"text": "{company}"}}, "{company} は使用できません")
     _must_fail({"cover": {"rail": [{"label": "A", "value": "B"}] * 4}},
                "0〜3件")
+    _must_fail({"cover": {
+        "show_rail": True,
+        "rail": [{"label": "DATE", "value": "{date}"}],
+    }}, "show_date を false")
+    _must_fail({"cover": {
+        "show_rail": True,
+        "rail": [{"label": "OWNER", "value": "{author}"}],
+    }}, "show_author を false")
 
     too_long = parse_cover_footer_config({
         "footer": {"text": "W" * 100},

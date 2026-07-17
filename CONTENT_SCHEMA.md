@@ -80,6 +80,13 @@ python slidegen/validate_content.py content.json
 - `title`: string
 - `subtitle`: string
 
+制約:
+
+- `title`は資料の主題を端的に示す。
+- `subtitle`は対象範囲または目的を1文で示し、タイトルを言い換えない。
+- ページ数、PowerPoint/PDFなどのファイル形式、生成・検証工程は記載しない。
+- 日付、組織名、責任者は表紙・フッター設定側で表示し、`title` / `subtitle`へ重複して書かない。
+
 ```json
 {
   "type": "title",

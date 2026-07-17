@@ -51,10 +51,10 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 
 | 項目 | 型 | 既定値 / 説明 |
 |---|---|---|
-| `eyebrow` | string | 左上の短い分類名。最大48文字 |
-| `show_date` | boolean | 右上の日付を表示する |
-| `show_author` | boolean | 左下の作成者を表示する |
-| `show_rail` | boolean | 右側の補足情報を表示する |
+| `eyebrow` | string | 左上の文書区分。既定値は空文字。最大48文字 |
+| `show_date` | boolean | 右上の日付を表示する。既定値は `true` |
+| `show_author` | boolean | 左下の作成者を表示する。既定値は `true` |
+| `show_rail` | boolean | 右側の補足情報を表示する。既定値は `false` |
 | `rail` | array | `label` / `value` の組。0〜3件 |
 | `background_image` | string / null | 表紙背景のPNG/JPEG。設定JSONからの相対パスを推奨。絶対パスも使用可能 |
 | `background_color` | string | 表紙背景の6桁HEX色 |
@@ -79,25 +79,36 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 画像を指定しない場合は `background_color` が使われる。画像上の文字が読めるよう、画像に合わせて
 `title_color` と `secondary_color` も指定する。背景には16:9で十分な解像度の画像を推奨する。
 画像は生成時にPPTXへ埋め込まれるため、生成後の閲覧時に元画像は不要。
-右側の補足情報には `TOPIC / AUDIENCE / OWNER` を推奨する。記載する情報がない場合は、
-装飾のために空欄を残さず `show_rail` を `false` にする。
+標準表紙は、タイトル、サブタイトル、日付、作成者だけを表示する。右側の補足情報を使う場合は
+`DATE / ORG / OWNER` に統一する。
+
+- `DATE`: `{date}` を指定する。右上の日付と重複するため `show_date` は `false` にする。
+- `ORG`: 部署名または組織名を表紙設定へ固定値で記載する。資料ごとに生成AIへ作文させない。
+- `OWNER`: `{author}` を指定する。左下の作成者と重複するため `show_author` は `false` にする。
+
+`SCOPE`へページ数やパターン数、`OUTPUT`へPowerPointやPDF、`QUALITY`へ生成・検証工程を書く例は、
+受け手の判断情報にならないため使用しない。左上の`eyebrow`は「経営会議資料」「計画書」「レビュー版」
+など文書区分が必要な場合だけ使い、タイトルの英訳や言い換えは書かない。補足情報自体が不要なら、
+装飾のために空欄を残さず `show_rail`を`false`のまま使う。
 
 ```json
 {
   "cover": {
-    "eyebrow": "QUARTERLY BUSINESS REVIEW",
+    "eyebrow": "社内検討資料",
     "background_image": "../slidegen/assets/cover/cover-background.png",
     "title_color": "FFFFFF",
     "secondary_color": "E5ECEA",
+    "show_date": false,
+    "show_author": false,
     "show_rail": true,
     "rail": [
-      {"label": "TOPIC", "value": "スライド生成基盤"},
-      {"label": "AUDIENCE", "value": "社内利用者"},
+      {"label": "DATE", "value": "{date}"},
+      {"label": "ORG", "value": "業務改善推進部"},
       {"label": "OWNER", "value": "{author}"}
     ]
   },
   "footer": {
-    "text": "{author}  |  Confidential",
+    "text": "{title}",
     "show_total": false
   }
 }
