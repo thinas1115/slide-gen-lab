@@ -70,15 +70,11 @@ class CoverFooterConfig:
 
 _DEFAULT_DATA = {
     "cover": {
-        "eyebrow": "SLIDE PATTERN LIBRARY",
+        "eyebrow": "",
         "show_date": True,
         "show_author": True,
-        "show_rail": True,
-        "rail": [
-            {"label": "SCOPE", "value": "{total:02d} patterns"},
-            {"label": "OUTPUT", "value": "PowerPoint"},
-            {"label": "QUALITY", "value": "Generate / Validate / Review"},
-        ],
+        "show_rail": False,
+        "rail": [],
         "background_image": None,
         "background_color": "182C43",
         "title_color": "FFFFFC",
@@ -201,13 +197,26 @@ def parse_cover_footer_config(data, *, base_dir=None):
             _validate_template(item["value"], f"{path}.value", max_length=42),
         ))
 
+    show_date = _expect_bool(cover["show_date"], "cover.show_date")
+    show_author = _expect_bool(cover["show_author"], "cover.show_author")
+    show_rail = _expect_bool(cover["show_rail"], "cover.show_rail")
+    rail_labels = {item.label.strip().upper() for item in rail}
+    if show_rail and show_date and "DATE" in rail_labels:
+        raise ValueError(
+            "cover.rail に DATE を表示する場合は cover.show_date を false "
+            "にしてください")
+    if show_rail and show_author and "OWNER" in rail_labels:
+        raise ValueError(
+            "cover.rail に OWNER を表示する場合は cover.show_author を false "
+            "にしてください")
+
     return CoverFooterConfig(
         cover=CoverConfig(
             eyebrow=_validate_template(
                 cover["eyebrow"], "cover.eyebrow", max_length=48),
-            show_date=_expect_bool(cover["show_date"], "cover.show_date"),
-            show_author=_expect_bool(cover["show_author"], "cover.show_author"),
-            show_rail=_expect_bool(cover["show_rail"], "cover.show_rail"),
+            show_date=show_date,
+            show_author=show_author,
+            show_rail=show_rail,
             rail=tuple(rail),
             background_image=_expect_optional_image(
                 cover["background_image"], "cover.background_image",
@@ -293,14 +302,12 @@ def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
     add_rect(slide, 0, 0, 13.333, 7.5, cover.background_color)
     if cover.background_image is not None:
         _add_cover_background_image(slide, cover.background_image)
-    eyebrow = _format(cover.eyebrow, meta, page=1, total=total)
-    custom_eyebrow = cover.eyebrow != _DEFAULT_DATA["cover"]["eyebrow"]
-    eyebrow_size = 10
-    if custom_eyebrow:
+    if cover.eyebrow:
+        eyebrow = _format(cover.eyebrow, meta, page=1, total=total)
         eyebrow_size = _single_line_size(
             eyebrow, 3.2, 10, 8, field="cover.eyebrow", weight="bold")
-    add_text(slide, 0.9, 0.68, 3.2, 0.3, eyebrow, eyebrow_size,
-             bold=True, color=cover.secondary_color, wrap=not custom_eyebrow)
+        add_text(slide, 0.9, 0.68, 3.2, 0.3, eyebrow, eyebrow_size,
+                 bold=True, color=cover.secondary_color, wrap=False)
     if cover.show_date:
         date_size, _ = fit_text_or_raise(
             "cover", "date", meta["date"], 2.62, 0.3, 10,
@@ -308,18 +315,21 @@ def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
         add_text(slide, 9.78, 0.68, 2.62, 0.3, meta["date"], date_size,
                  color=cover.secondary_color, align=PP_ALIGN.RIGHT)
 
+    has_rail = cover.show_rail and bool(cover.rail)
+    title_w = 8.05 if has_rail else 11.45
+    subtitle_w = 8.0 if has_rail else 11.35
     title_size, title_lines = fit_text_or_raise(
-        "cover", "title", spec["title"], 8.05, 2.15, 42,
+        "cover", "title", spec["title"], title_w, 2.15, 42,
         min_pt=34, weight="bold", spacing=1.08)
     title_h = max(1.0, len(title_lines) * line_height_in(title_size, 1.08) + 0.1)
-    add_text(slide, 0.9, 1.72, 8.05, title_h, "\n".join(title_lines), title_size,
+    add_text(slide, 0.9, 1.72, title_w, title_h, "\n".join(title_lines), title_size,
              bold=True, color=cover.title_color, spacing=1.08)
 
     subtitle_y = min(4.72, 1.72 + title_h + 0.38)
     subtitle_size, subtitle_lines = fit_text_or_raise(
-        "cover", "subtitle", spec["subtitle"], 8.0, 0.8, 17.5,
+        "cover", "subtitle", spec["subtitle"], subtitle_w, 0.8, 17.5,
         min_pt=15, spacing=1.2)
-    add_text(slide, 0.94, subtitle_y, 8.0, 0.8, "\n".join(subtitle_lines),
+    add_text(slide, 0.94, subtitle_y, subtitle_w, 0.8, "\n".join(subtitle_lines),
              subtitle_size, color=cover.secondary_color, spacing=1.2)
 
     if cover.show_rail and cover.rail:
