@@ -37,10 +37,12 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 
 | 項目 | 用途 |
 |---|---|
-| `meta.title` | 資料名。フッター設定の `{title}` から参照できる |
-| `meta.footer` | 資料固有のフッター文言。`{footer}` から参照できる |
-| `meta.date` | 表紙の日付と `{date}` |
-| `meta.author` | 表紙の作成者と `{author}` |
+| `meta.title` | 必須。資料名。フッター設定の `{title}` から参照できる |
+| `meta.footer` | 任意。資料固有のフッター文言。`{footer}` から参照できる |
+| `meta.date` | 任意。表紙の日付と `{date}` |
+| `meta.author` | 任意。表紙の作成者と `{author}` |
+
+任意項目を省略すると、対応する表紙・フッター要素は描画されない。
 
 表紙・フッター設定JSONは、表示する要素、固定文言、配色、表紙背景画像を持つ。資料内容とブランド設定を
 分離することで、同じ `content.json` を利用者別の表紙・フッターで再生成できる。
@@ -86,6 +88,9 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 - `ORGANIZATION`: 会社名、部門名、チーム名を表紙設定へ固定値で記載する。資料ごとに生成AIへ作文させない。
 - `OWNER`: `{author}` を指定する。左下の作成者と重複するため `show_author` は `false` にする。
 
+日付、組織、責任者が不要または未確定ならrailへ仮文言を置かず、項目を省く。全項目が不要なら
+`show_rail`を`false`にする。`meta.date` / `meta.author`が未指定の場合、その値を参照するrail項目も描画されない。
+
 `ORGANIZATION`と`OWNER`の値は最大3行。JSON文字列内の`\n`で改行位置を指定でき、改行を
 指定しない長い文言も幅に合わせて自動折り返しする。会社名・部門名・チーム名、または氏名・役職を
 別の行へ分ける。4行以上になる場合は文字を潰して描画せず、生成を停止する。`DATE`などそれ以外の
@@ -99,21 +104,13 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 ```json
 {
   "cover": {
-    "eyebrow": "社内検討資料",
     "background_image": "../slidegen/assets/cover/cover-background.png",
     "title_color": "FFFFFF",
     "secondary_color": "E5ECEA",
-    "show_date": false,
-    "show_author": false,
-    "show_rail": true,
-    "rail": [
-      {"label": "DATE", "value": "{date}"},
-      {"label": "ORGANIZATION", "value": "業務企画本部\n業務改革部\n業務改善推進チーム"},
-      {"label": "OWNER", "value": "{author}\nテンプレート整備責任者"}
-    ]
+    "show_rail": false
   },
   "footer": {
-    "text": "{title}",
+    "text": "{footer}",
     "show_total": false
   }
 }

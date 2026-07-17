@@ -262,8 +262,9 @@ def load_cover_footer_config(path=None):
 
 def _format(value, meta, *, page, total):
     return value.format(
-        title=meta["title"], footer=meta["footer"], date=meta["date"],
-        author=meta["author"], page=page, total=total,
+        title=meta.get("title", ""), footer=meta.get("footer", ""),
+        date=meta.get("date", ""), author=meta.get("author", ""),
+        page=page, total=total,
     )
 
 
@@ -325,14 +326,34 @@ def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
             eyebrow, 3.2, 10, 8, field="cover.eyebrow", weight="bold")
         add_text(slide, 0.9, 0.68, 3.2, 0.3, eyebrow, eyebrow_size,
                  bold=True, color=cover.secondary_color, wrap=False)
-    if cover.show_date:
+    if cover.show_date and meta.get("date"):
         date_size, _ = fit_text_or_raise(
             "cover", "date", meta["date"], 2.62, 0.3, 10,
             min_pt=8, spacing=1.1)
         add_text(slide, 9.78, 0.68, 2.62, 0.3, meta["date"], date_size,
                  color=cover.secondary_color, align=PP_ALIGN.RIGHT)
 
-    has_rail = cover.show_rail and bool(cover.rail)
+    rail_items = []
+    if cover.show_rail:
+        for idx, item in enumerate(cover.rail):
+            label = _format(item.label, meta, page=1, total=total)
+            value = _format(item.value, meta, page=1, total=total)
+            if not label.strip() or not value.strip():
+                continue
+            label_size = _single_line_size(
+                label, 2.25, 8.8, 7,
+                field=f"cover.rail[{idx}].label", weight="bold")
+            max_lines = 3 if label.strip().upper() in {
+                "ORG", "ORGANIZATION", "OWNER"
+            } else 1
+            value_size, value_lines, value_h = _rail_value_layout(
+                value, field=f"cover.rail[{idx}].value",
+                max_lines=max_lines)
+            rail_items.append((
+                label, label_size, value_lines, value_size, value_h,
+            ))
+
+    has_rail = bool(rail_items)
     title_w = 8.05 if has_rail else 11.45
     subtitle_w = 8.0 if has_rail else 11.35
     title_size, title_lines = fit_text_or_raise(
@@ -349,24 +370,7 @@ def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
     add_text(slide, 0.94, subtitle_y, subtitle_w, 0.8, "\n".join(subtitle_lines),
              subtitle_size, color=cover.secondary_color, spacing=1.2)
 
-    if cover.show_rail and cover.rail:
-        rail_items = []
-        for idx, item in enumerate(cover.rail):
-            label = _format(item.label, meta, page=1, total=total)
-            label_size = _single_line_size(
-                label, 2.25, 8.8, 7,
-                field=f"cover.rail[{idx}].label", weight="bold")
-            value = _format(item.value, meta, page=1, total=total)
-            max_lines = 3 if label.strip().upper() in {
-                "ORG", "ORGANIZATION", "OWNER"
-            } else 1
-            value_size, value_lines, value_h = _rail_value_layout(
-                value, field=f"cover.rail[{idx}].value",
-                max_lines=max_lines)
-            rail_items.append((
-                label, label_size, value_lines, value_size, value_h,
-            ))
-
+    if rail_items:
         item_heights = [0.34 + item[4] for item in rail_items]
         if len(rail_items) > 1:
             item_gap = min(
@@ -390,7 +394,7 @@ def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
                      color=cover.title_color, spacing=1.08, wrap=False)
             y += item_heights[idx] + item_gap
 
-    if cover.show_author:
+    if cover.show_author and meta.get("author"):
         author_size, _ = fit_text_or_raise(
             "cover", "author", meta["author"], 4.8, 0.3, 10.5,
             min_pt=8.5, weight="bold", spacing=1.1)
@@ -406,14 +410,15 @@ def render_footer(slide, page, meta, total, config, *, add_text, add_rect):
         add_rect(slide, 0.72, 6.92, 11.9, 0.01, footer.divider_color)
     if footer.show_text:
         footer_text = _format(footer.text, meta, page=page, total=total)
-        default_text = footer.text == _DEFAULT_DATA["footer"]["text"]
-        footer_size = 8.2
-        if not default_text:
-            footer_size = _single_line_size(
-                footer_text, 7.8, 8.2, 6.5, field="footer.text")
-        add_text(slide, 0.72, 7.01, 7.8, 0.25,
-                 footer_text, footer_size, color=footer.text_color,
-                 anchor=MSO_ANCHOR.MIDDLE, wrap=default_text)
+        if footer_text.strip():
+            default_text = footer.text == _DEFAULT_DATA["footer"]["text"]
+            footer_size = 8.2
+            if not default_text:
+                footer_size = _single_line_size(
+                    footer_text, 7.8, 8.2, 6.5, field="footer.text")
+            add_text(slide, 0.72, 7.01, 7.8, 0.25,
+                     footer_text, footer_size, color=footer.text_color,
+                     anchor=MSO_ANCHOR.MIDDLE, wrap=default_text)
     if footer.show_page_number:
         if footer.show_total:
             add_text(slide, 11.38, 6.98, 0.64, 0.28,

@@ -4,7 +4,8 @@
 
 重要: 「content.jsonだけで生成できる」とは、各 `type` が要求する必須フィールドをすべて持つJSONを用意する、という意味。自由文だけでは生成できない。
 
-既存の `content.json` と `slidegen/content.py` はサンプルデッキ。新規資料の題材作成には使わない。
+`content.json` は資料ごとに新規作成するGit管理外の入力ファイル。リポジトリの回帰検証用データを
+新規資料の題材として流用しない。
 
 ## 機械検証
 
@@ -27,22 +28,32 @@ python slidegen/validate_content.py content.json
 必須:
 
 - `meta.title`: string
-- `meta.footer`: string
-- `meta.date`: string
-- `meta.author`: string
 - `slides`: slide object の配列
+
+任意:
+
+- `meta.footer`: フッターへ表示する資料固有の文言
+- `meta.date`: 表紙または表紙補足欄へ表示する日付
+- `meta.author`: 表紙または表紙補足欄へ表示する作成者・責任者
+
+値が不明または表示不要な任意項目は、空文字や仮文言を入れずキー自体を省略する。
 
 ```json
 {
   "meta": {
-    "title": "資料タイトル",
-    "footer": "フッター文言",
-    "date": "2026年7月",
-    "author": "作成者"
+    "title": "<資料要件から作成した資料名>"
   },
-  "slides": []
+  "slides": [
+    {
+      "type": "title",
+      "title": "<資料の主題>",
+      "subtitle": "<対象範囲または目的>"
+    }
+  ]
 }
 ```
+
+`<...>` は入力箇所を示すschema表記であり、実際の `content.json` に残すとvalidatorが拒否する。
 
 ## 共通ルール
 

@@ -1,21 +1,17 @@
 {
   "cover": {
-    "eyebrow": "社内検討資料",
-    "show_date": false,
-    "show_author": false,
-    "show_rail": true,
+    "eyebrow": "",
+    "show_date": true,
+    "show_author": true,
+    "show_rail": false,
     "background_image": "../slidegen/assets/cover/cover-background.png",
-    "rail": [
-      {"label": "DATE", "value": "{date}"},
-      {"label": "ORGANIZATION", "value": "業務企画本部\n業務改革部\n業務改善推進チーム"},
-      {"label": "OWNER", "value": "{author}\nテンプレート整備責任者"}
-    ],
+    "rail": [],
     "background_color": "16324F",
     "title_color": "FFFDF7",
     "secondary_color": "BFD7D2"
   },
   "footer": {
-    "text": "{author}  |  {title}",
+    "text": "{footer}",
     "show_divider": true,
     "show_text": true,
     "show_page_number": true,

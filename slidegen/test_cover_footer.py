@@ -15,6 +15,7 @@ from cover_footer import (
     render_cover,
     render_footer,
 )
+from validate_content import validate
 
 
 def _must_fail(data, expected, **kwargs):
@@ -43,10 +44,58 @@ def main():
     with Image.open(example.cover.background_image) as image:
         assert image.format == "PNG"
         assert image.width / image.height > 1.7
-    assert example.cover.show_date is False
-    assert example.cover.show_author is False
-    assert [item.label for item in example.cover.rail] == [
-        "DATE", "ORGANIZATION", "OWNER"]
+    assert example.cover.eyebrow == ""
+    assert example.cover.show_date is True
+    assert example.cover.show_author is True
+    assert example.cover.show_rail is False
+    assert example.cover.rail == ()
+    assert example.footer.text == "{footer}"
+
+    minimal_deck = {
+        "meta": {"title": "最小資料"},
+        "slides": [{"type": "title", "title": "表紙", "subtitle": "概要"}],
+    }
+    assert not validate(minimal_deck)
+    placeholder_deck = {
+        "meta": {"title": "<資料名>"},
+        "slides": [{"type": "title", "title": "表紙", "subtitle": "概要"}],
+    }
+    assert any("入力欄が残っています" in error
+               for error in validate(placeholder_deck))
+    optional_text_calls = []
+    render_cover(
+        None, minimal_deck["slides"][0], minimal_deck["meta"], 1, default,
+        add_text=lambda *args, **kwargs: optional_text_calls.append(args),
+        add_rect=lambda *args, **kwargs: None,
+    )
+    rendered = {args[5] for args in optional_text_calls}
+    assert rendered == {"表紙", "概要"}
+
+    empty_dynamic_rail = parse_cover_footer_config({"cover": {
+        "show_date": False,
+        "show_author": False,
+        "show_rail": True,
+        "rail": [
+            {"label": "DATE", "value": "{date}"},
+            {"label": "OWNER", "value": "{author}"},
+        ],
+    }})
+    empty_rail_text_calls = []
+    render_cover(
+        None, minimal_deck["slides"][0], minimal_deck["meta"], 1,
+        empty_dynamic_rail,
+        add_text=lambda *args, **kwargs: empty_rail_text_calls.append(args),
+        add_rect=lambda *args, **kwargs: None,
+    )
+    assert {args[5] for args in empty_rail_text_calls} == {"表紙", "概要"}
+
+    optional_footer_calls = []
+    render_footer(
+        None, 1, minimal_deck["meta"], 1, default,
+        add_text=lambda *args, **kwargs: optional_footer_calls.append(args),
+        add_rect=lambda *args, **kwargs: None,
+    )
+    assert all(args[5] != "" for args in optional_footer_calls)
 
     custom = parse_cover_footer_config({
         "cover": {
@@ -82,8 +131,8 @@ def main():
         "rail": [
             {"label": "DATE", "value": "{date}"},
             {"label": "ORGANIZATION",
-             "value": "サンプル株式会社\nデジタル戦略本部\n業務改善推進部"},
-            {"label": "OWNER", "value": "山田 太郎\nプロジェクト責任者"},
+             "value": "組織A\n部門B\nチームC"},
+            {"label": "OWNER", "value": "担当A\n役割B"},
         ],
     }})
     text_calls = []
@@ -97,8 +146,8 @@ def main():
         add_rect=lambda *args, **kwargs: rect_calls.append((args, kwargs)),
     )
     rendered_text = {args[5]: args for args, _kwargs in text_calls}
-    organization = "サンプル株式会社\nデジタル戦略本部\n業務改善推進部"
-    owner = "山田 太郎\nプロジェクト責任者"
+    organization = "組織A\n部門B\nチームC"
+    owner = "担当A\n役割B"
     assert organization in rendered_text
     assert owner in rendered_text
     assert rendered_text[organization][4] > rendered_text[owner][4] > 0.30

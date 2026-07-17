@@ -13,7 +13,7 @@
 
 | パス | 内容 |
 |---|---|
-| `content.json` | 新規デッキの入力データ。生成AIまたは人間がschemaに沿って作成する |
+| `content.json` | 新規デッキの入力データ。利用時に生成AIまたは人間が新規作成する(Git管理外) |
 | `CONTENT_SCHEMA.md` | `content.json` の中立スキーマ。生成AIにはこれと `AI_DECK_PROMPT.md` を渡す |
 | `AI_DECK_PROMPT.md` | 生成AIに `content.json` を書かせる依頼文の穴埋めテンプレート |
 | `docs/architecture.md` | レイアウタ構成、責務境界、拡張判断、品質保証の設計文書 |
@@ -61,10 +61,12 @@
 1. `AI_DECK_PROMPT.md` の依頼文テンプレートをコピーし、資料テーマ・想定読者・目的・必須内容・
    情報源・枚数目安の各入力欄を具体値で埋める。
 2. 埋めたテンプレートと `CONTENT_SCHEMA.md` を生成AI(どのLLMでも可)に渡し、`content.json` を書かせる。
-   既存の `content.json` / `slidegen/content.py` はサンプルなので参照させない。
 3. 出力を `content.json` としてプロジェクト直下に保存する。
 
 **手動で書く**: `CONTENT_SCHEMA.md` に沿って直接 `content.json` を用意してもよい。
+
+`content.json` は資料ごとの入力であり、リポジトリには同梱しない。以前作成したファイルを流用するときも、
+新しい資料要件にない `lead`、`note`、日付、作成者、担当者などは残さず、フィールド自体を削除する。
 
 構成図(システム構成・ネットワーク図など)は `diagram` type を使い、グリッド仕様(列・行・ノード・エッジ)を書く。
 座標の数値は書かず、`diagram_layout.py` が計算する。ノードの `icon` は必須で、同梱Fluent/AWSアイコンから選ぶ。

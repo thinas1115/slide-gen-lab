@@ -44,7 +44,13 @@ RENDER = dict(generate.RENDER,
 
 
 def main(json_path, out_path, cover_footer_config=None):
-    deck = json.loads(Path(json_path).read_text(encoding="utf-8"))
+    source = Path(json_path)
+    if not source.is_file():
+        raise SystemExit(
+            f"NG: 入力JSONが見つかりません: {source}\n"
+            "  AI_DECK_PROMPT.md と CONTENT_SCHEMA.md に従って"
+            " content.json を新規作成してください。")
+    deck = json.loads(source.read_text(encoding="utf-8"))
     errors = validate(deck)
     if errors:
         print(f"NG: {json_path} に {len(errors)} 件の問題 (生成を中止):",
