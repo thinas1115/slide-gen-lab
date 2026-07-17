@@ -389,6 +389,10 @@ def _v_org(s):
                   "collaboration のいずれかにしてください")
         if "label" in edge and not _is_str(edge["label"]):
             s.err(f"org.edges[{edge_index}].label は空でない文字列にしてください")
+        if kind == "reporting" and "label" in edge:
+            s.err(f"org.edges[{edge_index}].label は advice / collaboration の"
+                  "関係線だけに指定できます。reportingは階層間の共有幹へ"
+                  "まとめるため、責任範囲はノードのsubへ記載してください")
         edge_key = (source, target, kind)
         if edge_key in seen:
             s.err(f"org.edges[{edge_index}] は同じ関係が重複しています")

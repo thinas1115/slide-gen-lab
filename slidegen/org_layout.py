@@ -94,6 +94,13 @@ class OrgLayout:
         for level_index, level in enumerate(self.levels):
             count = len(level)
             gap_x = values["gap_x"]
+            has_same_level_edge = any(
+                self.level_of[edge["from"]] == level_index
+                and self.level_of[edge["to"]] == level_index
+                for edge in self.edges
+            )
+            if has_same_level_edge:
+                gap_x = max(gap_x, 0.60 if count == 2 else 0.50)
             node_w = (FRAME_W - gap_x * (count - 1)) / count
             if node_w < MIN_NODE_W:
                 raise FitError(
@@ -111,30 +118,41 @@ class OrgLayout:
         return boxes
 
     def _assign_ports(self):
-        """複数の入出力線を箱の上辺・下辺へ分散する。"""
-        outgoing = {node_id: [] for node_id in self.nodes}
-        incoming = {node_id: [] for node_id in self.nodes}
-        for edge_index, edge in enumerate(self.edges):
-            outgoing[edge["from"]].append(edge_index)
-            incoming[edge["to"]].append(edge_index)
-
-        source_ports = {}
-        target_ports = {}
-        for node_id, edge_indexes in outgoing.items():
-            edge_indexes.sort(
-                key=lambda index: self.boxes[self.edges[index]["to"]][0]
-                + self.boxes[self.edges[index]["to"]][2] / 2)
-            x, _, w, _ = self.boxes[node_id]
-            for slot, edge_index in enumerate(edge_indexes, 1):
-                source_ports[edge_index] = x + w * slot / (len(edge_indexes) + 1)
-        for node_id, edge_indexes in incoming.items():
-            edge_indexes.sort(
-                key=lambda index: self.boxes[self.edges[index]["from"]][0]
-                + self.boxes[self.edges[index]["from"]][2] / 2)
-            x, _, w, _ = self.boxes[node_id]
-            for slot, edge_index in enumerate(edge_indexes, 1):
-                target_ports[edge_index] = x + w * slot / (len(edge_indexes) + 1)
+        """体制図の幹へ集約するため、各ノードの接続点を中央に統一する。"""
+        source_ports = {
+            edge_index: self.boxes[edge["from"]][0]
+            + self.boxes[edge["from"]][2] / 2
+            for edge_index, edge in enumerate(self.edges)
+        }
+        target_ports = {
+            edge_index: self.boxes[edge["to"]][0]
+            + self.boxes[edge["to"]][2] / 2
+            for edge_index, edge in enumerate(self.edges)
+        }
         return source_ports, target_ports
+
+    def _reporting_components(self, edge_indexes):
+        """同じ階層間でつながる親子群を、共有幹の単位へまとめる。"""
+        remaining = set(edge_indexes)
+        components = []
+        while remaining:
+            seed = remaining.pop()
+            component_edges = {seed}
+            component_nodes = {
+                self.edges[seed]["from"], self.edges[seed]["to"],
+            }
+            changed = True
+            while changed:
+                changed = False
+                for edge_index in list(remaining):
+                    edge = self.edges[edge_index]
+                    if edge["from"] in component_nodes or edge["to"] in component_nodes:
+                        remaining.remove(edge_index)
+                        component_edges.add(edge_index)
+                        component_nodes.update((edge["from"], edge["to"]))
+                        changed = True
+            components.append(sorted(component_edges))
+        return components
 
     def _route_edges(self):
         routed = []
@@ -144,18 +162,22 @@ class OrgLayout:
         for edge_index, edge in enumerate(self.edges):
             source_level = self.level_of[edge["from"]]
             target_level = self.level_of[edge["to"]]
-            if abs(target_level - source_level) == 1:
+            if (edge.get("kind", "reporting") == "reporting"
+                    and abs(target_level - source_level) == 1):
                 key = tuple(sorted((source_level, target_level)))
                 adjacent_groups.setdefault(key, []).append(edge_index)
         lane_fraction = {}
         for edge_indexes in adjacent_groups.values():
-            edge_indexes.sort(
-                key=lambda index: (
-                    self.source_ports[index] + self.target_ports[index]) / 2)
-            count = len(edge_indexes)
-            for slot, edge_index in enumerate(edge_indexes):
-                lane_fraction[edge_index] = (
-                    0.50 if count == 1 else 0.28 + 0.44 * slot / (count - 1))
+            components = self._reporting_components(edge_indexes)
+            components.sort(key=lambda component: sum(
+                self.source_ports[index] + self.target_ports[index]
+                for index in component) / (2 * len(component)))
+            count = len(components)
+            for slot, component in enumerate(components):
+                fraction = (0.50 if count == 1
+                            else 0.38 + 0.24 * slot / (count - 1))
+                for edge_index in component:
+                    lane_fraction[edge_index] = fraction
 
         for edge_index, edge in enumerate(self.edges):
             source = self.boxes[edge["from"]]
@@ -168,6 +190,29 @@ class OrgLayout:
             target_cx = self.target_ports[edge_index]
 
             if source_level == target_level:
+                left_id, right_id = sorted(
+                    (edge["from"], edge["to"]),
+                    key=lambda node_id: self.boxes[node_id][0])
+                left_box = self.boxes[left_id]
+                right_box = self.boxes[right_id]
+                gap_left = left_box[0] + left_box[2]
+                gap_right = right_box[0]
+                has_between = any(
+                    node_id not in {left_id, right_id}
+                    and self.level_of[node_id] == source_level
+                    and gap_left < box[0] + box[2] / 2 < gap_right
+                    for node_id, box in self.boxes.items()
+                )
+                if not has_between:
+                    mid_y = sy + sh / 2
+                    line_left = gap_left + 0.06
+                    line_right = gap_right - 0.06
+                    if edge["from"] == left_id:
+                        points = [(line_left, mid_y), (line_right, mid_y)]
+                    else:
+                        points = [(line_right, mid_y), (line_left, mid_y)]
+                    routed.append(points)
+                    continue
                 bottom_space = self.area.bottom - (sy + sh)
                 lane_below = (source_level == 0
                               or (source_level == len(self.levels) - 1
@@ -326,7 +371,15 @@ class OrgLayout:
                 spacing=1.05)
 
     def render(self, slide):
-        for edge, points in zip(self.edges, self.routes):
+        direct_same_level = {
+            edge_index for edge_index, (edge, points)
+            in enumerate(zip(self.edges, self.routes))
+            if self.level_of[edge["from"]] == self.level_of[edge["to"]]
+            and len(points) == 2
+        }
+        for edge_index, (edge, points) in enumerate(zip(self.edges, self.routes)):
+            if edge_index in direct_same_level:
+                continue
             kind = edge.get("kind", "reporting")
             dash = "dash" if kind != "reporting" else None
             route(slide, points, dash=dash, width=1.25,
@@ -334,9 +387,22 @@ class OrgLayout:
         for level in self.levels:
             for node_id in level:
                 self._draw_node(slide, node_id)
-        for edge, points in zip(self.edges, self.routes):
+        for edge_index in sorted(direct_same_level):
+            edge = self.edges[edge_index]
+            points = self.routes[edge_index]
+            kind = edge.get("kind", "reporting")
+            if kind == "collaboration":
+                center = ((points[0][0] + points[1][0]) / 2,
+                          (points[0][1] + points[1][1]) / 2)
+                route(slide, [center, points[0]], dash="dash", width=1.25)
+                route(slide, [center, points[1]], dash="dash", width=1.25)
+            else:
+                route(slide, points, dash="dash", width=1.25)
+        for edge_index, (edge, points) in enumerate(zip(self.edges, self.routes)):
             if edge.get("label"):
                 cx, cy = self._label_anchor(points)
+                if edge_index in direct_same_level:
+                    cy -= 0.13
                 arrow_label(slide, cx, cy, edge["label"], w=1.45, size=8.5)
 
 

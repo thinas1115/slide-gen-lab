@@ -78,6 +78,15 @@ def main():
     layout = OrgLayout(org, ContentArea())
     assert layout.fit_stage == "standard"
     assert layout.boxes["owner_a"][1] == layout.boxes["owner_b"][1]
+    # 同じ連結成分の報告線は、階層間の横幹と子側接続点を共有する。
+    assert layout.routes[0][1][1] == layout.routes[1][1][1]
+    assert layout.routes[0][-1] == layout.routes[1][-1]
+    assert layout.routes[3][0][0] == layout.routes[4][0][0]
+    assert layout.routes[3][1][1] == layout.routes[4][1][1]
+    # 同一階層で隣接する助言線は、階層間の幹へ迂回しない。
+    assert len(layout.routes[2]) == 2
+    pm_right = layout.boxes["pm"][0] + layout.boxes["pm"][2]
+    assert layout.boxes["advisor"][0] - pm_right >= 0.59
     box_items = list(layout.boxes.items())
     for index, (_, box) in enumerate(box_items):
         for _, other in box_items[index + 1:]:
@@ -117,6 +126,11 @@ def main():
         {"from": "operation", "to": "pm"})
     errors = validate(reverse)
     assert any("上位階層から下位階層" in error for error in errors)
+
+    reporting_label = deepcopy(_deck(org))
+    reporting_label["slides"][0]["org"]["edges"][0]["label"] = "承認"
+    errors = validate(reporting_label)
+    assert any("共有幹" in error for error in errors)
 
     dense = deepcopy(org)
     for node in dense["nodes"].values():

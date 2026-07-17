@@ -278,7 +278,7 @@ PATTERN_DECK = {
                 },
                 "levels": [
                     ["business_owner", "tech_owner"],
-                    ["program_pm", "architecture", "advisor"],
+                    ["advisor", "program_pm", "architecture"],
                     ["business_design", "development", "rollout"],
                     ["operation", "security"],
                 ],

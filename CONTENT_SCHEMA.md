@@ -546,7 +546,7 @@ python slidegen/validate_content.py content.json
 - `org.edges`: 関係の配列
   - `from` / `to`: 接続するノードID
   - `kind`: `"reporting" | "advice" | "collaboration"`。省略時は`reporting`
-  - `label`: 関係ラベル
+  - `label`: 関係ラベル。`advice`と`collaboration`だけに指定できる
 - `note`: string
 
 制約:
@@ -555,6 +555,8 @@ python slidegen/validate_content.py content.json
 - すべてのノードを`levels`のいずれか1階層へ1回だけ配置する。
 - `members` は各ノード0〜4件。
 - `reporting`は上位階層から下位階層へ接続する。1段飛ばし、複数親、複数子を指定できる。
+- 隣接階層の`reporting`は、同じ連結成分の親群と子群を1本の共有幹へまとめる。
+  一般的な体制図と同じく、親ごと・子ごとに横線を重ねない。
 - `advice`と`collaboration`は点線。`collaboration`は双方向矢印になる。
 - 座標・箱サイズ・線の経由点は書かない。レイアウタが階層数と情報量から自動計算する。
 - 標準配置で収まらない場合は、階層間余白の圧縮、箱と文字の縮小を順に行う。
