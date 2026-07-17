@@ -7,8 +7,8 @@
     "background_image": "../slidegen/assets/cover/cover-background.png",
     "rail": [
       {"label": "DATE", "value": "{date}"},
-      {"label": "ORG", "value": "業務改善推進部"},
-      {"label": "OWNER", "value": "{author}"}
+      {"label": "ORGANIZATION", "value": "業務企画本部\n業務改革部\n業務改善推進チーム"},
+      {"label": "OWNER", "value": "{author}\nテンプレート整備責任者"}
     ],
     "background_color": "16324F",
     "title_color": "FFFDF7",

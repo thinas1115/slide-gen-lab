@@ -46,7 +46,7 @@ def main():
     assert example.cover.show_date is False
     assert example.cover.show_author is False
     assert [item.label for item in example.cover.rail] == [
-        "DATE", "ORG", "OWNER"]
+        "DATE", "ORGANIZATION", "OWNER"]
 
     custom = parse_cover_footer_config({
         "cover": {
@@ -74,6 +74,57 @@ def main():
         "show_rail": True,
         "rail": [{"label": "OWNER", "value": "{author}"}],
     }}, "show_author を false")
+
+    multiline = parse_cover_footer_config({"cover": {
+        "show_date": False,
+        "show_author": False,
+        "show_rail": True,
+        "rail": [
+            {"label": "DATE", "value": "{date}"},
+            {"label": "ORGANIZATION",
+             "value": "サンプル株式会社\nデジタル戦略本部\n業務改善推進部"},
+            {"label": "OWNER", "value": "山田 太郎\nプロジェクト責任者"},
+        ],
+    }})
+    text_calls = []
+    rect_calls = []
+    render_cover(
+        None, {"title": "Title", "subtitle": "Subtitle"},
+        {"title": "T", "footer": "F", "date": "2026年7月",
+         "author": "A"},
+        10, multiline,
+        add_text=lambda *args, **kwargs: text_calls.append((args, kwargs)),
+        add_rect=lambda *args, **kwargs: rect_calls.append((args, kwargs)),
+    )
+    rendered_text = {args[5]: args for args, _kwargs in text_calls}
+    organization = "サンプル株式会社\nデジタル戦略本部\n業務改善推進部"
+    owner = "山田 太郎\nプロジェクト責任者"
+    assert organization in rendered_text
+    assert owner in rendered_text
+    assert rendered_text[organization][4] > rendered_text[owner][4] > 0.30
+    rail_rect = next(args for args, _kwargs in rect_calls if args[3] == 0.012)
+    assert rail_rect[4] > 3.5
+
+    too_many_owner_lines = parse_cover_footer_config({"cover": {
+        "show_author": False,
+        "show_rail": True,
+        "rail": [{
+            "label": "OWNER",
+            "value": "1行目\n2行目\n3行目\n4行目",
+        }],
+    }})
+    try:
+        render_cover(
+            None, {"title": "Title", "subtitle": "Subtitle"},
+            {"title": "T", "footer": "F", "date": "D", "author": "A"},
+            10, too_many_owner_lines,
+            add_text=lambda *args, **kwargs: None,
+            add_rect=lambda *args, **kwargs: None,
+        )
+    except ValueError as e:
+        assert "3行以内" in str(e), str(e)
+    else:
+        raise AssertionError("OWNERの4行入力を拒否しませんでした")
 
     too_long = parse_cover_footer_config({
         "footer": {"text": "W" * 100},
