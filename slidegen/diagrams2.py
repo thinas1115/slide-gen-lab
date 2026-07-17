@@ -220,8 +220,10 @@ def _s_process_flow(slide, spec, page):
     node_h = fitted.values["node_h"]
     gap_y = fitted.values["gap_y"]
     body_size = fitted.values["font"]
-    left, usable_w, gap_x = 0.72, 11.90, 0.42
+    left, usable_w = 0.72, 11.90
     level_count = len(levels)
+    # 分岐ラベルを箱に重ねず置けるよう、列数に応じて必要な間隔を確保する。
+    gap_x = 0.56 if level_count <= 5 else 0.52
     node_w = (usable_w - gap_x * (level_count - 1)) / level_count
     if node_w < 1.55:
         raise FitError(
@@ -230,8 +232,7 @@ def _s_process_flow(slide, spec, page):
 
     rects = {}
     for level_index, level in enumerate(levels):
-        used_h = len(level) * node_h + max(0, len(level) - 1) * gap_y
-        top = area.top + 0.22 + max(0, (area.height - 0.42 - used_h) / 2)
+        top = area.top + 0.34
         x = left + level_index * (node_w + gap_x)
         for row_index, node_id in enumerate(level):
             y = top + row_index * (node_h + gap_y)
@@ -239,6 +240,7 @@ def _s_process_flow(slide, spec, page):
 
     feedback_count = 0
     routed = []
+    max_node_bottom = max(y + h for _x, y, _w, h in rects.values())
     level_of = {node_id: index for index, level in enumerate(levels)
                 for node_id in level}
     for edge in edges:
@@ -253,7 +255,11 @@ def _s_process_flow(slide, spec, page):
             if abs(start[1] - end[1]) < 0.03:
                 points = [start, end]
         else:
-            lane_y = area.bottom - 0.16 - feedback_count * 0.12
+            lane_y = max_node_bottom + 0.48 + feedback_count * 0.16
+            if lane_y > area.bottom - 0.16:
+                raise FitError(
+                    "process.flow: 差戻し線を本文領域へ配置できません。"
+                    "分岐数を減らすか工程を複数スライドへ分割してください。")
             feedback_count += 1
             start = (sx + sw / 2, sy + sh)
             end = (tx + tw / 2, ty + th)
@@ -303,8 +309,13 @@ def _s_process_flow(slide, spec, page):
             label_x, label_y, label_w = (
                 (start[0] + end[0]) / 2, (start[1] + end[1]) / 2, 1.35)
         else:
+            sx, _sy, sw, _sh = rects[edge["from"]]
+            tx, _ty, _tw, _th = rects[edge["to"]]
             end = points[-1]
-            label_x, label_y, label_w = end[0] - 0.33, end[1], 0.70
+            label_w = min(1.20, max(0.32, tx - (sx + sw) - 0.06))
+            # 分岐元と接続先の間へ置き、どちらの枠も背景マスクで欠かさない。
+            label_x = (sx + sw + tx) / 2
+            label_y = end[1]
         arrow_label(slide, label_x, label_y, edge["label"],
                     w=label_w, size=8.5)
     if spec.get("note"):

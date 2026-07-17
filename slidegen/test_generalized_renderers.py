@@ -106,7 +106,14 @@ def main():
             {"from": "fix", "to": "review", "kind": "feedback"},
         ],
     }
-    s_process(_slide(), dict(_base("process"), flow=flow), 1)
+    process_slide = _slide()
+    s_process(process_slide, dict(_base("process"), flow=flow), 1)
+    first_node_name = flow["nodes"][flow["levels"][0][0]]["name"]
+    request_text = next(
+        shape for shape in process_slide.shapes
+        if getattr(shape, "has_text_frame", False)
+        and shape.text == first_node_name)
+    assert request_text.top / Inches(1) < 2.6
     dense_levels = [[f"n{column}_{row}" for row in range(3)]
                     for column in range(3)]
     assert _fit_process_flow(4.0, dense_levels).stage == "gap"
