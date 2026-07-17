@@ -163,8 +163,9 @@ PATTERN_DECK = {
                 {
                     "name": "利用部門の拡大",
                     "activities": [
-                        {"label": "対象業務の選定", "start": "4月", "end": "6月"},
-                        {"label": "追加部門へ展開", "start": "11月", "end": "3月", "emph": True},
+                        {"label": "対象業務の選定", "start": 0.25, "end": 2.75},
+                        {"label": "追加部門へ展開", "start": 7.5, "end": 12,
+                         "emph": True},
                     ],
                 },
                 {
@@ -204,7 +205,7 @@ PATTERN_DECK = {
                     ],
                 },
             ],
-            "note": "作業の重なりからレーン数を自動計算する。",
+            "note": "月途中の開始・終了は1/4月単位で表現する。",
         },
         {
             "type": "matrix",

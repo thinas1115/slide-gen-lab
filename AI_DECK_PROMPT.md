@@ -43,7 +43,7 @@
    存在する相対パスだけを書く。画像が未提供なら架空のパスを作らず、必要な画像の要件を資料要件に対する確認事項として扱う。
    画像の説明は必要な場合だけ`lead`へ書き、`caption`と`source`は使わない。Web画像は取得元・権利者・
    利用条件を確認し、リポジトリへ含める場合は`slidegen/assets/CREDITS.md`へ記録する。
-10. `type` は `CONTENT_SCHEMA.md` に載っているものだけ使う。件数制約も `validate_content.py` が機械検証する。フェーズ単位の計画は `roadmap`、複数テーマ内の並行作業は `program_roadmap` を使い分ける。
+10. `type` は `CONTENT_SCHEMA.md` に載っているものだけ使う。件数制約も `validate_content.py` が機械検証する。フェーズ単位の計画は `roadmap`、複数テーマ内の並行作業は `program_roadmap` を使い分ける。`program_roadmap`で月途中の開始・終了が必要な場合は、数値の`start / end`を0.25刻みの期間境界indexで指定する。
 11. 体制図は`org.nodes / org.levels / org.edges`で記述する。`top / pm / teams / external`の旧形式や座標は使わない。
 12. JSON以外の説明文を付けない。
 
