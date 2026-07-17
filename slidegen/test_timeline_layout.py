@@ -2,8 +2,9 @@
 from copy import deepcopy
 
 from layout_fit import FitError
-from timeline_layout import (fit_program_roadmap, fit_roadmap, pack_activities,
-                             resolve_marker, resolve_program_span, resolve_span)
+from timeline_layout import (centered_label_box, fit_program_roadmap,
+                             fit_roadmap, pack_activities, resolve_marker,
+                             resolve_program_span, resolve_span)
 from validate_content import validate
 
 
@@ -48,6 +49,12 @@ def main():
     assert quarter_lane_count == 1
     assert [(p.start, p.end) for p in quarter_placements] == [
         (0.25, 1.25), (1.25, 2.75)]
+
+    label_x, label_w = centered_label_box(
+        center=4.5, previous_center=None, following_center=5.25,
+        outer_left=0.0, outer_right=12.0, max_width=1.45)
+    assert abs((label_x + label_w / 2) - 4.5) < 1e-9
+    assert abs(label_w - 0.75) < 1e-9
 
     assert fit_roadmap(5.27, 3).stage == "standard"
     assert fit_roadmap(5.27, 6).stage == "gap"

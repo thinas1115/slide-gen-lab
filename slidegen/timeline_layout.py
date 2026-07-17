@@ -89,6 +89,23 @@ def pack_activities(activities, periods):
     return placements, len(lane_ends)
 
 
+def centered_label_box(center, previous_center, following_center,
+                       outer_left, outer_right, max_width):
+    """隣接ラベルと重ねず、中心をバー中心に固定したラベル枠を返す。"""
+    left_limit = outer_left if previous_center is None else (
+        previous_center + center) / 2
+    right_limit = outer_right if following_center is None else (
+        center + following_center) / 2
+    half_width = min(
+        max_width / 2,
+        center - left_limit,
+        right_limit - center,
+    )
+    if half_width <= 0:
+        raise ValueError("ラベルを中央配置できる幅がありません")
+    return center - half_width, half_width * 2
+
+
 def fit_roadmap(available, row_count, *, has_note=False):
     """既存roadmapを最大6行まで段階的に収容する。"""
     reserve = 0.30 if has_note else 0.0

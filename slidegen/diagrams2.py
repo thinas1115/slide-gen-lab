@@ -10,8 +10,9 @@ from generate import (ACCENT, CORAL, GRAY, LIGHT, NAVY, RULE, TEXT, WHITE,
 from diagrams import add_arrow
 from layout_fit import FitError, ensure_within, fit_text_or_raise
 from textfit import text_width_in
-from timeline_layout import (fit_program_roadmap, fit_roadmap, pack_activities,
-                             resolve_marker, resolve_span)
+from timeline_layout import (centered_label_box, fit_program_roadmap,
+                             fit_roadmap, pack_activities, resolve_marker,
+                             resolve_span)
 
 PROGRAM_LINE_PT = 1.4
 
@@ -303,16 +304,14 @@ def s_program_roadmap(slide, spec, page):
             _activity_line(slide, x1, lane_top + 0.035, x2, color)
             text_h = values["lane_pitch"] - 0.07
             previous, following = lane_neighbors[placement.index]
-            left_bound = grid_x if previous is None else (
-                grid_x + (previous.end + placement.start) * period_w / 2)
-            right_bound = grid_x + grid_w if following is None else (
-                grid_x + (placement.end + following.start) * period_w / 2)
-            available_label_w = right_bound - left_bound
-            activity_label_w = min(1.45, available_label_w)
             label_center = (x1 + x2) / 2
-            activity_label_x = min(
-                max(label_center - activity_label_w / 2, left_bound),
-                right_bound - activity_label_w,
+            previous_center = None if previous is None else (
+                grid_x + (previous.start + previous.end) * period_w / 2)
+            following_center = None if following is None else (
+                grid_x + (following.start + following.end) * period_w / 2)
+            activity_label_x, activity_label_w = centered_label_box(
+                label_center, previous_center, following_center,
+                grid_x, grid_x + grid_w, 1.45,
             )
             activity_size = _fit_single_line(
                 "program_roadmap",
