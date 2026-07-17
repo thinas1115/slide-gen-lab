@@ -2,6 +2,7 @@
 from copy import deepcopy
 
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.util import Inches
 
 import generate
@@ -31,6 +32,31 @@ def _must_fail(callable_, expected):
         assert expected in str(exc), str(exc)
     else:
         raise AssertionError("最小設定での明示停止が発生しませんでした")
+
+
+def _text_shape(slide, text):
+    return next(
+        shape for shape in slide.shapes
+        if getattr(shape, "has_text_frame", False) and shape.text == text)
+
+
+def _assert_process_natural_top(slide, flow, area_top):
+    first_row_ids = [level[0] for level in flow["levels"]]
+    first_row_tops = [
+        _text_shape(slide, flow["nodes"][node_id]["name"]).top / Inches(1)
+        for node_id in first_row_ids
+    ]
+    expected_title_top = area_top + 0.34 + 0.13
+    assert max(first_row_tops) - min(first_row_tops) < 0.01
+    assert abs(first_row_tops[0] - expected_title_top) < 0.01
+
+    connector_bottoms = [
+        (shape.top + shape.height) / Inches(1)
+        for shape in slide.shapes
+        if shape.shape_type == MSO_SHAPE_TYPE.LINE
+    ]
+    assert connector_bottoms
+    assert max(connector_bottoms) < generate.BODY_BOTTOM - 0.80
 
 
 def main():
@@ -108,12 +134,18 @@ def main():
     }
     process_slide = _slide()
     s_process(process_slide, dict(_base("process"), flow=flow), 1)
-    first_node_name = flow["nodes"][flow["levels"][0][0]]["name"]
-    request_text = next(
-        shape for shape in process_slide.shapes
-        if getattr(shape, "has_text_frame", False)
-        and shape.text == first_node_name)
-    assert request_text.top / Inches(1) < 2.6
+    _assert_process_natural_top(process_slide, flow, generate.BODY_TOP)
+
+    lead = "審査結果と次の対応を先に説明します。"
+    lead_probe = _slide()
+    lead_area = generate.header(lead_probe, "TEST", "汎用化検証", lead)
+    lead_process_slide = _slide()
+    s_process(
+        lead_process_slide,
+        dict(_base("process"), flow=flow, lead=lead),
+        1,
+    )
+    _assert_process_natural_top(lead_process_slide, flow, lead_area.top)
     dense_levels = [[f"n{column}_{row}" for row in range(3)]
                     for column in range(3)]
     assert _fit_process_flow(4.0, dense_levels).stage == "gap"
