@@ -18,7 +18,7 @@ from PIL import Image
 
 from asset_paths import resolve_icon_path, resolve_image_path
 from generate import BODY_W
-from timeline_layout import resolve_marker, resolve_span
+from timeline_layout import resolve_marker, resolve_program_span, resolve_span
 
 # 旧固定構成図type。互換性のあるエラーを返すため、廃止名だけ保持する。
 RETIRED_TYPES = {"aws", "aws2"}
@@ -258,7 +258,7 @@ def _v_program_roadmap(s):
                 s.err(f"tracks[{i}].activities[{j}].emph は真偽値にしてください")
             if periods:
                 try:
-                    resolve_span(activity, periods)
+                    resolve_program_span(activity, periods)
                 except ValueError as exc:
                     s.err(f"tracks[{i}].activities[{j}] の{exc}")
     if activity_count > 24:

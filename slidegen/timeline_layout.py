@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 from layout_fit import select_fit, stepped
 
+PROGRAM_ROADMAP_STEP = 0.25
+
 
 @dataclass(frozen=True)
 class ActivityPlacement:
@@ -40,6 +42,19 @@ def resolve_span(item, periods):
     return start, end
 
 
+def resolve_program_span(item, periods):
+    """program_roadmapの期間を1/4期間刻みの境界へ正規化する。"""
+    start, end = resolve_span(item, periods)
+    for field, position in (("start", start), ("end", end)):
+        steps = position / PROGRAM_ROADMAP_STEP
+        if abs(steps - round(steps)) > 1e-8:
+            raise ValueError(
+                f"{field}={item.get(field)!r} は0.25刻みの期間境界で"
+                "指定してください"
+            )
+    return start, end
+
+
 def resolve_marker(value, periods):
     """マイルストーン位置を解決する。文字列は該当期間の中央へ置く。"""
     at = _period_index(value, periods, marker=True)
@@ -54,7 +69,7 @@ def pack_activities(activities, periods):
     """重なる作業を別レーンへ自動配置する区間彩色。"""
     normalized = []
     for index, activity in enumerate(activities):
-        start, end = resolve_span(activity, periods)
+        start, end = resolve_program_span(activity, periods)
         normalized.append((start, end, index, activity))
     normalized.sort(key=lambda item: (item[0], item[1], item[2]))
 
