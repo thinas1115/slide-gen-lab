@@ -70,6 +70,14 @@ def main():
                        for _ in range(7)], emph=[])
     _must_fail(s_process, spec, "工程は3〜6件")
 
+    optional_actor = _base("process")
+    optional_actor.update(steps=[
+        {"name": "工程A", "desc": "担当表示なし"},
+        {"name": "工程B", "desc": "担当表示あり", "actor": "担当区分"},
+        {"name": "工程C", "desc": "担当表示なし"},
+    ])
+    s_process(_slide(), optional_actor, 1)
+
     spec = _base("roadmap")
     spec.update(months=["1月", "2月", "3月", "4月"], milestones=[],
                 phases=[{"name": "Phase", "goal": "目標", "bar": "実行",

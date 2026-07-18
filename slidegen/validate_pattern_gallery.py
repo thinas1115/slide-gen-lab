@@ -58,7 +58,7 @@ def main(pptx_path, png_dir, md_path, csv_path):
         findings = by_slide.get(idx, [])
         rows.append({
             "idx": idx,
-            "pattern": spec.get("pattern", spec["type"]),
+            "pattern": f"{spec['type']}: {spec['title'].replace(chr(10), ' ')}",
             "title": spec.get("title", "").replace("|", "｜").replace("\n", "<br>"),
             "layout": "OK" if not findings else "<br>".join(findings).replace("|", "｜"),
             "png": png_status(png_dir, idx),

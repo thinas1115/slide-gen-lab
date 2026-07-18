@@ -29,7 +29,7 @@ def main():
     assert lead_area.bottom == generate.BODY_BOTTOM
     assert lead_area.shifted
 
-    errors = validate(deepcopy(LEAD_PATTERN_DECK))
+    errors = validate(deepcopy(LEAD_PATTERN_DECK), require_title=False)
     assert not errors, "\n".join(errors)
 
     generate.DECK = LEAD_PATTERN_DECK
@@ -38,7 +38,8 @@ def main():
 
     invalid = deepcopy(LEAD_PATTERN_DECK)
     invalid["slides"][0]["lead"] = ""
-    assert any("空でない文字列" in e for e in validate(invalid))
+    assert any("空でない文字列" in e
+               for e in validate(invalid, require_title=False))
 
     title_with_lead = {
         "meta": deepcopy(LEAD_PATTERN_DECK["meta"]),

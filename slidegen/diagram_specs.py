@@ -46,7 +46,7 @@ AWS_SIMPLE_EXAMPLE = {
     "edges": [
         {"from": "user", "to": "alb", "label": "HTTPS"},
         {"from": "alb", "to": "ecs"},
-        {"from": "ecs", "to": "bedrock", "label": "構成生成", "label_seg": 0},
+        {"from": "ecs", "to": "bedrock", "label": "構成生成"},
         {"from": "ecs", "to": "s3", "label": "読み書き"},
         {"from": "ecs", "to": "cw"},
         {"from": "s3", "to": "dept", "label": "署名URL"},
@@ -90,9 +90,8 @@ AWS_MULTIAZ_EXAMPLE = {
     "channels": {
         "loop_a": ["outside_container", ["az_a", "left"]],
         "loop_c": ["outside_container", ["az_c", "right"]],
-        # AZ-c境界とVPC境界の中間にS3向けの専用レーンを確保する。
-        # 標準gapではRDS側ループに近すぎるため、境界から0.34in離す。
-        "s3_lane": ["outside_container", ["az_c", "right", 0.34]],
+        # 同じ辺の2本目はエンジンが外側へ離し、S3向け専用レーンにする。
+        "s3_lane": ["outside_container", ["az_c", "right"]],
         # ALB→Fargateの横方向ジョグをAZコンテナのラベル帯のすぐ下(内側)で
         # 行い、ラベルの文字帯を横切らないようにする(自動Zルート任せだと
         # ジョグ位置がラベル帯の高さと重なることがあった。実際に発生した不具合)。
@@ -102,9 +101,8 @@ AWS_MULTIAZ_EXAMPLE = {
     "edges": [
         {"from": "user", "to": "cf"},
         # r53とcfは同じ列(edge)で真上・真下に並ぶので側面迂回させず素直に縦接続する
-        {"from": "r53", "to": "cf", "dash": "dash", "label": "名前解決",
-         "label_w": 1.0},
-        {"from": "cf", "to": "alb", "label": "HTTPS", "label_w": 1.0},
+        {"from": "r53", "to": "cf", "dash": "dash", "label": "名前解決"},
+        {"from": "cf", "to": "alb", "label": "HTTPS"},
         # ALBからは真下に分岐させる(HTTPSの着信ポート[左辺]と衝突させない)
         {"from": "alb", "to": "fg_a", "exit": "bottom", "enter": "top",
          "via": ["above_az_a"]},
@@ -115,14 +113,12 @@ AWS_MULTIAZ_EXAMPLE = {
         {"from": "fg_c", "to": "rds_c", "exit": "bottom", "enter": "right",
          "via": ["loop_c"]},
         {"from": "rds_a", "to": "rds_c", "both": True, "dash": "dash",
-         "label": "同期", "label_w": 0.8},
+         "label": "同期"},
         # VPC境界のすぐ外や自動Zの中央へ通すと、VPC/AZ境界またはRDS側
         # ループと近接する。専用レーンで両者の間を通し、Fargate右辺から
         # S3左辺へ垂直に接続する。
-        # label_seg=0でFargate直近の水平区間へラベルを固定する。
         {"from": "fg_c", "to": "s3", "exit": "right", "enter": "left",
-         "via": ["s3_lane"],
-         "label": "成果物", "label_w": 0.9, "label_seg": 0},
+         "via": ["s3_lane"], "label": "成果物"},
         {"from": "@vpc", "to": "cw", "from_row": "rds", "dash": "dash"},
     ],
 }

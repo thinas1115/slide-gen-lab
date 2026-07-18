@@ -14,13 +14,11 @@ PATTERN_DECK = {
     "slides": [
         {
             "type": "title",
-            "pattern": "title",
             "title": "社内スライド\nパターンライブラリ",
             "subtitle": "意思決定からシステム構成まで、21の標準レイアウトを検証",
         },
         {
             "type": "bullets",
-            "pattern": "agenda / bullets",
             "kicker": "検証方針",
             "title": "LLMは構造化、rendererは提出品質を担う",
             "bullets": [
@@ -31,7 +29,6 @@ PATTERN_DECK = {
         },
         {
             "type": "cards",
-            "pattern": "editorial key points",
             "style": "editorial",
             "kicker": "要点整理",
             "title": "判断に必要な4つの要点を、読み順に沿って整理する",
@@ -45,7 +42,6 @@ PATTERN_DECK = {
         },
         {
             "type": "cards",
-            "pattern": "KPI metric cards",
             "style": "metrics",
             "kicker": "KPIスナップショット",
             "title": "KPIは数値を主役にし、判断材料を添える",
@@ -61,7 +57,6 @@ PATTERN_DECK = {
         },
         {
             "type": "twocol",
-            "pattern": "2-column comparison",
             "kicker": "Before / After",
             "title": "導入前後の違いを、同じ観点で比較する",
             "left": {
@@ -85,7 +80,6 @@ PATTERN_DECK = {
         },
         {
             "type": "table",
-            "pattern": "comparison table",
             "kicker": "方式比較",
             "title": "選定理由と見送り理由を、同じ粒度で比較する",
             "columns": ["方式", "向いている用途", "強み", "注意点"],
@@ -97,7 +91,6 @@ PATTERN_DECK = {
         },
         {
             "type": "chart",
-            "pattern": "bar chart",
             "kicker": "効果測定",
             "title": "資料作成時間を最大72%短縮",
             "note": "値は検証用のサンプルデータ。",
@@ -111,7 +104,6 @@ PATTERN_DECK = {
         },
         {
             "type": "chart",
-            "pattern": "line chart",
             "kicker": "利用推移",
             "title": "月次利用率は、試行開始から継続的に上昇",
             "chart": {
@@ -128,7 +120,6 @@ PATTERN_DECK = {
         },
         {
             "type": "chart",
-            "pattern": "stacked column chart",
             "kicker": "工数内訳",
             "title": "自動化後は、作成よりレビューへ時間を配分できる",
             "chart": {
@@ -145,7 +136,6 @@ PATTERN_DECK = {
         },
         {
             "type": "image",
-            "pattern": "large visual / cover",
             "kicker": "画面イメージ",
             "title": "画面キャプチャを、スライドの主役として大きく見せる",
             "image": "images/pptxdsl-repository.png",
@@ -155,7 +145,6 @@ PATTERN_DECK = {
         },
         {
             "type": "process",
-            "pattern": "process / timeline",
             "kicker": "標準プロセス",
             "title": "資料生成は5つの工程で品質を担保する",
             "steps": [
@@ -169,7 +158,6 @@ PATTERN_DECK = {
         },
         {
             "type": "process",
-            "pattern": "branched process flow",
             "kicker": "承認フロー",
             "title": "審査結果に応じた分岐・差戻し・再申請を1枚で示す",
             "flow": {
@@ -199,7 +187,6 @@ PATTERN_DECK = {
         },
         {
             "type": "roadmap",
-            "pattern": "roadmap / gantt",
             "kicker": "展開計画",
             "title": "12か月で型の整備から全社標準へ移行する",
             "months": ["4月", "5月", "6月", "7月", "8月", "9月",
@@ -224,7 +211,6 @@ PATTERN_DECK = {
         },
         {
             "type": "program_roadmap",
-            "pattern": "multi-track program roadmap",
             "kicker": "年間プログラム",
             "title": "5つの改善テーマと並行作業を、年間計画として俯瞰する",
             "periods": ["4月", "5月", "6月", "7月", "8月", "9月",
@@ -279,7 +265,6 @@ PATTERN_DECK = {
         },
         {
             "type": "matrix",
-            "pattern": "2-axis matrix",
             "kicker": "優先度整理",
             "title": "提出品質と再利用性から、整備優先度を決める",
             "x_axis": "再利用性 →",
@@ -298,7 +283,6 @@ PATTERN_DECK = {
         },
         {
             "type": "hub",
-            "pattern": "stakeholder hub",
             "kicker": "関係者調整",
             "title": "運用事務局を中心に、5部門の役割をつなぐ",
             "hub": "テンプレート\n運用事務局",
@@ -312,7 +296,6 @@ PATTERN_DECK = {
         },
         {
             "type": "org",
-            "pattern": "organization chart",
             "kicker": "推進体制",
             "title": "事業・技術の共同責任者から、実行組織へ権限をつなぐ",
             "org": {
@@ -372,7 +355,6 @@ PATTERN_DECK = {
         {
             "type": "diagram",
             "diagram": deepcopy(AWS_SIMPLE_EXAMPLE),
-            "pattern": "simple architecture (inline diagram)",
             "kicker": "構成図",
             "title": "主要コンポーネントとデータの流れを短く示す",
             "note": "AWSアイコンは slidegen/assets/icons/aws/ から読み込む。",
@@ -380,14 +362,12 @@ PATTERN_DECK = {
         {
             "type": "diagram",
             "diagram": deepcopy(AWS_MULTIAZ_EXAMPLE),
-            "pattern": "dense architecture (inline diagram)",
             "kicker": "高密度構成図",
             "title": "高密度なAWS構成も、グリッド仕様で自動配置する",
         },
         {
             # AWS以外の構成図も、同梱Fluentアイコンを指定して描けることを検証する。
             "type": "diagram",
-            "pattern": "fluent icon architecture",
             "kicker": "Fluentアイコン構成図",
             "title": "SSO・監査・バックアップを含む業務システム構成を表現する",
             "note": "同梱のMicrosoft Fluent UIアイコンを使用。ライセンスはslidegen/assets/CREDITS.mdを参照。",
@@ -426,25 +406,22 @@ PATTERN_DECK = {
                     "backup_lane": ["outside_container", ["dc", "right"]],
                 },
                 "edges": [
-                    {"from": "client", "to": "fw", "label": "HTTPS",
-                     "label_w": 1.0},
+                    {"from": "client", "to": "fw", "label": "HTTPS"},
                     {"from": "fw", "to": "web"},
                     {"from": "identity", "to": "web",
-                     "label": "認証", "label_w": 0.9},
-                    {"from": "web", "to": "db", "label": "SQL", "label_w": 0.8},
+                     "label": "認証"},
+                    {"from": "web", "to": "db", "label": "SQL"},
                     {"from": "web", "to": "log", "exit": "bottom",
                      "enter": "left", "via": ["log_lane"],
-                     "label": "監査ログ", "label_w": 1.2,
-                     "label_seg": 1, "dash": "dash"},
+                     "label": "監査ログ", "dash": "dash"},
                     {"from": "db", "to": "backup", "exit": "right",
                      "enter": "right", "via": ["backup_lane"],
-                     "label": "日次", "label_w": 0.8, "dash": "dash"},
+                     "label": "日次", "dash": "dash"},
                 ],
             },
         },
         {
             "type": "diagram",
-            "pattern": "event-driven fan-out (inline diagram)",
             "kicker": "イベント駆動構成図",
             "title": "受付と処理を分離し、保存・監視へ非同期分岐する",
             "diagram": {

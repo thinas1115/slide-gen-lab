@@ -18,16 +18,38 @@ from pathlib import Path
 from PIL import Image
 
 from asset_paths import resolve_icon_path, resolve_image_path
-from generate import BODY_W
 from timeline_layout import resolve_marker, resolve_program_span, resolve_span
 
 # 旧固定構成図type。互換性のあるエラーを返すため、廃止名だけ保持する。
 RETIRED_TYPES = {"aws", "aws2"}
 
-# noteを実際に描画するtype。それ以外に書いても黙って無視される。
+# noteを実際に描画するtype。それ以外への指定はエラーにする。
 NOTE_TYPES = {"table", "chart", "process", "roadmap", "program_roadmap",
               "matrix", "hub", "org", "diagram"}
 _PLACEHOLDER = re.compile(r"^<[^<>]+>$")
+_UNRESOLVED = re.compile(r"^(?:TBD|TODO|要確認|未定|仮入力|仮文言)$", re.IGNORECASE)
+
+_TOP_LEVEL_KEYS = {"meta", "slides"}
+_META_KEYS = {"title", "footer", "date", "author"}
+_BASE_SLIDE_KEYS = {"type", "kicker", "title", "lead"}
+_TYPE_KEYS = {
+    "title": {"type", "title", "subtitle"},
+    "bullets": _BASE_SLIDE_KEYS | {"bullets"},
+    "cards": _BASE_SLIDE_KEYS | {"style", "cards"},
+    "table": _BASE_SLIDE_KEYS | {"columns", "rows", "note"},
+    "twocol": _BASE_SLIDE_KEYS | {"left", "right"},
+    "chart": _BASE_SLIDE_KEYS | {"chart", "note"},
+    "image": _BASE_SLIDE_KEYS | {"image", "fit", "shadow", "alt"},
+    "process": _BASE_SLIDE_KEYS | {"steps", "emph", "flow", "note"},
+    "roadmap": _BASE_SLIDE_KEYS | {"months", "phases", "milestones", "note"},
+    "program_roadmap": _BASE_SLIDE_KEYS | {"periods", "tracks", "note"},
+    "matrix": _BASE_SLIDE_KEYS | {
+        "x_axis", "y_axis", "points", "quadrants", "target_label", "note",
+    },
+    "hub": _BASE_SLIDE_KEYS | {"hub", "ring", "note"},
+    "org": _BASE_SLIDE_KEYS | {"org", "note"},
+    "diagram": _BASE_SLIDE_KEYS | {"diagram", "note"},
+}
 
 
 def _is_str(v):
@@ -48,6 +70,24 @@ def _placeholder_paths(value, path=""):
     elif isinstance(value, list):
         for index, child in enumerate(value):
             yield from _placeholder_paths(child, f"{path}[{index}]")
+
+
+def _unresolved_paths(value, path=""):
+    if isinstance(value, str) and _UNRESOLVED.fullmatch(value.strip()):
+        yield path or "トップレベル"
+    elif isinstance(value, dict):
+        for key, child in value.items():
+            child_path = f"{path}.{key}" if path else key
+            yield from _unresolved_paths(child, child_path)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            yield from _unresolved_paths(child, f"{path}[{index}]")
+
+
+def _unknown_keys(value, allowed):
+    if not isinstance(value, dict):
+        return []
+    return sorted(set(value) - set(allowed))
 
 
 class _Slide:
@@ -73,6 +113,12 @@ class _Slide:
                      f' (現在: {len(v) if isinstance(v, list) else "配列でない"})')
             return None
         return v
+
+    def allow_keys(self, value, allowed, path):
+        for key in _unknown_keys(value, allowed):
+            self.err(
+                f"{path}.{key}: 未対応のフィールドです。"
+                "CONTENT_SCHEMA.mdに記載されたフィールドだけを使用してください")
 
 
 def _v_title(s):
@@ -102,6 +148,8 @@ def _v_cards(s):
                 and _is_str(c.get("body"))):
             s.err(f"cards[{i}] には heading / body (文字列) が必要です")
             continue
+        s.allow_keys(c, {"heading", "body", "value", "emphasis"},
+                     f"cards[{i}]")
         if "value" in c and not _is_str(c["value"]):
             s.err(f"cards[{i}].value は空でない文字列にしてください")
         if "emphasis" in c and not isinstance(c["emphasis"], bool):
@@ -113,24 +161,7 @@ def _v_cards(s):
 def _v_table(s):
     # 列数上限8: 既存サンプルの7列表が提出品質で通っている実績に合わせる
     cols = s.req_list("columns", 2, 8, "列名")
-    widths = s.spec.get("col_widths")
-    if widths is not None and not (
-            isinstance(widths, list) and 2 <= len(widths) <= 8):
-        s.err("col_widthsは互換入力として2〜8件の数値配列にしてください。"
-              "新規入力では省略すると自動計算されます")
-        widths = None
     rows = s.req_list("rows", 1, 8, "行")
-    if cols and widths:
-        if len(cols) != len(widths):
-            s.err(f"columns ({len(cols)}件) と col_widths ({len(widths)}件) の"
-                  f"要素数を揃えてください")
-        elif all(_is_num(w) for w in widths):
-            total = sum(widths)
-            if abs(total - BODY_W) >= 0.6:
-                s.err(f"col_widths の合計 {total:.2f} が本文幅 {BODY_W:.2f} と"
-                      f"0.6以上ずれています(合計を約{BODY_W:.1f}にする)")
-        else:
-            s.err("col_widths は数値の配列にしてください")
     for i, row in enumerate(rows or []):
         if not (isinstance(row, list) and cols and len(row) == len(cols)
                 and all(isinstance(c, str) for c in row)):
@@ -143,6 +174,7 @@ def _v_twocol(s):
         if not isinstance(p, dict):
             s.err(f'"{side}" (heading と bullets を持つオブジェクト) が必要です')
             continue
+        s.allow_keys(p, {"label", "heading", "bullets"}, side)
         if not _is_str(p.get("heading")):
             s.err(f'{side}.heading (文字列) が必要です')
         if "label" in p and not _is_str(p["label"]):
@@ -158,6 +190,10 @@ def _v_chart(s):
     if not isinstance(ch, dict):
         s.err('"chart" (categories と series を持つオブジェクト) が必要です')
         return
+    s.allow_keys(ch, {
+        "kind", "categories", "series", "show_legend", "show_values",
+        "number_format",
+    }, "chart")
     cats = ch.get("categories")
     if not (isinstance(cats, list) and 1 <= len(cats) <= 12
             and all(_is_str(c) for c in cats)):
@@ -223,8 +259,12 @@ def _v_process(s):
     steps = s.req_list("steps", 3, 6, "工程")
     for i, st in enumerate(steps or []):
         if not (isinstance(st, dict) and _is_str(st.get("name"))
-                and _is_str(st.get("desc")) and _is_str(st.get("actor"))):
-            s.err(f"steps[{i}] には name / desc / actor (文字列) が必要です")
+                and _is_str(st.get("desc"))):
+            s.err(f"steps[{i}] には name / desc (文字列) が必要です")
+            continue
+        s.allow_keys(st, {"name", "desc", "actor"}, f"steps[{i}]")
+        if "actor" in st and not _is_str(st["actor"]):
+            s.err(f"steps[{i}].actor は空でない文字列にしてください")
     emph = s.spec.get("emph")
     if emph is not None and steps:
         if not (isinstance(emph, list)
@@ -237,6 +277,7 @@ def _v_process_flow(s, flow):
     if not isinstance(flow, dict):
         s.err("process.flow はnodes / levels / edgesを持つオブジェクトにしてください")
         return
+    s.allow_keys(flow, {"nodes", "levels", "edges"}, "flow")
     nodes = flow.get("nodes")
     if not isinstance(nodes, dict) or not 2 <= len(nodes) <= 12:
         s.err("process.flow.nodes は2〜12件のノードを持つオブジェクトにしてください")
@@ -246,6 +287,8 @@ def _v_process_flow(s, flow):
                 and _is_str(node.get("name"))):
             s.err(f"process.flow.nodes.{node_id} にはname (文字列) が必要です")
             continue
+        s.allow_keys(node, {"name", "desc", "actor", "style"},
+                     f"flow.nodes.{node_id}")
         for key in ("desc", "actor"):
             if key in node and not _is_str(node[key]):
                 s.err(f"process.flow.nodes.{node_id}.{key} は空でない文字列にしてください")
@@ -285,6 +328,8 @@ def _v_process_flow(s, flow):
         if not isinstance(edge, dict):
             s.err(f"process.flow.edges[{edge_index}] はオブジェクトにしてください")
             continue
+        s.allow_keys(edge, {"from", "to", "label", "kind"},
+                     f"flow.edges[{edge_index}]")
         source, target = edge.get("from"), edge.get("to")
         if source not in nodes or target not in nodes:
             s.err(f"process.flow.edges[{edge_index}] が未定義ノードを参照しています")
@@ -319,6 +364,8 @@ def _v_roadmap(s):
             s.err(f"phases[{i}] には name / goal / bar (文字列) と "
                   f"start / end (数値または期間ラベル) が必要です")
             continue
+        s.allow_keys(ph, {"name", "goal", "bar", "start", "end"},
+                     f"phases[{i}]")
         if months:
             try:
                 resolve_span(ph, months)
@@ -335,6 +382,7 @@ def _v_roadmap(s):
             s.err(f"milestones[{i}] には at (数値または期間ラベル) / "
                   f"row (整数) / label (文字列) が必要です")
             continue
+        s.allow_keys(m, {"at", "row", "label"}, f"milestones[{i}]")
         if months:
             try:
                 resolve_marker(m["at"], months)
@@ -357,6 +405,7 @@ def _v_program_roadmap(s):
         if not isinstance(track, dict) or not _is_str(track.get("name")):
             s.err(f"tracks[{i}] には name (文字列) が必要です")
             continue
+        s.allow_keys(track, {"name", "activities"}, f"tracks[{i}]")
         activities = track.get("activities")
         if not isinstance(activities, list) or not 1 <= len(activities) <= 8:
             s.err(f"tracks[{i}].activities は作業の配列 (1〜8件) にしてください")
@@ -373,6 +422,8 @@ def _v_program_roadmap(s):
                 s.err(f"tracks[{i}].activities[{j}] には label (文字列) と "
                       "start / end (数値または期間ラベル) が必要です")
                 continue
+            s.allow_keys(activity, {"label", "start", "end", "emph"},
+                         f"tracks[{i}].activities[{j}]")
             if "emph" in activity and not isinstance(activity["emph"], bool):
                 s.err(f"tracks[{i}].activities[{j}].emph は真偽値にしてください")
             if periods:
@@ -401,12 +452,12 @@ def _v_matrix(s):
                 and _is_num(p.get("x")) and _is_num(p.get("y"))):
             s.err(f"points[{i}] には name (文字列) と x / y (数値) が必要です")
             continue
+        s.allow_keys(p, {"name", "x", "y", "emph"}, f"points[{i}]")
         if not (0.0 <= p["x"] <= 1.0 and 0.0 <= p["y"] <= 1.0):
             s.err(f"points[{i}] の x={p['x']} / y={p['y']} は 0.0〜1.0 にして"
-                  f"ください (lx / ly と違い比率指定)")
-        for k in ("lx", "ly"):
-            if k in p and not _is_num(p[k]):
-                s.err(f"points[{i}].{k} は数値 (インチ) にしてください")
+                  f"ください")
+        if "emph" in p and not isinstance(p["emph"], bool):
+            s.err(f"points[{i}].emph は真偽値にしてください")
 
 
 def _v_hub(s):
@@ -417,6 +468,9 @@ def _v_hub(s):
                 and _is_str(r.get("label")) and _is_str(r.get("icon"))):
             s.err(f"ring[{i}] には name / label / icon (文字列) が必要です")
             continue
+        s.allow_keys(r, {"name", "sub", "label", "icon"}, f"ring[{i}]")
+        if "sub" in r and not _is_str(r["sub"]):
+            s.err(f"ring[{i}].sub は空でない文字列にしてください")
         try:
             icon = resolve_icon_path(r["icon"])
         except ValueError:
@@ -438,6 +492,7 @@ def _v_org(s):
     if not isinstance(org, dict):
         s.err('"org" (nodes/levels/edges を持つオブジェクト) が必要です')
         return
+    s.allow_keys(org, {"nodes", "levels", "edges"}, "org")
 
     nodes = org.get("nodes")
     if not isinstance(nodes, dict) or not nodes:
@@ -450,6 +505,8 @@ def _v_org(s):
         if not isinstance(node, dict) or not _is_str(node.get("name")):
             s.err(f"org.nodes.{node_id} には name (文字列) が必要です")
             continue
+        s.allow_keys(node, {"name", "sub", "members", "style"},
+                     f"org.nodes.{node_id}")
         if "sub" in node and not _is_str(node["sub"]):
             s.err(f"org.nodes.{node_id}.sub は空でない文字列にしてください")
         members = node.get("members", [])
@@ -494,6 +551,8 @@ def _v_org(s):
         if not isinstance(edge, dict):
             s.err(f"org.edges[{edge_index}] はオブジェクトにしてください")
             continue
+        s.allow_keys(edge, {"from", "to", "kind", "label"},
+                     f"org.edges[{edge_index}]")
         source, target = edge.get("from"), edge.get("to")
         kind = edge.get("kind", "reporting")
         if not _is_str(source) or not _is_str(target):
@@ -540,6 +599,8 @@ def _v_diagram(s):
         s.err('"diagram" (cols/rows/nodes/edges を持つオブジェクト) が必要です。'
               '座標は書かない(グリッド仕様のみ)')
         return
+    s.allow_keys(d, {"cols", "rows", "nodes", "containers", "channels", "edges"},
+                 "diagram")
     if "spec" in s.spec or "spec" in d:
         s.err('"spec" (サンプル図の名前参照) は使えません。diagram の中に'
               'グリッド仕様をインラインで書いてください')
@@ -550,6 +611,8 @@ def _v_diagram(s):
     for key, v in (("cols", cols), ("rows", rows)):
         if not (isinstance(v, list) and v and all(_is_str(c) for c in v)):
             s.err(f"diagram.{key} は文字列の配列 (1件以上) が必要です")
+        elif len(set(v)) != len(v):
+            s.err(f"diagram.{key} は重複しない名前にしてください")
     nodes = d.get("nodes")
     if not (isinstance(nodes, dict) and nodes):
         s.err("diagram.nodes (ノード名 → {col, row, title} のオブジェクト) が"
@@ -559,8 +622,12 @@ def _v_diagram(s):
         if not isinstance(n, dict):
             s.err(f"nodes.{name} はオブジェクトにしてください")
             continue
+        s.allow_keys(n, {"col", "row", "title", "sub", "icon"},
+                     f"diagram.nodes.{name}")
         if not _is_str(n.get("title")):
             s.err(f"nodes.{name}.title (文字列) が必要です")
+        if "sub" in n and not _is_str(n["sub"]):
+            s.err(f"nodes.{name}.sub は空でない文字列にしてください")
         if isinstance(cols, list) and n.get("col") not in cols:
             s.err(f"nodes.{name}.col={n.get('col')!r} が diagram.cols に"
                   f"ありません")
@@ -591,6 +658,14 @@ def _v_diagram(s):
             s.err(f"containers[{i}] には name / label (文字列) と members (配列)"
                   f" が必要です")
             continue
+        s.allow_keys(c, {"name", "label", "members", "color", "dash"},
+                     f"diagram.containers[{i}]")
+        if not c["members"] or not all(_is_str(member) for member in c["members"]):
+            s.err(f"containers[{i}].members は1件以上の参照文字列にしてください")
+        if c.get("color", "line") not in {"line", "navy", "accent"}:
+            s.err(f"containers[{i}].color は line / navy / accent にしてください")
+        if "dash" in c and c["dash"] != "dash":
+            s.err(f'containers[{i}].dash は "dash" にしてください')
         for key in ("pad", "pad_x"):
             if key in c:
                 s.err(f"containers[{i}].{key} は指定できません。余白は入れ子構造と"
@@ -608,10 +683,31 @@ def _v_diagram(s):
         s.err("diagram.channels はオブジェクトにしてください")
         channels = {}
     for name, ch in channels.items():
+        if not _is_str(name):
+            s.err("diagram.channels のキーは空でない文字列にしてください")
         if not (isinstance(ch, list) and len(ch) == 2
                 and ch[0] in _CHANNEL_KINDS):
             s.err(f"channels.{name} は [種類, 基準] の2要素配列にしてください "
                   f"(種類: {', '.join(sorted(_CHANNEL_KINDS))})")
+            continue
+        kind, ref = ch
+        if kind in {"left_of_col", "right_of_col"} and ref not in (cols or []):
+            s.err(f"channels.{name} の基準 {ref!r} が diagram.cols にありません")
+        elif kind in {"above_row", "below_row"} and ref not in (rows or []):
+            s.err(f"channels.{name} の基準 {ref!r} が diagram.rows にありません")
+        elif kind == "outside_container":
+            valid_ref = (
+                isinstance(ref, list) and len(ref) == 2
+                and ref[1] in {"left", "right", "top", "bottom", "top_inside"}
+                and (
+                    (_is_str(ref[0]) and ref[0] in cont_names)
+                    or (isinstance(ref[0], list) and ref[0]
+                        and all(node in nodes for node in ref[0]))
+                )
+            )
+            if not valid_ref:
+                s.err(f"channels.{name} のoutside_container基準は "
+                      "[コンテナ名またはノード名配列, 辺] にしてください")
     edges = d.get("edges")
     if not (isinstance(edges, list) and edges):
         s.err("diagram.edges ({from, to} の配列、1件以上) が必要です")
@@ -620,6 +716,10 @@ def _v_diagram(s):
         if not isinstance(e, dict):
             s.err(f"edges[{i}] はオブジェクトにしてください")
             continue
+        s.allow_keys(e, {
+            "from", "to", "label", "exit", "enter", "via", "dash", "both",
+            "from_row",
+        }, f"diagram.edges[{i}]")
         for key in ("from", "to"):
             v = e.get(key)
             ref_ok = (v[1:] in cont_names if isinstance(v, str) and v.startswith("@")
@@ -631,10 +731,27 @@ def _v_diagram(s):
             if key in e and e[key] not in _EDGE_SIDES:
                 s.err(f"edges[{i}].{key} は {', '.join(sorted(_EDGE_SIDES))} の"
                       f"いずれかにしてください")
-        for v in e.get("via", []):
+        if "label" in e and not _is_str(e["label"]):
+            s.err(f"edges[{i}].label は空でない文字列にしてください")
+        if "dash" in e and e["dash"] != "dash":
+            s.err(f'edges[{i}].dash は "dash" にしてください')
+        if "both" in e and not isinstance(e["both"], bool):
+            s.err(f"edges[{i}].both は真偽値にしてください")
+        via = e.get("via", [])
+        if not (isinstance(via, list) and all(_is_str(v) for v in via)):
+            s.err(f"edges[{i}].via はチャネル名の配列にしてください")
+            via = []
+        for v in via:
             if v not in channels:
                 s.err(f"edges[{i}].via の {v!r} が diagram.channels に"
                       f"ありません")
+        source = e.get("from")
+        if isinstance(source, str) and source.startswith("@"):
+            if e.get("from_row") not in (rows or []):
+                s.err(f"edges[{i}].from_row はコンテナ始点の接続行として"
+                      "diagram.rowsから指定してください")
+        elif "from_row" in e:
+            s.err(f"edges[{i}].from_row はfromが@コンテナ名の場合だけ指定できます")
 
 
 VALIDATORS = {
@@ -647,18 +764,33 @@ VALIDATORS = {
 }
 
 
-def validate(deck):
-    """デッキ全体を検証し、エラーメッセージのリストを返す(空 = 合格)。"""
+def validate(deck, *, require_title=True):
+    """デッキ全体を検証し、エラーメッセージのリストを返す(空 = 合格)。
+
+    require_title=False はrenderer単体テスト用。JSON生成の正式経路では常に
+    既定値を使い、先頭に表紙1枚を要求する。
+    """
     errors = []
     if not isinstance(deck, dict):
         return ['トップレベルは "meta" と "slides" を持つオブジェクトにしてください']
+    for key in _unknown_keys(deck, _TOP_LEVEL_KEYS):
+        errors.append(
+            f"{key}: 未対応のトップレベルフィールドです。meta / slidesだけを使用してください")
     for path in _placeholder_paths(deck):
         errors.append(
             f"{path}: <...> の入力欄が残っています。資料要件の値へ置き換えてください")
+    for path in _unresolved_paths(deck):
+        errors.append(
+            f"{path}: 未確定マーカーが残っています。確定値へ置き換えるか、"
+            "不要な任意フィールド・スライドを削除してください")
     meta = deck.get("meta")
     if not isinstance(meta, dict):
         errors.append('トップレベルに "meta" (オブジェクト) が必要です')
     else:
+        for key in _unknown_keys(meta, _META_KEYS):
+            errors.append(
+                f"meta.{key}: 未対応のフィールドです。"
+                "CONTENT_SCHEMA.mdに記載されたフィールドだけを使用してください")
         if not _is_str(meta.get("title")):
             errors.append('meta.title (文字列) が必要です')
         for key in ("footer", "date", "author"):
@@ -669,6 +801,21 @@ def validate(deck):
     if not (isinstance(slides, list) and slides):
         errors.append('トップレベルに "slides" (1件以上の配列) が必要です')
         return errors
+    if require_title:
+        title_indices = [
+            index for index, spec in enumerate(slides)
+            if isinstance(spec, dict) and spec.get("type") == "title"
+        ]
+        if not title_indices:
+            errors.append('slides[0] に type="title" の表紙が1枚必要です')
+        elif len(title_indices) > 1:
+            errors.append(
+                f'type="title" は先頭の1枚だけにしてください '
+                f'(現在: {len(title_indices)}枚、位置: {title_indices})')
+        elif title_indices[0] != 0:
+            errors.append(
+                f'type="title" は slides[0] に配置してください '
+                f'(現在: slides[{title_indices[0]}])')
     for idx, spec in enumerate(slides):
         if not isinstance(spec, dict):
             errors.append(f"slides[{idx}]: オブジェクトにしてください")
@@ -682,6 +829,10 @@ def validate(deck):
         if t not in VALIDATORS:
             s.err(f"未対応のtypeです。使用可能: {', '.join(sorted(VALIDATORS))}")
             continue
+        for key in _unknown_keys(spec, _TYPE_KEYS[t]):
+            s.err(
+                f"{key}: 未対応のフィールドです。"
+                "CONTENT_SCHEMA.mdに記載されたフィールドだけを使用してください")
         if t != "title":
             s.req_str("kicker")
             s.req_str("title")

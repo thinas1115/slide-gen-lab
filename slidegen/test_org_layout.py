@@ -73,7 +73,7 @@ def _must_fail(fn, expected):
 
 def main():
     org = _org()
-    assert not validate(_deck(org))
+    assert not validate(_deck(org), require_title=False)
 
     layout = OrgLayout(org, ContentArea())
     assert layout.fit_stage == "standard"
@@ -109,27 +109,28 @@ def main():
         top={"name": "責任者", "sub": "判断"},
         pm={"name": "PM", "sub": "統括"}, teams=[],
         external={"name": "外部", "sub": "支援", "label": "助言"})
-    assert any("旧org形式" in error for error in validate(old))
+    assert any("旧org形式" in error
+               for error in validate(old, require_title=False))
 
     invalid = deepcopy(_deck(org))
     invalid["slides"][0]["org"]["levels"][1].append("missing")
-    errors = validate(invalid)
+    errors = validate(invalid, require_title=False)
     assert any("未定義ノード" in error for error in errors)
 
     duplicate = deepcopy(_deck(org))
     duplicate["slides"][0]["org"]["levels"][1].append("owner_a")
-    errors = validate(duplicate)
+    errors = validate(duplicate, require_title=False)
     assert any("複数の階層" in error for error in errors)
 
     reverse = deepcopy(_deck(org))
     reverse["slides"][0]["org"]["edges"].append(
         {"from": "operation", "to": "pm"})
-    errors = validate(reverse)
+    errors = validate(reverse, require_title=False)
     assert any("上位階層から下位階層" in error for error in errors)
 
     reporting_label = deepcopy(_deck(org))
     reporting_label["slides"][0]["org"]["edges"][0]["label"] = "承認"
-    errors = validate(reporting_label)
+    errors = validate(reporting_label, require_title=False)
     assert any("共有幹" in error for error in errors)
 
     dense = deepcopy(org)
