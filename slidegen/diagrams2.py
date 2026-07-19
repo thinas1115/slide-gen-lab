@@ -133,6 +133,15 @@ def _fit_single_line(renderer, field, text, width, max_pt, min_pt, *, bold=False
 
 
 # ---- 番号付きプロセスタイムライン ----
+def _process_attribute(step):
+    attribute = step.get("attribute")
+    if attribute:
+        return attribute["label"], attribute["value"]
+    if step.get("actor"):
+        return "OWNER", step["actor"]
+    return None
+
+
 def s_process(slide, spec, page):
     if "flow" in spec:
         return _s_process_flow(slide, spec, page)
@@ -169,22 +178,28 @@ def s_process(slide, spec, page):
         add_text(slide, x + 0.1, y(2.94), w - 0.2, 0.42,
                  st["name"], name_size,
                  bold=True, color=NAVY, align=PP_ALIGN.CENTER)
-        has_actor = bool(st.get("actor"))
-        desc_h = 1.35 if has_actor else 1.95
+        attribute = _process_attribute(st)
+        desc_h = 1.35 if attribute else 1.95
         size, desc_lines = fit_text_or_raise(
             "process", f"steps[{i}].desc", st["desc"],
             w - 0.34, desc_h, 13.5, min_pt=11.5, spacing=1.2)
         add_text(slide, x + 0.17, y(3.56), w - 0.34, desc_h,
                  st["desc"], size,
                  color=TEXT, align=PP_ALIGN.CENTER, spacing=1.2)
-        if has_actor:
-            add_text(slide, x + 0.15, y(5.27), w - 0.3, 0.22, "OWNER", 9.5,
-                     bold=True, color=GRAY, align=PP_ALIGN.CENTER)
-            actor_size, actor_lines = fit_text_or_raise(
-                "process", f"steps[{i}].actor", st["actor"],
+        if attribute:
+            label, value = attribute
+            label_size, _ = fit_text_or_raise(
+                "process", f"steps[{i}].attribute.label", label,
+                w - 0.3, 0.22, 9.5, min_pt=7.5,
+                weight="bold", spacing=1.05)
+            add_text(slide, x + 0.15, y(5.27), w - 0.3, 0.22, label,
+                     label_size, bold=True, color=GRAY,
+                     align=PP_ALIGN.CENTER)
+            value_size, value_lines = fit_text_or_raise(
+                "process", f"steps[{i}].attribute.value", value,
                 w - 0.3, 0.3, 11.5, min_pt=9.5, weight="bold", spacing=1.1)
             add_text(slide, x + 0.15, y(5.56), w - 0.3, 0.3,
-                     st["actor"], actor_size,
+                     value, value_size,
                      bold=True, color=color, align=PP_ALIGN.CENTER)
     ensure_within(
         "process", y(5.86) - area.top, area.height,

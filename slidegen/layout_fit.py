@@ -56,11 +56,12 @@ def ensure_within(renderer, used, available, *, guidance):
 
 
 def fit_text_or_raise(renderer, field, text, box_w, box_h, max_pt, *,
-                      min_pt, weight="regular", spacing=1.3, pad_in=0.0):
+                      min_pt, weight="regular", spacing=1.3, pad_in=0.0,
+                      wrapper=None):
     """最小フォントでも入らない文字列を黙って描画せず停止する。"""
     size, lines = fit_font_size(
         text, box_w, box_h, max_pt, min_pt=min_pt, weight=weight,
-        spacing=spacing, pad_in=pad_in,
+        spacing=spacing, pad_in=pad_in, wrapper=wrapper,
     )
     used = len(lines) * line_height_in(size, spacing) + pad_in * 2
     if used > box_h + FIT_EPS:

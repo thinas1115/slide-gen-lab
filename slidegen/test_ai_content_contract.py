@@ -66,6 +66,22 @@ def main():
     }
     assert not validate(_deck(process))
 
+    process_attribute = deepcopy(process)
+    process_attribute["steps"][1].pop("actor")
+    process_attribute["steps"][1]["attribute"] = {
+        "label": "OUTPUT", "value": "承認済み申請",
+    }
+    assert not validate(_deck(process_attribute))
+
+    ambiguous_process = deepcopy(process_attribute)
+    ambiguous_process["steps"][1]["actor"] = "担当区分"
+    _assert_error(_deck(ambiguous_process), "actor と attribute を同時に指定")
+
+    invalid_attribute = deepcopy(process)
+    invalid_attribute["steps"][1].pop("actor")
+    invalid_attribute["steps"][1]["attribute"] = {"label": "OUTPUT"}
+    _assert_error(_deck(invalid_attribute), "attribute.value")
+
     legacy_table = _deck({
         "type": "table", "kicker": "表", "title": "一覧",
         "columns": ["列A", "列B"], "rows": [["値A", "値B"]],

@@ -71,6 +71,19 @@ def main():
     rendered = {args[5] for args in optional_text_calls}
     assert rendered == {"表紙", "概要"}
 
+    balanced_title_calls = []
+    render_cover(
+        None,
+        {"title": "プライベート接続でハマった落とし穴\n3選",
+         "subtitle": "設計と運用の要点"},
+        minimal_deck["meta"], 1, default,
+        add_text=lambda *args, **kwargs: balanced_title_calls.append(args),
+        add_rect=lambda *args, **kwargs: None,
+    )
+    rendered_title = next(
+        args[5] for args in balanced_title_calls if "落とし穴" in args[5])
+    assert rendered_title.splitlines()[-1] != "3選", rendered_title
+
     empty_dynamic_rail = parse_cover_footer_config({"cover": {
         "show_date": False,
         "show_author": False,

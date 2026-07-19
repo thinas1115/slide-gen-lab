@@ -78,6 +78,16 @@ def main():
     ])
     s_process(_slide(), optional_actor, 1)
 
+    generic_attribute = _base("process")
+    generic_attribute.update(steps=[
+        {"name": "入力", "desc": "要件を整理",
+         "attribute": {"label": "INPUT", "value": "資料要件"}},
+        {"name": "生成", "desc": "資料を生成",
+         "attribute": {"label": "OUTPUT", "value": "PPTX"}},
+        {"name": "確認", "desc": "品質を確認"},
+    ])
+    s_process(_slide(), generic_attribute, 1)
+
     spec = _base("roadmap")
     spec.update(months=["1月", "2月", "3月", "4月"], milestones=[],
                 phases=[{"name": "Phase", "goal": "目標", "bar": "実行",

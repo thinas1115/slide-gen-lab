@@ -351,7 +351,10 @@ python slidegen/validate_content.py content.json
 
 任意:
 
-- `steps[*].actor`: 担当。資料要件に担当情報がある工程だけ指定する
+- `steps[*].attribute`: 工程下部へ補足属性を出す場合の`{label, value}`。
+  `label`は`OWNER`、`OUTPUT`、`TOOL`、`STATUS`など、値の意味に合わせる
+- `steps[*].actor`: 担当者を示す旧入力との互換フィールド。`OWNER`ラベルで表示する。
+  新規入力では`attribute: {"label": "OWNER", "value": "担当"}`を使う
 - `emph`: 強調するstepの0始まりindex配列
 - `note`: string
 
@@ -373,6 +376,7 @@ python slidegen/validate_content.py content.json
 制約:
 
 - `steps` は4〜5件が安全(validatorの範囲は3〜6件)。
+- 下部属性が不要な工程は`attribute`自体を省略する。`actor`と`attribute`は同時に指定しない。
 - `flow`は2〜12ノード、2〜6列、各列1〜3ノード、接続1〜20件。
 - 戻り接続は`kind: "feedback"`を指定する。座標や配線経路はrendererが決める。
 - `steps`と`flow`は同時に指定しない。
@@ -384,7 +388,8 @@ python slidegen/validate_content.py content.json
   "title": "タイトル",
   "steps": [
     {"name": "工程A", "desc": "工程Aの説明"},
-    {"name": "工程B", "desc": "工程Bの説明", "actor": "担当区分"},
+    {"name": "工程B", "desc": "工程Bの説明",
+     "attribute": {"label": "OUTPUT", "value": "成果物"}},
     {"name": "工程C", "desc": "工程Cの説明"}
   ],
   "emph": [1]
