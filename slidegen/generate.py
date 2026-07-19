@@ -1,5 +1,6 @@
 """python-pptxとテキスト実測による基本サンプルデッキ生成。"""
 import argparse
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,7 +17,7 @@ from pptx.util import Emu, Inches, Pt
 from content import DECK
 from cover_footer import load_cover_footer_config, render_cover, render_footer
 from layout_fit import FitError, fit_text_or_raise, select_fit, stepped
-from textfit import line_height_in, wrap_text
+from textfit import line_height_in, text_width_in, wrap_text
 
 # ---- テーマ ----
 NAVY = RGBColor(0x18, 0x2C, 0x43)
@@ -215,79 +216,99 @@ def s_bullets(slide, spec, page):
 def s_cards(slide, spec, page):
     """Render purpose-specific cards instead of one universal panel pattern."""
     area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
-    cards = spec["cards"]
+    cards = [_normalize_card(card) for card in spec["cards"]]
     n = len(cards)
     style = spec.get("style", "editorial")
     left, usable_w = 0.78, 11.78
 
     if style == "metrics":
-        gap = 0.56
-        cw = (usable_w - gap * (n - 1)) / n
-        ch, top = 3.0, area.top + 0.76
+        cols = n if n <= 4 else 3
+        rows = math.ceil(n / cols)
+        gap_x, gap_y = 0.46, 0.42
+        cw = (usable_w - gap_x * (cols - 1)) / cols
+        ch = min(2.72, (area.height - 0.58 - gap_y * (rows - 1)) / rows)
+        if ch < 1.62:
+            raise FitError(
+                "cards.metrics: KPIカードの高さが不足しています。カード数または本文を"
+                "減らしてください。")
+        top = area.top + 0.42
         body_size = min(
             fit_text_or_raise(
-                "cards.metrics", f"cards[{i}].body", body,
-                cw - 0.2, ch - 1.35, 13.5, min_pt=11, spacing=1.2,
+                "cards.metrics", f"cards[{i}].body", card["body"],
+                cw - 0.16, ch - 1.26, 13, min_pt=10.5, spacing=1.16,
             )[0]
-            for i, (_, body) in enumerate(cards))
-        for i, (head, body) in enumerate(cards):
-            x = left + i * (cw + gap)
-            label, value = _split_metric_head(head)
+            for i, card in enumerate(cards))
+        for i, card in enumerate(cards):
+            row, col = divmod(i, cols)
+            x = left + col * (cw + gap_x)
+            y = top + row * (ch + gap_y)
+            label, value = card["heading"], card.get("value", "")
+            if not value:
+                label, value = _split_metric_head(label)
             label_size, _ = fit_text_or_raise(
                 "cards.metrics", f"cards[{i}].label", label,
                 cw, 0.34, 12.5, min_pt=10.5, weight="bold", spacing=1.1)
-            add_text(slide, x, top, cw, 0.34, label, label_size,
+            add_text(slide, x, y, cw, 0.34, label, label_size,
                      bold=True, color=NAVY)
             value_size = fit_text_or_raise(
                 "cards.metrics", f"cards[{i}].value", value,
-                cw, 0.76, 34, min_pt=26, weight="bold")[0]
-            add_text(slide, x, top + 0.48, cw, 0.76, value, value_size,
-                     bold=True, color=ACCENT)
-            add_text(slide, x, top + 1.55, cw, ch - 1.55, body,
+                cw, 0.66, 32, min_pt=22, weight="bold")[0]
+            color = CORAL if card["emphasis"] else ACCENT
+            add_text(slide, x, y + 0.42, cw, 0.66, value, value_size,
+                     bold=True, color=color)
+            add_text(slide, x, y + 1.22, cw, ch - 1.22, card["body"],
                      body_size, color=TEXT, spacing=1.2)
-            if i < n - 1:
-                add_rect(slide, x + cw + gap / 2, top + 0.04, 0.012, ch - 0.08, RULE)
+            if col < cols - 1 and i + 1 < n:
+                add_rect(slide, x + cw + gap_x / 2, y + 0.04,
+                         0.012, ch - 0.08, RULE)
+            if row < rows - 1:
+                add_rect(slide, x, y + ch + gap_y / 2, cw, 0.012, RULE)
         return
 
-    if style == "editorial" and n == 4:
-        lead_head, lead_body = cards[0]
+    emphasized = [i for i, card in enumerate(cards) if card["emphasis"]]
+    if style == "editorial" and n == 4 and len(emphasized) == 1:
+        lead_index = emphasized[0]
+        lead_card = cards[lead_index]
+        supporting = [card for i, card in enumerate(cards) if i != lead_index]
         top = area.top + 0.46
         add_text(slide, 0.8, top, 0.58, 0.36, "01", 15,
                  bold=True, color=GRAY)
         lead_head_size, _ = fit_text_or_raise(
-            "cards.editorial", "cards[0].head", lead_head,
+            "cards.editorial", f"cards[{lead_index}].heading", lead_card["heading"],
             3.95, 0.56, 23, min_pt=18, weight="bold", spacing=1.1)
-        add_text(slide, 1.52, top - 0.03, 3.95, 0.56, lead_head,
+        add_text(slide, 1.52, top - 0.03, 3.95, 0.56, lead_card["heading"],
                  lead_head_size, bold=True, color=NAVY)
         lead_size, lead_lines = fit_text_or_raise(
-            "cards.editorial", "cards[0].body", lead_body,
+            "cards.editorial", f"cards[{lead_index}].body", lead_card["body"],
             4.1, 2.05, 16, min_pt=13, spacing=1.28)
         add_text(slide, 1.52, top + 0.76, 4.1, 2.05,
                  "\n".join(lead_lines), lead_size, color=TEXT, spacing=1.28)
 
         right_x, right_w = 6.42, 5.92
         row_h = 1.31
-        for i, (head, body) in enumerate(cards[1:], 2):
+        for i, card in enumerate(supporting, 2):
             y = top + (i - 2) * row_h
             add_text(slide, right_x, y + 0.02, 0.5, 0.32, f"{i:02d}", 12.5,
                      bold=True, color=GRAY)
             head_size, _ = fit_text_or_raise(
-                "cards.editorial", f"cards[{i - 1}].head", head,
+                "cards.editorial", f"supporting[{i - 2}].heading", card["heading"],
                 right_w - 0.68, 0.38, 16, min_pt=13,
                 weight="bold", spacing=1.1)
-            add_text(slide, right_x + 0.68, y, right_w - 0.68, 0.38, head,
+            add_text(slide, right_x + 0.68, y, right_w - 0.68, 0.38,
+                     card["heading"],
                      head_size, bold=True, color=NAVY)
             body_size, body_lines = fit_text_or_raise(
-                "cards.editorial", f"cards[{i - 1}].body", body,
+                "cards.editorial", f"supporting[{i - 2}].body", card["body"],
                 right_w - 0.72, 0.56, 12.5, min_pt=11, spacing=1.15)
             add_text(slide, right_x + 0.68, y + 0.48, right_w - 0.72, 0.56,
-                     "\n".join(body_lines), body_size, color=TEXT, spacing=1.15)
+                     "\n".join(body_lines), body_size,
+                     color=TEXT, spacing=1.15)
             if i < n:
                 add_rect(slide, right_x + 0.68, y + 1.14, right_w - 0.68, 0.012, RULE)
         return
 
-    cols = 2 if n == 4 else n
-    rows = 2 if n == 4 else 1
+    cols = n if n <= 3 else (2 if n == 4 else 3)
+    rows = math.ceil(n / cols)
     gap_x, gap_y = 0.72, 0.44
     cw = (usable_w - gap_x * (cols - 1)) / cols
     area_h = area.height - 0.62
@@ -298,9 +319,9 @@ def s_cards(slide, spec, page):
         for row in range(rows):
             row_cards = cards[row * cols:(row + 1) * cols]
             body_need = max(
-                len(wrap_text(body, cw - 0.92, size))
+                len(wrap_text(card["body"], cw - 0.92, size))
                 * line_height_in(size, 1.2)
-                for _head, body in row_cards)
+                for card in row_cards)
             row_needs.append(0.72 + body_need)
         return sum(row_needs) + candidate_gap * (rows - 1)
 
@@ -321,23 +342,25 @@ def s_cards(slide, spec, page):
     )
     body_size = fitted.values["size"]
     gap_y = fitted.values["gap"]
-    ch = ((area_h - gap_y) / 2 if rows == 2 else min(3.32, area_h))
+    ch = ((area_h - gap_y * (rows - 1)) / rows
+          if rows > 1 else min(3.32, area_h))
     top = area.top + (0.42 if rows == 2 else 0.72)
-    for i, (head, body) in enumerate(cards):
+    for i, card in enumerate(cards):
         row, col = divmod(i, cols)
         x = left + col * (cw + gap_x)
         y = top + row * (ch + gap_y)
         add_text(slide, x, y + 0.02, 0.58, 0.36, f"{i + 1:02d}", 14,
                  bold=True, color=GRAY)
         head_size, _ = fit_text_or_raise(
-            "cards", f"cards[{i}].head", head,
+            "cards", f"cards[{i}].heading", card["heading"],
             cw - 0.72, 0.42, 16.5, min_pt=13,
             weight="bold", spacing=1.1)
+        head_color = CORAL if card["emphasis"] else NAVY
         add_text(slide, x + 0.72, y, cw - 0.72, 0.42,
-                 head, head_size, bold=True, color=NAVY)
-        add_text(slide, x + 0.72, y + 0.58, cw - 0.82, ch - 0.64, body,
+                 card["heading"], head_size, bold=True, color=head_color)
+        add_text(slide, x + 0.72, y + 0.58, cw - 0.82, ch - 0.64, card["body"],
                  body_size, color=TEXT, spacing=1.2)
-        if row == 0:
+        if row < rows - 1:
             add_rect(slide, x + 0.72, y + ch + gap_y / 2, cw - 0.72, 0.012, RULE)
 
 
@@ -346,6 +369,56 @@ def _split_metric_head(head):
     if match:
         return match.group(1).strip(), match.group(2).replace("−", "-").strip()
     return head, ""
+
+
+def _normalize_card(card):
+    """旧2要素配列と新しい意味付きobjectを共通形式へ変換する。"""
+    if isinstance(card, dict):
+        return {
+            "heading": card["heading"],
+            "body": card["body"],
+            "value": card.get("value", ""),
+            "emphasis": bool(card.get("emphasis")),
+        }
+    return {
+        "heading": card[0], "body": card[1], "value": "", "emphasis": False,
+    }
+
+
+def _auto_table_widths(columns, rows):
+    """見出しとセル内容を実測し、本文幅を列へ決定論的に配分する。"""
+    count = len(columns)
+    min_width = max(0.92, min(1.38, BODY_W / count * 0.58))
+    natural = []
+    for index, heading in enumerate(columns):
+        samples = [text_width_in(heading, 12, "bold")]
+        samples.extend(text_width_in(row[index], 11.5) for row in rows)
+        natural.append(min(4.65, max(min_width, max(samples) + 0.34)))
+
+    widths = [min_width] * count
+    remaining = BODY_W - sum(widths)
+    unmet = {index for index in range(count) if natural[index] > widths[index]}
+    while remaining > 0.001 and unmet:
+        share = remaining / len(unmet)
+        used = 0.0
+        completed = set()
+        for index in unmet:
+            addition = min(share, natural[index] - widths[index])
+            widths[index] += addition
+            used += addition
+            if natural[index] - widths[index] <= 0.001:
+                completed.add(index)
+        remaining -= used
+        unmet -= completed
+        if used <= 0.001:
+            break
+    if remaining > 0:
+        weights = [max(1.0, value) for value in natural]
+        total_weight = sum(weights)
+        widths = [width + remaining * weight / total_weight
+                  for width, weight in zip(widths, weights)]
+    widths[-1] += BODY_W - sum(widths)
+    return widths
 
 
 def _fit_table(rows, widths, avail):
@@ -381,7 +454,7 @@ def _fit_table(rows, widths, avail):
 def s_table(slide, spec, page):
     area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
     cols, rows = spec["columns"], spec["rows"]
-    widths = spec["col_widths"]
+    widths = spec.get("col_widths") or _auto_table_widths(cols, rows)
     assert abs(sum(widths) - BODY_W) < 0.6, f"列幅合計={sum(widths)}"
     hdr_h = TABLE_HEADER_H
     table_available = (
@@ -471,7 +544,7 @@ def s_twocol(slide, spec, page):
         fill = ZEBRA if i == 0 else LIGHT
         add_rect(slide, x, top, cw, min(max_ch - 0.14, body_h + 1.38), fill)
         add_text(slide, x + 0.36, top + 0.28, cw - 0.72, 0.25,
-                 "BEFORE" if i == 0 else "AFTER", 9.5,
+                 p.get("label", "BEFORE" if i == 0 else "AFTER"), 9.5,
                  bold=True, color=GRAY if i == 0 else ACCENT)
         heading_size, _ = fit_text_or_raise(
             "twocol", f"{'left' if i == 0 else 'right'}.heading",
@@ -493,37 +566,83 @@ def s_chart(slide, spec, page):
     area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
     categories = spec["chart"]["categories"]
     series = spec["chart"]["series"]
-    if not 1 <= len(categories) <= 6 or not 1 <= len(series) <= 2:
+    kind = spec["chart"].get("kind", "bar")
+    chart_types = {
+        "bar": XL_CHART_TYPE.BAR_CLUSTERED,
+        "column": XL_CHART_TYPE.COLUMN_CLUSTERED,
+        "line": XL_CHART_TYPE.LINE_MARKERS,
+        "stacked_bar": XL_CHART_TYPE.BAR_STACKED,
+        "stacked_column": XL_CHART_TYPE.COLUMN_STACKED,
+    }
+    if kind not in chart_types:
+        raise FitError(f"chart.kind={kind!r} は未対応です。")
+    if not 1 <= len(categories) <= 12 or not 1 <= len(series) <= 4:
         raise FitError(
-            "chart: 描画可能範囲はカテゴリ1〜6件、系列1〜2件です。"
+            "chart: 描画可能範囲はカテゴリ1〜12件、系列1〜4件です。"
             "カテゴリまたは系列を減らしてください。")
+    fitted = _fit_chart_layout(
+        area, len(categories), len(series), kind)
     cd = CategoryChartData()
     cd.categories = categories
     for name, vals in series:
         cd.add_series(name, vals)
     gf = slide.shapes.add_chart(
-        XL_CHART_TYPE.BAR_CLUSTERED, Inches(0.9), Inches(area.top + 0.22),
+        chart_types[kind], Inches(0.9), Inches(area.top + 0.22),
         Inches(11.8), Inches(area.height - 0.48), cd)
     ch = gf.chart
     ch.has_title = False
-    ch.has_legend = True
+    ch.has_legend = spec["chart"].get("show_legend", len(series) > 1)
     ch.legend.position = XL_LEGEND_POSITION.BOTTOM
     ch.legend.include_in_layout = False
-    ch.font.size = Pt(12)
+    ch.font.size = Pt(fitted.values["font"])
     ch.font.name = FONT
     plot = ch.plots[0]
-    plot.has_data_labels = True
-    plot.data_labels.font.size = Pt(11.5)
-    plot.gap_width = 76
+    show_values = spec["chart"].get("show_values", kind != "line")
+    plot.has_data_labels = show_values
+    if show_values:
+        plot.data_labels.show_value = True
+        plot.data_labels.font.size = Pt(fitted.values["label_font"])
+        if spec["chart"].get("number_format"):
+            plot.data_labels.number_format = spec["chart"]["number_format"]
+            plot.data_labels.number_format_is_linked = False
+    if hasattr(plot, "gap_width"):
+        plot.gap_width = fitted.values["gap_width"]
     ch.value_axis.major_gridlines.format.line.color.rgb = RULE
     ch.value_axis.major_gridlines.format.line.width = Pt(0.6)
     ch.value_axis.format.line.fill.background()
     ch.category_axis.format.line.fill.background()
-    for s, colr in zip(ch.series, (GRAY, ACCENT)):
-        s.format.fill.solid()
-        s.format.fill.fore_color.rgb = colr
+    for s, colr in zip(ch.series, (GRAY, ACCENT, CORAL, NAVY)):
+        if kind == "line":
+            s.format.line.color.rgb = colr
+            s.format.line.width = Pt(2.0)
+            s.marker.format.fill.solid()
+            s.marker.format.fill.fore_color.rgb = colr
+            s.marker.format.line.color.rgb = colr
+        else:
+            s.format.fill.solid()
+            s.format.fill.fore_color.rgb = colr
     if spec.get("note"):
         note_line(slide, spec["note"])
+
+
+def _fit_chart_layout(area, category_count, series_count, kind):
+    """軸ラベル間隔を圧縮してから、グラフ内文字と棒間隔を縮小する。"""
+    legend = 0.34 if series_count > 1 else 0.0
+    horizontal = kind in {"bar", "stacked_bar"}
+    available = area.height - 0.48 if horizontal else 11.8
+    unit = 1.0 if horizontal else 2.35
+    candidates = [
+        ("standard", {"font": 12.0, "label_font": 11.5, "gap_width": 76},
+         category_count * 0.48 * unit + legend),
+        ("gap", {"font": 11.0, "label_font": 10.5, "gap_width": 58},
+         category_count * 0.40 * unit + legend),
+        ("element", {"font": 9.5, "label_font": 9.0, "gap_width": 42},
+         category_count * 0.32 * unit + legend),
+    ]
+    return select_fit(
+        "chart", available, candidates,
+        guidance="カテゴリ数を減らすか複数スライドへ分割してください。",
+    )
 
 
 RENDER = {"title": s_title, "bullets": s_bullets, "cards": s_cards,

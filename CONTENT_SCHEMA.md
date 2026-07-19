@@ -4,7 +4,8 @@
 
 重要: 「content.jsonだけで生成できる」とは、各 `type` が要求する必須フィールドをすべて持つJSONを用意する、という意味。自由文だけでは生成できない。
 
-既存の `content.json` と `slidegen/content.py` はサンプルデッキ。新規資料の題材作成には使わない。
+`content.json` は資料ごとに新規作成するGit管理外の入力ファイル。リポジトリの回帰検証用データを
+新規資料の題材として流用しない。
 
 ## 機械検証
 
@@ -27,22 +28,32 @@ python slidegen/validate_content.py content.json
 必須:
 
 - `meta.title`: string
-- `meta.footer`: string
-- `meta.date`: string
-- `meta.author`: string
 - `slides`: slide object の配列
+
+任意:
+
+- `meta.footer`: フッターへ表示する資料固有の文言
+- `meta.date`: 表紙または表紙補足欄へ表示する日付
+- `meta.author`: 表紙または表紙補足欄へ表示する作成者・責任者
+
+値が不明または表示不要な任意項目は、空文字や仮文言を入れずキー自体を省略する。
 
 ```json
 {
   "meta": {
-    "title": "資料タイトル",
-    "footer": "フッター文言",
-    "date": "2026年7月",
-    "author": "作成者"
+    "title": "<資料要件から作成した資料名>"
   },
-  "slides": []
+  "slides": [
+    {
+      "type": "title",
+      "title": "<資料の主題>",
+      "subtitle": "<対象範囲または目的>"
+    }
+  ]
 }
 ```
+
+`<...>` は入力箇所を示すschema表記であり、実際の `content.json` に残すとvalidatorが拒否する。
 
 ## 共通ルール
 
@@ -133,19 +144,23 @@ python slidegen/validate_content.py content.json
 - `type`: `"cards"`
 - `kicker`: string
 - `title`: string
-- `cards`: `[heading, body]` の配列
+- `cards`: object の配列
+- `cards[*].heading`: 見出し
+- `cards[*].body`: 本文
 
 任意:
 
 - `style`: `"editorial"`(既定) / `"metrics"`
+- `cards[*].value`: KPI値。`metrics`では必須
+- `cards[*].emphasis`: boolean。主項目または強調KPIを示す
 
 制約:
 
-- `cards` は3〜4件が安全(validatorの範囲は2〜4件)。
-- 件数に応じて横並び幅が自動計算される。
+- `cards` は2〜6件。件数に応じて1〜2行の列数と幅が自動計算される。
 - 各項目が独立して比較できる場合に使う。フェーズ名や図のノードなど、別の構造に属する要素には使わない。
-- `editorial`: サマリ・選択肢・事例向け。2〜3件は横並び、4件は先頭を主項目、残り3件を補助項目として描画する。
-- `metrics`: KPI向け。数値を含む見出しを大きく扱う横並びカードとして描画する。
+- `editorial`: サマリ・選択肢・事例向け。4件で`emphasis: true`が1件なら、その項目を主項目として描画する。
+- `metrics`: KPI向け。`heading`と`value`を分けて書き、rendererが文字列から数値を推測しないようにする。
+- 旧`[heading, body]`形式も既存資料との互換性のため読めるが、新規入力ではobject形式を使う。
 
 ```json
 {
@@ -154,8 +169,8 @@ python slidegen/validate_content.py content.json
   "kicker": "分類",
   "title": "タイトル",
   "cards": [
-    ["要点見出し", "要点本文"],
-    ["要点見出し", "要点本文"]
+    {"heading": "最重要の要点", "body": "要点本文", "emphasis": true},
+    {"heading": "要点見出し", "body": "要点本文"}
   ]
 }
 ```
@@ -170,17 +185,17 @@ python slidegen/validate_content.py content.json
 - `kicker`: string
 - `title`: string
 - `columns`: string の配列
-- `col_widths`: number の配列
 - `rows`: string配列の配列
 
 任意:
 
 - `note`: string
+- `col_widths`: 旧入力との互換用。新規入力では指定しない
 
 制約:
 
-- `columns`, `col_widths`, 各 `rows[*]` の要素数は同じにする(2〜8列)。
-- `col_widths` の合計はおおむね `12.2` inch(本文幅 `BODY_W` = 12.23。差が `0.6` 未満なら通る)。
+- `columns`と各`rows[*]`の要素数は同じにする(2〜8列)。
+- 列幅は列見出しと全セルの文字実測からrendererが自動計算する。インチ値を入力しない。
 - 行数は3〜6行程度が安全(validatorの上限は8行)。
 
 ```json
@@ -189,7 +204,6 @@ python slidegen/validate_content.py content.json
   "kicker": "分類",
   "title": "タイトル",
   "columns": ["項目", "説明"],
-  "col_widths": [2.5, 9.2],
   "rows": [
     ["値1", "説明1"],
     ["値2", "説明2"]
@@ -212,6 +226,10 @@ python slidegen/validate_content.py content.json
 - `right.heading`: string
 - `right.bullets`: string の配列
 
+任意:
+
+- `left.label` / `right.label`: 左右の意味ラベル。省略時は`BEFORE` / `AFTER`
+
 制約:
 
 - 左右それぞれ3〜5項目程度が安全。
@@ -223,10 +241,12 @@ python slidegen/validate_content.py content.json
   "kicker": "分類",
   "title": "タイトル",
   "left": {
+    "label": "現状",
     "heading": "左見出し",
     "bullets": ["本文", "本文"]
   },
   "right": {
+    "label": "目標状態",
     "heading": "右見出し",
     "bullets": ["本文", "本文"]
   }
@@ -235,7 +255,7 @@ python slidegen/validate_content.py content.json
 
 ### chart
 
-用途: 横棒グラフ。
+用途: 横棒、縦棒、折れ線、積み上げグラフ。
 
 必須:
 
@@ -247,12 +267,17 @@ python slidegen/validate_content.py content.json
 
 任意:
 
+- `chart.kind`: `"bar"`(既定) / `"column"` / `"line"` / `"stacked_bar"` / `"stacked_column"`
+- `chart.show_legend`: boolean。省略時は系列が複数なら表示
+- `chart.show_values`: boolean。省略時は折れ線以外で表示
+- `chart.number_format`: データラベルの表示形式。例: `0%`、`0.0`
 - `note`: string
 
 制約:
 
 - 各 `values` の長さは `categories` と同じにする。
-- 系列は1〜2件(validator強制)、カテゴリは3〜5件程度が安全(validatorの上限は6件)。
+- 系列は1〜4件、カテゴリは1〜12件。件数に応じて軸ラベル間隔と文字を段階的に縮小する。
+- 円グラフ、ウォーターフォールなど制約モデルが異なる図は、このtypeへ詰め込まず別rendererとして追加する。
 
 ```json
 {
@@ -260,6 +285,7 @@ python slidegen/validate_content.py content.json
   "kicker": "分類",
   "title": "タイトル",
   "chart": {
+    "kind": "line",
     "categories": ["カテゴリ1", "カテゴリ2"],
     "series": [
       ["系列名", [10, 20]]
@@ -315,7 +341,7 @@ python slidegen/validate_content.py content.json
 
 用途: 手順、業務フロー、導入ステップ。
 
-必須:
+直線工程の必須:
 
 - `type`: `"process"`
 - `kicker`: string
@@ -330,9 +356,27 @@ python slidegen/validate_content.py content.json
 - `emph`: 強調するstepの0始まりindex配列
 - `note`: string
 
+分岐工程の必須(`steps`の代わりに指定):
+
+- `flow.nodes`: ノードID → object
+- `flow.nodes[*].name`: 工程名
+- `flow.levels`: 左から順に並べるノードID配列の配列
+- `flow.edges`: `{from, to}` の配列
+
+分岐工程の任意:
+
+- `flow.nodes[*].desc`: 工程説明
+- `flow.nodes[*].actor`: 担当。不要なら省略できる
+- `flow.nodes[*].style`: `"standard"` / `"accent"` / `"decision"`
+- `flow.edges[*].label`: 条件ラベル
+- `flow.edges[*].kind`: `"forward"`(既定) / `"feedback"`
+
 制約:
 
 - `steps` は4〜5件が安全(validatorの範囲は3〜6件)。
+- `flow`は2〜12ノード、2〜6列、各列1〜3ノード、接続1〜20件。
+- 戻り接続は`kind: "feedback"`を指定する。座標や配線経路はrendererが決める。
+- `steps`と`flow`は同時に指定しない。
 
 ```json
 {
@@ -343,6 +387,29 @@ python slidegen/validate_content.py content.json
     {"name": "工程名", "desc": "説明", "actor": "担当"}
   ],
   "emph": [0]
+}
+```
+
+```json
+{
+  "type": "process",
+  "kicker": "承認フロー",
+  "title": "審査結果に応じた分岐と再申請を示す",
+  "flow": {
+    "nodes": {
+      "request": {"name": "申請", "actor": "申請部門"},
+      "review": {"name": "審査", "style": "decision"},
+      "approve": {"name": "承認", "style": "accent"},
+      "revise": {"name": "修正"}
+    },
+    "levels": [["request"], ["review"], ["approve", "revise"]],
+    "edges": [
+      {"from": "request", "to": "review"},
+      {"from": "review", "to": "approve", "label": "承認"},
+      {"from": "review", "to": "revise", "label": "要修正"},
+      {"from": "revise", "to": "review", "kind": "feedback", "label": "再申請"}
+    ]
+  }
 }
 ```
 
@@ -464,7 +531,6 @@ python slidegen/validate_content.py content.json
 - `title`: string
 - `x_axis`: string
 - `y_axis`: string
-- `target_label`: string
 - `points`: object の配列
 - `points[*].name`: string
 - `points[*].x`: number
@@ -473,8 +539,7 @@ python slidegen/validate_content.py content.json
 任意:
 
 - `points[*].emph`: boolean
-- `points[*].lx`: number
-- `points[*].ly`: number
+- `target_label`: string。`quadrants`を省略した場合に必須
 - `quadrants`: `[左下, 右下, 左上, 右上]` の4文字列
 - `note`: string
 
@@ -482,7 +547,9 @@ python slidegen/validate_content.py content.json
 
 - `x`, `y` は `0.0` から `1.0` の比率(validator強制)。
 - 点は4〜7件程度が安全(validatorの上限は8件)。
-- ラベルが重なる場合は `lx` / `ly` で位置を調整する。**単位はインチ**(x/yと違い比率ではない)。点の中心からのオフセットで、`lx` 正=右、`ly` 正=下。省略時は点の上 (`ly=-0.36`) に出る。
+- ラベルは点の周囲8方向から、他の点・ラベル・プロット境界と衝突しない位置をrendererが選ぶ。
+- 衝突を解消できない場合はラベル間隔、ラベル幅の順に縮小し、それでも無理なら生成を停止する。
+- 旧`lx` / `ly`は既存資料との互換性のため読めるが、新規入力では使用しない。
 
 ```json
 {
@@ -522,7 +589,8 @@ python slidegen/validate_content.py content.json
 
 制約:
 
-- `ring` はちょうど6件(validator強制)。rendererの周辺ノード配置が6件固定のため、5件では欠け、7件では黙って切り捨てられる。
+- `ring` は3〜8件。件数に応じて楕円周上へ均等配置する。
+- 本文高さが不足する場合は放射間隔、アイコンの順に縮小し、最小値でも収まらなければ生成を停止する。
 
 ```json
 {

@@ -107,9 +107,9 @@ EXTRA_SLIDES = [
         "target_label": "目標領域",
         "points": [
             {"name": "NotebookLM", "x": 0.12, "y": 0.30},
-            {"name": "Gamma", "x": 0.27, "y": 0.52, "ly": 0.16},
+            {"name": "Gamma", "x": 0.27, "y": 0.52},
             {"name": "イルシル", "x": 0.5, "y": 0.42},
-            {"name": "Copilot", "x": 0.82, "y": 0.34, "ly": 0.16},
+            {"name": "Copilot", "x": 0.82, "y": 0.34},
             {"name": "Claude PPTX Skill", "x": 0.68, "y": 0.62},
             {"name": "自前パイプライン", "x": 0.87, "y": 0.86, "emph": True},
         ],
