@@ -170,7 +170,8 @@ render_diagram(slide, spec, note, content_area=None) # 描画一式
 3. **validator**: `validate_content.py` に `_v_xxx` を追加し `VALIDATORS` に登録。
    件数上限は「最小設定でも収まらない値」を**生成して確かめてから**決める。
    標準設定で収まらないだけの入力をvalidatorで拒否せず、段階的収容へ回す。
-   note を描画するなら `NOTE_TYPES` にも追加。
+   note を描画するなら `NOTE_TYPES` にも追加。`_TYPE_KEYS`へslide直下の許可キーを登録し、
+   入れ子objectごとに`allow_keys()`を呼ぶ。未知フィールドを黙って無視するrendererはマージ不可。
 4. **CONTENT_SCHEMA.md**: 必須/任意フィールド・制約・JSON例のセクションを追加。
 5. **AI_DECK_PROMPT.md**: 対応済みtype一覧に追加。
 6. **ギャラリー**: `content_patterns.py` に検証スライドを1枚追加
@@ -215,6 +216,7 @@ render_diagram(slide, spec, note, content_area=None) # 描画一式
 ```powershell
 python slidegen/validate_content.py content.json                       # 新typeのschema検証
 python slidegen/test_layout_fit.py                                     # 共通収容契約
+python slidegen/test_ai_content_contract.py                            # AI入力の未知キー・任意表紙・未確定文言
 python slidegen/test_timeline_layout.py                               # roadmap系の期間解決・レーン割当・段階的収容
 python slidegen/test_image_slide.py                                   # 大判画像の比率維持・crop・schema・収容停止
 python slidegen/test_org_layout.py                                    # 体制図の階層DAG・配線・段階的収容

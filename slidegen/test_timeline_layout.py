@@ -83,11 +83,13 @@ def main():
     assert not validate(deck)
     invalid = deepcopy(deck)
     invalid["slides"][0]["tracks"][0]["activities"][0]["end"] = "不明"
-    assert any("期間一覧にありません" in error for error in validate(invalid))
+    assert any("期間一覧にありません" in error
+               for error in validate(invalid))
     invalid_quarter = deepcopy(deck)
     invalid_quarter["slides"][0]["tracks"][0]["activities"][0].update(
         start=0.2, end=1.0)
-    assert any("0.25刻み" in error for error in validate(invalid_quarter))
+    assert any("0.25刻み" in error
+               for error in validate(invalid_quarter))
 
     print("timeline layout tests passed")
 

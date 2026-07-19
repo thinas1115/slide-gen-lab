@@ -109,7 +109,8 @@ def main():
         top={"name": "責任者", "sub": "判断"},
         pm={"name": "PM", "sub": "統括"}, teams=[],
         external={"name": "外部", "sub": "支援", "label": "助言"})
-    assert any("旧org形式" in error for error in validate(old))
+    assert any("旧org形式" in error
+               for error in validate(old))
 
     invalid = deepcopy(_deck(org))
     invalid["slides"][0]["org"]["levels"][1].append("missing")

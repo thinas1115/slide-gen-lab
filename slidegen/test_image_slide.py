@@ -79,16 +79,20 @@ def main():
 
     invalid = deepcopy(deck)
     invalid["slides"][0]["image"] = "../../outside.png"
-    assert any("assets内" in error for error in validate(invalid))
+    assert any("assets内" in error
+               for error in validate(invalid))
     invalid = deepcopy(deck)
     invalid["slides"][0]["image"] = "images/missing.png"
-    assert any("assets/にありません" in error for error in validate(invalid))
+    assert any("assets/にありません" in error
+               for error in validate(invalid))
     invalid = deepcopy(deck)
     invalid["slides"][0]["fit"] = "stretch"
-    assert any("contain" in error for error in validate(invalid))
+    assert any("contain" in error
+               for error in validate(invalid))
     invalid = deepcopy(deck)
     invalid["slides"][0]["shadow"] = "yes"
-    assert any("true または false" in error for error in validate(invalid))
+    assert any("true または false" in error
+               for error in validate(invalid))
     invalid = deepcopy(deck)
     invalid["slides"][0]["caption"] = "説明"
     invalid["slides"][0]["source"] = "出典"

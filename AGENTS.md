@@ -58,6 +58,8 @@ git status --short
 ## 実装原則
 
 - `content.json`には文言、type、要素間の関係などの構造だけを書き、座標・余白・フォント値を入れない。
+- `slidegen/content*.py`と`slidegen/diagram_specs.py`は回帰試験用fixtureであり、新規資料の情報源・
+  文言例として使わない。新規資料は利用者が示した要件と情報源だけから作る。
 - 座標、文字実測、配線、描画順はrendererまたはレイアウトエンジンで決める。
 - 新しいtypeを追加するときは、renderer、登録、validator、schema、AI向けtype一覧、ギャラリー、品質検証を同時に更新する。
 - 新しいrendererは、標準配置、裁量余白の圧縮、ジャンル固有要素の縮小、`FitError`による明示停止を

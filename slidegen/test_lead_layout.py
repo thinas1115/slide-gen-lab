@@ -38,7 +38,8 @@ def main():
 
     invalid = deepcopy(LEAD_PATTERN_DECK)
     invalid["slides"][0]["lead"] = ""
-    assert any("空でない文字列" in e for e in validate(invalid))
+    assert any("空でない文字列" in e
+               for e in validate(invalid))
 
     title_with_lead = {
         "meta": deepcopy(LEAD_PATTERN_DECK["meta"]),

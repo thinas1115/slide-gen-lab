@@ -9,7 +9,7 @@
 
 ## 機械検証
 
-このschemaの必須フィールドと件数制約は `slidegen/validate_content.py` が機械的に検証する。
+このschemaの必須フィールド、許可フィールド、件数制約は `slidegen/validate_content.py` が機械的に検証する。
 `generate_from_json.py` は生成前に自動で検証し、NGなら生成せずエラー一覧を出す。
 件数制約を通過しても、実際の文言量によってはrendererの収容判定で生成を停止する。rendererは
 標準配置、裁量余白の圧縮、ジャンルごとに定めた文字・図形の縮小を順に試し、提出品質を保つ
@@ -58,6 +58,8 @@ python slidegen/validate_content.py content.json
 ## 共通ルール
 
 - `slides[*].type` は必須。
+- この文書に記載のないフィールドは、トップレベル・meta・slide・入れ子objectのどこに書いてもvalidatorが拒否する。rendererが黙って無視するフィールドは作らない。
+- `type: "title"` は任意。表紙なし、任意位置、複数枚のいずれも使用できる。
 - `type: "title"` 以外は `kicker` と `title` が必須。
 - `type: "title"` 以外は `lead` (string) を任意指定できる。タイトル直下に要旨を置き、指定時だけ本文開始位置が下がる。未指定時の本文位置は変わらない。
 - `lead` は本文を読む前に伝える結論・前提・読み方を1〜2行で書く。単なるタイトルの言い換えや本文項目の列挙には使わない。文字数の固定上限はないが、最小フォントでも領域へ収まらない場合は生成を停止する。
@@ -69,12 +71,12 @@ python slidegen/validate_content.py content.json
 ```json
 {
   "type": "bullets",
-  "kicker": "検討結果",
-  "title": "標準化により資料作成の手戻りを減らせる",
-  "lead": "先に共通の型を定め、例外だけを個別設計する方針が有効です。",
+  "kicker": "分類",
+  "title": "タイトル",
+  "lead": "本文を読む前に必要な要旨を記載します。",
   "bullets": [
-    ["レビュー観点を揃えられる", null],
-    ["再生成しても配置が変わらない", null]
+    ["箇条書き本文A", null],
+    ["箇条書き本文B", null]
   ]
 }
 ```
@@ -83,7 +85,7 @@ python slidegen/validate_content.py content.json
 
 ### title
 
-用途: 表紙。
+用途: 表紙・章扉。
 
 必須:
 
@@ -190,8 +192,6 @@ python slidegen/validate_content.py content.json
 任意:
 
 - `note`: string
-- `col_widths`: 旧入力との互換用。新規入力では指定しない
-
 制約:
 
 - `columns`と各`rows[*]`の要素数は同じにする(2〜8列)。
@@ -327,13 +327,12 @@ python slidegen/validate_content.py content.json
 ```json
 {
   "type": "image",
-  "kicker": "利用イメージ",
-  "title": "完成後の業務画面を大きく見せる",
-  "lead": "利用者が最初に確認する情報と操作導線を示します。",
-  "image": "images/product-screen.png",
+  "kicker": "キービジュアル",
+  "title": "画像タイトル",
+  "image": "images/<配置済みファイル名>.png",
   "fit": "cover",
   "shadow": true,
-  "alt": "主要指標と操作ボタンが並ぶ業務ダッシュボード画面"
+  "alt": "<画像の内容を表す代替説明>"
 }
 ```
 
@@ -349,10 +348,10 @@ python slidegen/validate_content.py content.json
 - `steps`: object の配列
 - `steps[*].name`: string
 - `steps[*].desc`: string
-- `steps[*].actor`: string
 
 任意:
 
+- `steps[*].actor`: 担当。資料要件に担当情報がある工程だけ指定する
 - `emph`: 強調するstepの0始まりindex配列
 - `note`: string
 
@@ -384,30 +383,32 @@ python slidegen/validate_content.py content.json
   "kicker": "分類",
   "title": "タイトル",
   "steps": [
-    {"name": "工程名", "desc": "説明", "actor": "担当"}
+    {"name": "工程A", "desc": "工程Aの説明"},
+    {"name": "工程B", "desc": "工程Bの説明", "actor": "担当区分"},
+    {"name": "工程C", "desc": "工程Cの説明"}
   ],
-  "emph": [0]
+  "emph": [1]
 }
 ```
 
 ```json
 {
   "type": "process",
-  "kicker": "承認フロー",
-  "title": "審査結果に応じた分岐と再申請を示す",
+  "kicker": "分岐フロー",
+  "title": "条件に応じた分岐と戻り経路を示す",
   "flow": {
     "nodes": {
-      "request": {"name": "申請", "actor": "申請部門"},
-      "review": {"name": "審査", "style": "decision"},
-      "approve": {"name": "承認", "style": "accent"},
-      "revise": {"name": "修正"}
+      "start": {"name": "開始"},
+      "decision": {"name": "条件判定", "style": "decision"},
+      "next": {"name": "次工程", "style": "accent"},
+      "retry": {"name": "再処理"}
     },
-    "levels": [["request"], ["review"], ["approve", "revise"]],
+    "levels": [["start"], ["decision"], ["next", "retry"]],
     "edges": [
-      {"from": "request", "to": "review"},
-      {"from": "review", "to": "approve", "label": "承認"},
-      {"from": "review", "to": "revise", "label": "要修正"},
-      {"from": "revise", "to": "review", "kind": "feedback", "label": "再申請"}
+      {"from": "start", "to": "decision"},
+      {"from": "decision", "to": "next", "label": "条件A"},
+      {"from": "decision", "to": "retry", "label": "条件B"},
+      {"from": "retry", "to": "decision", "kind": "feedback", "label": "再判定"}
     ]
   }
 }
@@ -497,26 +498,25 @@ python slidegen/validate_content.py content.json
 ```json
 {
   "type": "program_roadmap",
-  "kicker": "年間計画",
-  "title": "複数テーマの並行作業を年間計画として俯瞰する",
-  "periods": ["4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月", "1月", "2月", "3月"],
+  "kicker": "複数テーマ計画",
+  "title": "複数テーマ内の並行作業を俯瞰する",
+  "periods": ["期間1", "期間2", "期間3", "期間4"],
   "tracks": [
     {
-      "name": "利用部門の拡大",
+      "name": "テーマA",
       "activities": [
-        {"label": "対象業務の選定", "start": 0.25, "end": 2.75},
-        {"label": "追加部門へ展開", "start": 7.5, "end": 12, "emph": true}
+        {"label": "作業A1", "start": 0.25, "end": 2.75},
+        {"label": "作業A2", "start": 2.0, "end": 4.0, "emph": true}
       ]
     },
     {
-      "name": "運用基盤の再設計",
+      "name": "テーマB",
       "activities": [
-        {"label": "移行方針の策定", "start": "6月", "end": "9月"},
-        {"label": "新環境の構築", "start": "7月", "end": "10月"}
+        {"label": "作業B1", "start": "期間1", "end": "期間2"},
+        {"label": "作業B2", "start": "期間2", "end": "期間4"}
       ]
     }
-  ],
-  "note": "作業期間の重なりからレーン数を自動計算する。"
+  ]
 }
 ```
 
@@ -549,7 +549,7 @@ python slidegen/validate_content.py content.json
 - 点は4〜7件程度が安全(validatorの上限は8件)。
 - ラベルは点の周囲8方向から、他の点・ラベル・プロット境界と衝突しない位置をrendererが選ぶ。
 - 衝突を解消できない場合はラベル間隔、ラベル幅の順に縮小し、それでも無理なら生成を停止する。
-- 旧`lx` / `ly`は既存資料との互換性のため読めるが、新規入力では使用しない。
+- ラベル位置を指定する`lx` / `ly`は受け付けない。位置はrendererが自動計算する。
 
 ```json
 {
@@ -599,7 +599,9 @@ python slidegen/validate_content.py content.json
   "title": "タイトル",
   "hub": "中央ラベル",
   "ring": [
-      {"name": "周辺ノード", "sub": "補足", "label": "関係ラベル", "icon": "icons/fluent/team.png"}
+    {"name": "周辺ノードA", "sub": "補足A", "label": "関係A", "icon": "icons/fluent/team.png"},
+    {"name": "周辺ノードB", "sub": "補足B", "label": "関係B", "icon": "icons/fluent/organization.png"},
+    {"name": "周辺ノードC", "sub": "補足C", "label": "関係C", "icon": "icons/fluent/person.png"}
   ]
 }
 ```
@@ -649,25 +651,25 @@ python slidegen/validate_content.py content.json
   "title": "タイトル",
   "org": {
     "nodes": {
-      "owner_a": {"name": "事業責任者", "sub": "投資判断", "style": "primary"},
-      "owner_b": {"name": "技術責任者", "sub": "技術判断", "style": "primary"},
-      "pm": {"name": "プログラムPM", "sub": "全体統括", "style": "accent"},
-      "advisor": {"name": "外部専門家", "sub": "助言", "style": "external"},
-      "team_a": {"name": "業務設計", "sub": "要件・運用", "members": ["企画", "現場"]},
-      "team_b": {"name": "開発", "sub": "実装・試験", "members": ["アプリ", "基盤"]}
+      "top_a": {"name": "上位組織A", "sub": "役割A", "style": "primary"},
+      "top_b": {"name": "上位組織B", "sub": "役割B", "style": "primary"},
+      "middle": {"name": "中間組織", "sub": "役割C", "style": "accent"},
+      "external": {"name": "外部組織", "sub": "役割D", "style": "external"},
+      "lower_a": {"name": "下位組織A", "sub": "役割E", "members": ["構成員A"]},
+      "lower_b": {"name": "下位組織B", "sub": "役割F", "members": ["構成員B"]}
     },
     "levels": [
-      ["owner_a", "owner_b"],
-      ["pm", "advisor"],
-      ["team_a", "team_b"]
+      ["top_a", "top_b"],
+      ["middle", "external"],
+      ["lower_a", "lower_b"]
     ],
     "edges": [
-      {"from": "owner_a", "to": "pm"},
-      {"from": "owner_b", "to": "pm"},
-      {"from": "advisor", "to": "pm", "kind": "advice", "label": "助言"},
-      {"from": "pm", "to": "team_a"},
-      {"from": "pm", "to": "team_b"},
-      {"from": "team_a", "to": "team_b", "kind": "collaboration", "label": "連携"}
+      {"from": "top_a", "to": "middle"},
+      {"from": "top_b", "to": "middle"},
+      {"from": "external", "to": "middle", "kind": "advice", "label": "関係A"},
+      {"from": "middle", "to": "lower_a"},
+      {"from": "middle", "to": "lower_b"},
+      {"from": "lower_a", "to": "lower_b", "kind": "collaboration", "label": "関係B"}
     ]
   }
 }
@@ -703,10 +705,11 @@ python slidegen/validate_content.py content.json
     - AWSアイコン(同梱済み): `icons/aws/alb.png` `icons/aws/bedrock.png` `icons/aws/cloudfront.png` `icons/aws/cloudwatch.png` `icons/aws/dynamodb.png` `icons/aws/ecr.png` `icons/aws/fargate.png` `icons/aws/rds.png` `icons/aws/route53.png` `icons/aws/s3.png` `icons/aws/sqs.png` `icons/aws/user.png` `icons/aws/users.png` のみ。増やす場合は `extract_aws_icons.py`
 - `diagram.edges`: object の配列
   - `from` / `to`: ノード名(または `@コンテナ名`)
-  - `label` / `label_w`: 線上ラベルと幅(任意)
+  - `label`: 線上ラベル(任意)。幅と配置区間はrendererが文字実測と経路から決める
   - `exit` / `enter`: 発着辺 `"left" | "right" | "top" | "bottom"`(任意。省略時は位置関係から自動)
   - `via`: 経由チャネル名の配列(任意)
   - `dash`: `"dash"` で点線、`both`: true で双方向(任意)
+  - `from_row`: `from`が`@コンテナ名`の場合だけ必須。接続元に使う`diagram.rows`の名前
 
 任意:
 
@@ -717,28 +720,29 @@ python slidegen/validate_content.py content.json
   - 種類: `"left_of_col"` / `"right_of_col"` / `"above_row"` / `"below_row"` / `"outside_container"`
   - `outside_container` の基準は `[コンテナ名, "left"|"right"|"top"|"bottom"|"top_inside"]`
   - 同じ列を共有するノード間のローカルループ(折り返し)には必ず `outside_container` を使う
+  - 同じコンテナ辺へ複数チャネルを宣言すると、rendererが宣言順に外側へ離す。間隔値は指定しない
 - `note`: string
 
 ```json
 {
   "type": "diagram",
-  "kicker": "新構成",
-  "title": "新基盤の構成",
+  "kicker": "構成図",
+  "title": "ノード間の接続関係を示す",
   "diagram": {
-    "cols": ["user", "gw", "app"],
+    "cols": ["left", "center", "right"],
     "rows": ["main"],
     "nodes": {
-      "pc": {"col": "user", "row": "main", "icon": "icons/fluent/desktop.png", "title": "利用者端末"},
-      "fw": {"col": "gw", "row": "main", "icon": "icons/fluent/shield.png", "title": "ファイアウォール"},
-      "web": {"col": "app", "row": "main", "icon": "icons/fluent/server.png", "title": "業務サーバ", "sub": "アプリ本体"}
+      "node_a": {"col": "left", "row": "main", "icon": "icons/fluent/desktop.png", "title": "ノードA"},
+      "node_b": {"col": "center", "row": "main", "icon": "icons/fluent/shield.png", "title": "ノードB"},
+      "node_c": {"col": "right", "row": "main", "icon": "icons/fluent/server.png", "title": "ノードC", "sub": "補足"}
     },
     "containers": [
-      {"name": "dc", "label": "データセンター", "members": ["fw", "web"]}
+      {"name": "group", "label": "グループ", "members": ["node_b", "node_c"]}
     ],
     "channels": {},
     "edges": [
-      {"from": "pc", "to": "fw", "label": "HTTPS", "label_w": 1.0},
-      {"from": "fw", "to": "web"}
+      {"from": "node_a", "to": "node_b", "label": "接続A"},
+      {"from": "node_b", "to": "node_c"}
     ]
   }
 }
@@ -747,7 +751,7 @@ python slidegen/validate_content.py content.json
 制約:
 
 - 参照整合(col/rowの存在、edges/membersのノード参照、viaのチャネル参照)はvalidatorが検証する。
-- 描画領域とコンテナ余白は、行数とコンテナの入れ子構造からエンジンが自動計算する。`area` / `pad` / `pad_x` は入力できない。
+- 描画領域、コンテナ余白、線ラベル幅・配置区間は、構造と文字実測からエンジンが自動計算する。`area` / `pad` / `pad_x` / `label_w` / `label_seg` は入力できない。
 - 行間に収まるか・配線がコンテナを貫通しないか等は、生成時にエンジン自身が対処方法つきのエラーで検出する(収まらない場合は行数・sub・ラベルを減らす)。
 - ノードは10個程度・4行程度までが安全(それ以上は縦に収まらずエラーになる)。
 - 名前付きテンプレート参照はない。仕様は必ず `diagram` にインラインで書く。

@@ -24,7 +24,7 @@
 | `slidegen/assets/cover/` | ユーザーが差し替える表紙背景画像。PNG/JPEGを配置する |
 | `slidegen/assets/images/` | 本文へ大きく配置する生成画像・手元の画像・利用許諾済み画像 |
 | `slidegen/generate_from_json.py` | `content.json` → PPTX 生成(生成前にschema検証を自動実行) |
-| `slidegen/validate_content.py` | `content.json` のschema機械検証(必須フィールド・件数制約・廃止typeの拒否) |
+| `slidegen/validate_content.py` | `content.json` のschema機械検証(許可フィールド・必須値・件数・参照・未確定文言) |
 | `slidegen/check_layout.py` | 生成済みPPTXの重なり・はみ出しを機械検知する品質ゲート |
 | `slidegen/layout_fit.py` | 標準配置・裁量余白圧縮・要素縮小・明示停止の共通契約 |
 | `slidegen/diagram_layout.py` | グリッド仕様から構成図の座標・配線を計算するレイアウトエンジン |
@@ -60,13 +60,17 @@
 
 1. `AI_DECK_PROMPT.md` の依頼文テンプレートをコピーし、資料テーマ・想定読者・目的・必須内容・
    情報源・枚数目安の各入力欄を具体値で埋める。
-2. 埋めたテンプレートと `CONTENT_SCHEMA.md` を生成AI(どのLLMでも可)に渡し、`content.json` を書かせる。
-3. 出力を `content.json` としてプロジェクト直下に保存する。
+2. 埋めたテンプレートと `CONTENT_SCHEMA.md` を生成AI(どのLLMでも可)に渡す。不足情報や未対応typeが
+   ある場合は質問または拡張要件が返るため、解消してから再実行する。
+3. JSONが返ったら `content.json` としてプロジェクト直下に保存する。
 
 **手動で書く**: `CONTENT_SCHEMA.md` に沿って直接 `content.json` を用意してもよい。
 
 `content.json` は資料ごとの入力であり、リポジトリには同梱しない。以前作成したファイルを流用するときも、
 新しい資料要件にない `lead`、`note`、日付、作成者、担当者などは残さず、フィールド自体を削除する。
+表紙や章扉が必要な場合だけ`type: "title"`を使う。0枚・任意位置・複数枚を使用できる。
+schemaにないフィールド、`TBD`・`要確認`などの未確定文言、
+座標・寸法調整用の値はvalidatorが拒否する。
 
 構成図(システム構成・ネットワーク図など)は `diagram` type を使い、グリッド仕様(列・行・ノード・エッジ)を書く。
 座標の数値は書かず、`diagram_layout.py` が計算する。ノードの `icon` は必須で、同梱Fluent/AWSアイコンから選ぶ。
@@ -95,6 +99,8 @@ python contact_sheet.py out\png                                        # out\png
   エラーは `slides[番号] (type=種別): 内容` 形式なので、そのまま生成AIに渡して直させる。
 - `check_layout.py` のNG、またはPNG目視での崩れ(テキスト溢れ・要素重なり・行頭禁則・線とラベルの衝突)も、
   同様に `content.json` を直して再実行する。
+- validatorは内容の事実性や、資料要件の網羅性までは判定できない。最終確認では「必ず含めたい内容」と
+  情報源をスライドごとに照合し、推測の混入・重要項目の欠落・サンプル文脈の残存を確認する。
 
 新しいレイアウト種別が必要になったときだけ、renderer / レイアウタのコーディングが発生する(→ `EXTENDING.md`)。
 サンプルデッキ自体を再生成するなら `python slidegen/generate.py out\sample.pptx`(基本)、
