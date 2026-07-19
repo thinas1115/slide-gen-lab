@@ -60,7 +60,7 @@ def _assert_process_natural_top(slide, flow, area_top):
 
 
 def main():
-    errors = validate(deepcopy(PATTERN_DECK))
+    errors = validate(deepcopy(PATTERN_DECK), allow_sample_content=True)
     assert not errors, "\n".join(errors)
 
     columns = ["区分", "短い値", "詳細説明"]

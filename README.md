@@ -14,8 +14,9 @@
 | パス | 内容 |
 |---|---|
 | `content.json` | 新規デッキの入力データ。利用時に生成AIまたは人間が新規作成する(Git管理外) |
-| `CONTENT_SCHEMA.md` | `content.json` の中立スキーマ。生成AIにはこれと `AI_DECK_PROMPT.md` を渡す |
+| `CONTENT_SCHEMA.md` | `content.json` の中立スキーマ。生成AIには依頼文とtype選定ガイドも渡す |
 | `AI_DECK_PROMPT.md` | 生成AIに `content.json` を書かせる依頼文の穴埋めテンプレート |
+| `docs/type-selection-guide.md` | 各typeを使う場面・使わない場面・代替を示す選定ガイド |
 | `docs/architecture.md` | レイアウタ構成、責務境界、拡張判断、品質保証の設計文書 |
 | `EXTENDING.md` | 新しいtype・エンジン機能を追加するときの不変条件と手順(AI向け拡張ガイド) |
 | `DESIGN_CUSTOMIZATION.md` | 配色・表紙・既存renderer・複数テーマ対応など、デザイン変更時の修正箇所一覧 |
@@ -60,7 +61,7 @@
 
 1. `AI_DECK_PROMPT.md` の依頼文テンプレートをコピーし、資料テーマ・想定読者・目的・必須内容・
    情報源・枚数目安の各入力欄を具体値で埋める。
-2. 埋めたテンプレートと `CONTENT_SCHEMA.md` を生成AI(どのLLMでも可)に渡す。不足情報や未対応typeが
+2. 埋めたテンプレート、`CONTENT_SCHEMA.md`、`docs/type-selection-guide.md` を生成AIへ渡す。不足情報や未対応typeが
    ある場合は質問または拡張要件が返るため、解消してから再実行する。
 3. JSONが返ったら `content.json` としてプロジェクト直下に保存する。
 
@@ -70,7 +71,8 @@
 新しい資料要件にない `lead`、`note`、日付、作成者、担当者などは残さず、フィールド自体を削除する。
 表紙や章扉が必要な場合だけ`type: "title"`を使う。0枚・任意位置・複数枚を使用できる。
 schemaにないフィールド、`TBD`・`要確認`などの未確定文言、
-座標・寸法調整用の値はvalidatorが拒否する。
+座標・寸法調整用の値、回帰検証サンプルから流用した正規化後14文字以上の日本語文言はvalidatorが拒否する。
+`slidegen/content*.py`と`slidegen/diagram_specs.py`は目視QA用であり、新規資料の内容ソースには使わない。
 
 構成図(システム構成・ネットワーク図など)は `diagram` type を使い、グリッド仕様(列・行・ノード・エッジ)を書く。
 座標の数値は書かず、`diagram_layout.py` が計算する。ノードの `icon` は必須で、同梱Fluent/AWSアイコンから選ぶ。

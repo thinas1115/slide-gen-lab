@@ -111,7 +111,7 @@ def main():
         ],
     }
     json_roundtrip = json.loads(json.dumps(deck, ensure_ascii=False))
-    errors = validate(json_roundtrip)
+    errors = validate(json_roundtrip, allow_sample_content=True)
     assert not errors, "\n".join(errors)
 
     legacy = deepcopy(json_roundtrip)
@@ -122,7 +122,7 @@ def main():
                 node["icon"] = icon.removeprefix("icons/")
             elif icon.startswith("icons/aws/"):
                 node["icon"] = icon.removeprefix("icons/aws/")
-    errors = validate(legacy)
+    errors = validate(legacy, allow_sample_content=True)
     assert not errors, "旧アイコンパス互換:\n" + "\n".join(errors)
 
     invalid = deepcopy(json_roundtrip)
@@ -130,7 +130,7 @@ def main():
     invalid["slides"][0]["diagram"]["containers"][0]["pad"] = 0.1
     invalid["slides"][0]["diagram"]["nodes"]["user"]["icon"] = (
         "icons/fluent/not_defined.png")
-    errors = validate(invalid)
+    errors = validate(invalid, allow_sample_content=True)
     assert any("diagram.area" in error for error in errors)
     assert any(".pad" in error for error in errors)
     assert any("assets/ にありません" in error for error in errors)

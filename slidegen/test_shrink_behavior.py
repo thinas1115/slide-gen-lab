@@ -31,7 +31,7 @@ def _slide():
 
 
 def main():
-    errors = validate(deepcopy(STRESS_PATTERN_DECK))
+    errors = validate(deepcopy(STRESS_PATTERN_DECK), allow_sample_content=True)
     assert not errors, "\n".join(errors)
 
     table_spec = STRESS_PATTERN_DECK["slides"][0]

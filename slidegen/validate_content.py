@@ -18,6 +18,7 @@ from pathlib import Path
 from PIL import Image
 
 from asset_paths import resolve_icon_path, resolve_image_path
+from sample_content_guard import sample_reuse_paths
 from timeline_layout import resolve_marker, resolve_program_span, resolve_span
 
 # 旧固定構成図type。互換性のあるエラーを返すため、廃止名だけ保持する。
@@ -779,9 +780,10 @@ VALIDATORS = {
 }
 
 
-def validate(deck):
+def validate(deck, *, allow_sample_content=False):
     """デッキ全体を検証し、エラーメッセージのリストを返す(空 = 合格)。
 
+    allow_sample_content は回帰ギャラリー専用。通常のcontent.jsonでは指定しない。
     """
     errors = []
     if not isinstance(deck, dict):
@@ -796,6 +798,11 @@ def validate(deck):
         errors.append(
             f"{path}: 未確定マーカーが残っています。確定値へ置き換えるか、"
             "不要な任意フィールド・スライドを削除してください")
+    if not allow_sample_content:
+        for path, sample_text in sample_reuse_paths(deck):
+            errors.append(
+                f'{path}: 回帰検証サンプルの文言と一致します。資料要件と情報源から'
+                f'新規作成してください (一致: "{sample_text}")')
     meta = deck.get("meta")
     if not isinstance(meta, dict):
         errors.append('トップレベルに "meta" (オブジェクト) が必要です')
