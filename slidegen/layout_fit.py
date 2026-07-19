@@ -57,11 +57,12 @@ def ensure_within(renderer, used, available, *, guidance):
 
 def fit_text_or_raise(renderer, field, text, box_w, box_h, max_pt, *,
                       min_pt, weight="regular", spacing=1.3, pad_in=0.0,
-                      wrapper=None):
+                      wrapper=None, line_validator=None):
     """最小フォントでも入らない文字列を黙って描画せず停止する。"""
     size, lines = fit_font_size(
         text, box_w, box_h, max_pt, min_pt=min_pt, weight=weight,
         spacing=spacing, pad_in=pad_in, wrapper=wrapper,
+        line_validator=line_validator,
     )
     used = len(lines) * line_height_in(size, spacing) + pad_in * 2
     if used > box_h + FIT_EPS:
@@ -70,5 +71,10 @@ def fit_text_or_raise(renderer, field, text, box_w, box_h, max_pt, *,
             f"{renderer}.{field}: 最小フォント{min_pt:g}ptでも収まりません"
             f"(必要{used:.2f}in / 高さ{box_h:.2f}in / 不足{shortage:.2f}in)。"
             "文言を短くするか項目数を減らしてください。"
+        )
+    if line_validator is not None and not line_validator(lines):
+        raise FitError(
+            f"{renderer}.{field}: 最小フォント{min_pt:g}ptでも自然な位置で"
+            "折り返せません。文言を短くしてください。"
         )
     return size, lines

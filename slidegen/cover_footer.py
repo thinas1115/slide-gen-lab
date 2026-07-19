@@ -15,7 +15,12 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches
 
 from layout_fit import fit_text_or_raise
-from textfit import line_height_in, wrap_text, wrap_title
+from textfit import (
+    line_height_in,
+    title_lines_are_natural,
+    wrap_text,
+    wrap_title,
+)
 
 
 _HEX_COLOR = re.compile(r"^[0-9A-Fa-f]{6}$")
@@ -358,7 +363,8 @@ def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
     subtitle_w = 8.0 if has_rail else 11.35
     title_size, title_lines = fit_text_or_raise(
         "cover", "title", spec["title"], title_w, 2.15, 42,
-        min_pt=34, weight="bold", spacing=1.08, wrapper=wrap_title)
+        min_pt=34, weight="bold", spacing=1.08, wrapper=wrap_title,
+        line_validator=title_lines_are_natural)
     title_h = max(1.0, len(title_lines) * line_height_in(title_size, 1.08) + 0.1)
     add_text(slide, 0.9, 1.72, title_w, title_h, "\n".join(title_lines), title_size,
              bold=True, color=cover.title_color, spacing=1.08)

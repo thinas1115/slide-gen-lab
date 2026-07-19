@@ -43,7 +43,27 @@ def text_width_in(text: str, size_pt: float, weight: str = "regular") -> float:
 _BREAK_BEFORE = "、。，．）」』】”？！・：；"  # 行頭に来てはいけない文字
 _BREAK_AFTER = "（「『【“"  # 行末に来てはいけない文字
 _TITLE_TOKEN = re.compile(
-    r"[A-Za-z0-9]+(?:[-./+_:][A-Za-z0-9]+)*|.", re.DOTALL)
+    r"[A-Za-z0-9]+(?:[-./+_:][A-Za-z0-9]+)*|[ァ-ヶー]+|[ｦ-ﾟ]+|.",
+    re.DOTALL)
+_LEADING_PARTICLES = "はがをにでへもの"
+
+
+def _is_katakana(ch: str) -> bool:
+    return "ァ" <= ch <= "ヶ" or ch == "ー" or "ｦ" <= ch <= "ﾟ"
+
+
+def _is_japanese(ch: str) -> bool:
+    return (_is_katakana(ch) or "ぁ" <= ch <= "ゖ"
+            or "一" <= ch <= "龯" or ch == "々")
+
+
+def title_lines_are_natural(lines: list[str]) -> bool:
+    """前行の日本語から助詞だけが次行頭へ孤立していないか判定する。"""
+    for previous, current in zip(lines, lines[1:]):
+        if (previous and current and _is_japanese(previous[-1])
+                and current[0] in _LEADING_PARTICLES):
+            return False
+    return True
 
 
 def wrap_text(text: str, width_in: float, size_pt: float,
@@ -75,11 +95,13 @@ def balance_last_line(lines: list[str], width_in: float, size_pt: float,
         right = joined[split:].lstrip()
         if not left or not right:
             continue
-        # 英単語や識別子の途中では分割しない。
+        # 英単語・識別子・連続カタカナの途中では分割しない。
         before = joined[split - 1]
         after = joined[split]
         if before.isascii() and after.isascii() \
                 and before.isalnum() and after.isalnum():
+            continue
+        if _is_katakana(before) and _is_katakana(after):
             continue
         if right[0] in _BREAK_BEFORE or left[-1] in _BREAK_AFTER:
             continue
@@ -94,7 +116,7 @@ def balance_last_line(lines: list[str], width_in: float, size_pt: float,
 
 def wrap_title(text: str, width_in: float, size_pt: float,
                weight: str = "regular") -> list[str]:
-    """英単語を分断せず、短い最終行も補正してタイトルを折り返す。"""
+    """英単語・カタカナ語を分断せず、短い最終行も補正する。"""
     lines: list[str] = []
     for para in text.split("\n"):
         lines.extend(_wrap_title_one(para, width_in, size_pt, weight))
@@ -176,7 +198,8 @@ def line_height_in(size_pt: float, spacing: float = 1.3) -> float:
 def fit_font_size(text: str, box_w_in: float, box_h_in: float,
                   max_pt: float, min_pt: float = 10.0,
                   weight: str = "regular", spacing: float = 1.3,
-                  pad_in: float = 0.0, wrapper=None) -> tuple[float, list[str]]:
+                  pad_in: float = 0.0, wrapper=None,
+                  line_validator=None) -> tuple[float, list[str]]:
     """ボックス(幅x高さ)に収まる最大フォントサイズと折り返し結果を返す。
 
     min_ptまで縮めても入らない場合はmin_ptの結果を返す(呼び出し側で
@@ -188,7 +211,8 @@ def fit_font_size(text: str, box_w_in: float, box_h_in: float,
     size = max_pt
     while size >= min_pt:
         lines = wrapper(text, w, size, weight)
-        if len(lines) * line_height_in(size, spacing) <= h:
+        if (len(lines) * line_height_in(size, spacing) <= h
+                and (line_validator is None or line_validator(lines))):
             return size, lines
         size -= 0.5
     return min_pt, wrapper(text, w, min_pt, weight)

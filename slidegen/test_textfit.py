@@ -9,6 +9,7 @@ from textfit import (
     fit_font_size,
     fits,
     text_width_in,
+    title_lines_are_natural,
     wrap_text,
     wrap_title,
 )
@@ -38,12 +39,18 @@ english = balance_last_line(
     8.05, 36, "bold")
 assert "Connec\nt" not in "\n".join(english), english
 
-title_lines = wrap_title(
-    "Site-to-Site VPN over Direct Connectのプライベート接続でハマった落とし穴3選",
-    8.05, 42, "bold")
-for word in ("Site-to-Site", "Direct", "Connect"):
+long_title = (
+    "Site-to-Site VPN over Direct Connectのプライベート接続で"
+    "ハマった落とし穴3選")
+title_size, title_lines = fit_font_size(
+    long_title, 8.05, 2.15, 42, min_pt=34, weight="bold",
+    spacing=1.08, wrapper=wrap_title,
+    line_validator=title_lines_are_natural)
+for word in ("Site-to-Site", "Direct", "Connect", "プライベート"):
     assert any(word in line for line in title_lines), title_lines
 assert title_lines[-1] != "3選", title_lines
+assert title_size < 42, title_size
+assert title_lines_are_natural(title_lines), title_lines
 
 size, flines = fit_font_size("社内テンプレート準拠の現実解を検証する", 2.5, 1.0, 20)
 out.append(f"fit -> {size}pt, {len(flines)} lines: {flines}")
