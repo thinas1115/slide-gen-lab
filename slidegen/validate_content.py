@@ -262,9 +262,24 @@ def _v_process(s):
                 and _is_str(st.get("desc"))):
             s.err(f"steps[{i}] には name / desc (文字列) が必要です")
             continue
-        s.allow_keys(st, {"name", "desc", "actor"}, f"steps[{i}]")
+        s.allow_keys(st, {"name", "desc", "actor", "attribute"},
+                     f"steps[{i}]")
         if "actor" in st and not _is_str(st["actor"]):
             s.err(f"steps[{i}].actor は空でない文字列にしてください")
+        attribute = st.get("attribute")
+        if "actor" in st and "attribute" in st:
+            s.err(f"steps[{i}] は actor と attribute を同時に指定できません")
+        if attribute is not None:
+            if not isinstance(attribute, dict):
+                s.err(f"steps[{i}].attribute は label / value を持つ"
+                      "オブジェクトにしてください")
+            else:
+                s.allow_keys(attribute, {"label", "value"},
+                             f"steps[{i}].attribute")
+                for key in ("label", "value"):
+                    if not _is_str(attribute.get(key)):
+                        s.err(f"steps[{i}].attribute.{key} は空でない文字列に"
+                              "してください")
     emph = s.spec.get("emph")
     if emph is not None and steps:
         if not (isinstance(emph, list)
