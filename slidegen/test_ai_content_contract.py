@@ -30,15 +30,15 @@ def main():
 
     no_cover = _deck(_bullets())
     no_cover["slides"].pop(0)
-    _assert_error(no_cover, 'slides[0] に type="title"')
+    assert not validate(no_cover)
 
     late_cover = _deck(_bullets())
     late_cover["slides"].reverse()
-    _assert_error(late_cover, 'slides[0] に配置')
+    assert not validate(late_cover)
 
     duplicate_cover = _deck(_bullets())
     duplicate_cover["slides"].append(deepcopy(duplicate_cover["slides"][0]))
-    _assert_error(duplicate_cover, "先頭の1枚だけ")
+    assert not validate(duplicate_cover)
 
     unknown_top = _deck(_bullets())
     unknown_top["layout"] = "wide"
@@ -104,7 +104,7 @@ def main():
     for expected in ("nodes.a.sub", "label_w: 未対応", ".dash", ".both"):
         assert any(expected in error for error in errors), "\n".join(errors)
 
-    print("OK: AI content contract rejects ambiguous and unsupported input")
+    print("OK: AI content contract accepts optional covers and rejects unsupported input")
 
 
 if __name__ == "__main__":

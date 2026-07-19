@@ -764,11 +764,9 @@ VALIDATORS = {
 }
 
 
-def validate(deck, *, require_title=True):
+def validate(deck):
     """デッキ全体を検証し、エラーメッセージのリストを返す(空 = 合格)。
 
-    require_title=False はrenderer単体テスト用。JSON生成の正式経路では常に
-    既定値を使い、先頭に表紙1枚を要求する。
     """
     errors = []
     if not isinstance(deck, dict):
@@ -801,21 +799,6 @@ def validate(deck, *, require_title=True):
     if not (isinstance(slides, list) and slides):
         errors.append('トップレベルに "slides" (1件以上の配列) が必要です')
         return errors
-    if require_title:
-        title_indices = [
-            index for index, spec in enumerate(slides)
-            if isinstance(spec, dict) and spec.get("type") == "title"
-        ]
-        if not title_indices:
-            errors.append('slides[0] に type="title" の表紙が1枚必要です')
-        elif len(title_indices) > 1:
-            errors.append(
-                f'type="title" は先頭の1枚だけにしてください '
-                f'(現在: {len(title_indices)}枚、位置: {title_indices})')
-        elif title_indices[0] != 0:
-            errors.append(
-                f'type="title" は slides[0] に配置してください '
-                f'(現在: slides[{title_indices[0]}])')
     for idx, spec in enumerate(slides):
         if not isinstance(spec, dict):
             errors.append(f"slides[{idx}]: オブジェクトにしてください")

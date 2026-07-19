@@ -43,7 +43,7 @@ def main():
                  "author": "検証担当"},
         "slides": [spec],
     }
-    assert not validate(deck, require_title=False)
+    assert not validate(deck)
 
     contain_slide = _slide()
     s_image(contain_slide, spec, 1)
@@ -80,23 +80,23 @@ def main():
     invalid = deepcopy(deck)
     invalid["slides"][0]["image"] = "../../outside.png"
     assert any("assets内" in error
-               for error in validate(invalid, require_title=False))
+               for error in validate(invalid))
     invalid = deepcopy(deck)
     invalid["slides"][0]["image"] = "images/missing.png"
     assert any("assets/にありません" in error
-               for error in validate(invalid, require_title=False))
+               for error in validate(invalid))
     invalid = deepcopy(deck)
     invalid["slides"][0]["fit"] = "stretch"
     assert any("contain" in error
-               for error in validate(invalid, require_title=False))
+               for error in validate(invalid))
     invalid = deepcopy(deck)
     invalid["slides"][0]["shadow"] = "yes"
     assert any("true または false" in error
-               for error in validate(invalid, require_title=False))
+               for error in validate(invalid))
     invalid = deepcopy(deck)
     invalid["slides"][0]["caption"] = "説明"
     invalid["slides"][0]["source"] = "出典"
-    errors = validate(invalid, require_title=False)
+    errors = validate(invalid)
     assert any("caption" in error and "lead" in error for error in errors)
     assert any("source" in error and "削除" in error for error in errors)
 

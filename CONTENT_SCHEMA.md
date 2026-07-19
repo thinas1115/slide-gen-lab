@@ -29,7 +29,6 @@ python slidegen/validate_content.py content.json
 
 - `meta.title`: string
 - `slides`: slide object の配列
-- `slides[0]`: `type: "title"` の表紙。デッキ内に1枚だけ置く
 
 任意:
 
@@ -60,7 +59,7 @@ python slidegen/validate_content.py content.json
 
 - `slides[*].type` は必須。
 - この文書に記載のないフィールドは、トップレベル・meta・slide・入れ子objectのどこに書いてもvalidatorが拒否する。rendererが黙って無視するフィールドは作らない。
-- `type: "title"` は`slides[0]`に1枚だけ置く。表紙なし、途中の表紙、複数表紙はエラーになる。
+- `type: "title"` は任意。表紙なし、任意位置、複数枚のいずれも使用できる。
 - `type: "title"` 以外は `kicker` と `title` が必須。
 - `type: "title"` 以外は `lead` (string) を任意指定できる。タイトル直下に要旨を置き、指定時だけ本文開始位置が下がる。未指定時の本文位置は変わらない。
 - `lead` は本文を読む前に伝える結論・前提・読み方を1〜2行で書く。単なるタイトルの言い換えや本文項目の列挙には使わない。文字数の固定上限はないが、最小フォントでも領域へ収まらない場合は生成を停止する。
@@ -86,7 +85,7 @@ python slidegen/validate_content.py content.json
 
 ### title
 
-用途: 表紙。
+用途: 表紙・章扉。
 
 必須:
 

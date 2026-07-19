@@ -24,7 +24,7 @@
 | `slidegen/assets/cover/` | ユーザーが差し替える表紙背景画像。PNG/JPEGを配置する |
 | `slidegen/assets/images/` | 本文へ大きく配置する生成画像・手元の画像・利用許諾済み画像 |
 | `slidegen/generate_from_json.py` | `content.json` → PPTX 生成(生成前にschema検証を自動実行) |
-| `slidegen/validate_content.py` | `content.json` のschema機械検証(許可フィールド・表紙順序・必須値・件数・参照・未確定文言) |
+| `slidegen/validate_content.py` | `content.json` のschema機械検証(許可フィールド・必須値・件数・参照・未確定文言) |
 | `slidegen/check_layout.py` | 生成済みPPTXの重なり・はみ出しを機械検知する品質ゲート |
 | `slidegen/layout_fit.py` | 標準配置・裁量余白圧縮・要素縮小・明示停止の共通契約 |
 | `slidegen/diagram_layout.py` | グリッド仕様から構成図の座標・配線を計算するレイアウトエンジン |
@@ -68,7 +68,8 @@
 
 `content.json` は資料ごとの入力であり、リポジトリには同梱しない。以前作成したファイルを流用するときも、
 新しい資料要件にない `lead`、`note`、日付、作成者、担当者などは残さず、フィールド自体を削除する。
-表紙は`slides[0]`に1枚だけ置く。schemaにないフィールド、`TBD`・`要確認`などの未確定文言、
+表紙や章扉が必要な場合だけ`type: "title"`を使う。0枚・任意位置・複数枚を使用できる。
+schemaにないフィールド、`TBD`・`要確認`などの未確定文言、
 座標・寸法調整用の値はvalidatorが拒否する。
 
 構成図(システム構成・ネットワーク図など)は `diagram` type を使い、グリッド仕様(列・行・ノード・エッジ)を書く。

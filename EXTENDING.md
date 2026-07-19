@@ -216,7 +216,7 @@ render_diagram(slide, spec, note, content_area=None) # 描画一式
 ```powershell
 python slidegen/validate_content.py content.json                       # 新typeのschema検証
 python slidegen/test_layout_fit.py                                     # 共通収容契約
-python slidegen/test_ai_content_contract.py                            # AI入力の未知キー・表紙順序・未確定文言
+python slidegen/test_ai_content_contract.py                            # AI入力の未知キー・任意表紙・未確定文言
 python slidegen/test_timeline_layout.py                               # roadmap系の期間解決・レーン割当・段階的収容
 python slidegen/test_image_slide.py                                   # 大判画像の比率維持・crop・schema・収容停止
 python slidegen/test_org_layout.py                                    # 体制図の階層DAG・配線・段階的収容
