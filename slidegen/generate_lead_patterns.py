@@ -8,6 +8,7 @@ from pptx.util import Inches
 import generate
 from content_lead_patterns import LEAD_PATTERN_DECK
 from generate_from_json import RENDER
+from validate_content import validate
 
 
 def main(out_path, cover_footer_config=None):
@@ -17,6 +18,9 @@ def main(out_path, cover_footer_config=None):
         generate.configure_cover_footer(cover_footer_config)
     except ValueError as e:
         raise SystemExit(f"NG: 表紙・フッター設定: {e}") from e
+    errors = validate(LEAD_PATTERN_DECK, allow_sample_content=True)
+    if errors:
+        raise SystemExit("NG: leadギャラリー\n  - " + "\n  - ".join(errors))
     generate.DECK = LEAD_PATTERN_DECK
     prs = Presentation()
     prs.slide_width = Inches(generate.SLIDE_W)

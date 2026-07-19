@@ -29,7 +29,7 @@ def main():
     assert lead_area.bottom == generate.BODY_BOTTOM
     assert lead_area.shifted
 
-    errors = validate(deepcopy(LEAD_PATTERN_DECK))
+    errors = validate(deepcopy(LEAD_PATTERN_DECK), allow_sample_content=True)
     assert not errors, "\n".join(errors)
 
     generate.DECK = LEAD_PATTERN_DECK

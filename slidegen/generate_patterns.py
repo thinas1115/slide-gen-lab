@@ -12,6 +12,7 @@ from org_layout import s_org
 from diagrams2 import s_matrix, s_process, s_program_roadmap, s_roadmap
 from diagram_layout import render_diagram
 from image_slide import s_image
+from validate_content import validate
 
 
 def s_diagram(slide, spec, page):
@@ -36,6 +37,9 @@ def main(out_path, cover_footer_config=None):
         generate.configure_cover_footer(cover_footer_config)
     except ValueError as e:
         raise SystemExit(f"NG: 表紙・フッター設定: {e}") from e
+    errors = validate(PATTERN_DECK, allow_sample_content=True)
+    if errors:
+        raise SystemExit("NG: パターンギャラリー\n  - " + "\n  - ".join(errors))
     # footer() は generate.DECK の meta を参照するため、ギャラリー用に差し替える。
     generate.DECK = PATTERN_DECK
     prs = Presentation()

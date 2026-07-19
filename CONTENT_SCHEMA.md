@@ -7,6 +7,14 @@
 `content.json` は資料ごとに新規作成するGit管理外の入力ファイル。リポジトリの回帰検証用データを
 新規資料の題材として流用しない。
 
+この文書のJSONは、許可フィールドと入れ子構造を示す最小限の断片である。`分類`、`タイトル`、`本文`などの
+値や、typeの掲載順を新規資料へ流用しない。typeの選定は
+[docs/type-selection-guide.md](docs/type-selection-guide.md)の「選ぶ場面・選ばない場面・代替」に従い、
+実際の文言・固有名詞・数値は資料要件と指定された情報源から作成する。
+
+`slidegen/content*.py`と`slidegen/diagram_specs.py`はrendererの回帰検証と目視QAのためのデータであり、
+schema例ではない。通常のvalidatorは、そこにある正規化後14文字以上の日本語文言を流用した入力を拒否する。
+
 ## 機械検証
 
 このschemaの必須フィールド、許可フィールド、件数制約は `slidegen/validate_content.py` が機械的に検証する。
