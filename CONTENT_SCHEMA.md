@@ -664,25 +664,24 @@ python slidegen/validate_content.py content.json
   "title": "タイトル",
   "org": {
     "nodes": {
-      "top_a": {"name": "上位組織A", "sub": "役割A", "style": "primary"},
-      "top_b": {"name": "上位組織B", "sub": "役割B", "style": "primary"},
-      "middle": {"name": "中間組織", "sub": "役割C", "style": "accent"},
-      "external": {"name": "外部組織", "sub": "役割D", "style": "external"},
-      "lower_a": {"name": "下位組織A", "sub": "役割E", "members": ["構成員A"]},
-      "lower_b": {"name": "下位組織B", "sub": "役割F", "members": ["構成員B"]}
+      "project_owner": {"name": "プロジェクト責任者", "sub": "方針・予算", "style": "primary"},
+      "system_owner": {"name": "システム責任者", "sub": "システム方針", "style": "primary"},
+      "project_manager": {"name": "プロジェクトマネージャー", "sub": "計画・課題・品質管理", "style": "accent"},
+      "business_team": {"name": "業務チーム", "sub": "業務要件・受入"},
+      "development_team": {"name": "開発チーム", "sub": "設計・開発・試験"},
+      "platform_team": {"name": "基盤チーム", "sub": "基盤・ネットワーク"}
     },
     "levels": [
-      ["top_a", "top_b"],
-      ["middle", "external"],
-      ["lower_a", "lower_b"]
+      ["project_owner", "system_owner"],
+      ["project_manager"],
+      ["business_team", "development_team", "platform_team"]
     ],
     "edges": [
-      {"from": "top_a", "to": "middle"},
-      {"from": "top_b", "to": "middle"},
-      {"from": "external", "to": "middle", "kind": "advice", "label": "関係A"},
-      {"from": "middle", "to": "lower_a"},
-      {"from": "middle", "to": "lower_b"},
-      {"from": "lower_a", "to": "lower_b", "kind": "collaboration", "label": "関係B"}
+      {"from": "project_owner", "to": "project_manager"},
+      {"from": "system_owner", "to": "project_manager"},
+      {"from": "project_manager", "to": "business_team"},
+      {"from": "project_manager", "to": "development_team"},
+      {"from": "project_manager", "to": "platform_team"}
     ]
   }
 }

@@ -164,27 +164,26 @@ PATTERN_DECK = {
         {
             "type": "process",
             "kicker": "承認フロー",
-            "title": "審査結果に応じた分岐・差戻し・再申請を1枚で示す",
+            "title": "通常の承認経路と差戻しを、迷わず追える形で示す",
             "flow": {
                 "nodes": {
                     "request": {"name": "申請", "desc": "必要事項を登録", "actor": "申請部門"},
                     "check": {"name": "形式確認", "desc": "不足項目を確認", "actor": "事務局"},
-                    "review": {"name": "内容審査", "desc": "リスクと効果を評価", "actor": "審査会",
+                    "review": {"name": "内容審査", "desc": "妥当性とリスクを確認", "actor": "審査部門",
                                "style": "decision"},
-                    "approve": {"name": "承認", "desc": "実施条件を確定", "style": "accent"},
                     "revise": {"name": "修正", "desc": "指摘事項を反映", "actor": "申請部門"},
-                    "execute": {"name": "実施", "desc": "計画に沿って着手", "actor": "実行責任者"},
+                    "execute": {"name": "実施", "desc": "承認内容に沿って着手", "actor": "実施部門",
+                                "style": "accent"},
                 },
                 "levels": [
                     ["request"], ["check"], ["review"],
-                    ["approve", "revise"], ["execute"],
+                    ["execute", "revise"],
                 ],
                 "edges": [
                     {"from": "request", "to": "check"},
                     {"from": "check", "to": "review"},
-                    {"from": "review", "to": "approve", "label": "承認"},
+                    {"from": "review", "to": "execute", "label": "承認"},
                     {"from": "review", "to": "revise", "label": "要修正"},
-                    {"from": "approve", "to": "execute"},
                     {"from": "revise", "to": "check", "kind": "feedback",
                      "label": "再申請"},
                 ],
@@ -302,58 +301,40 @@ PATTERN_DECK = {
         {
             "type": "org",
             "kicker": "推進体制",
-            "title": "事業・技術の共同責任者から、実行組織へ権限をつなぐ",
+            "title": "責任者から各チームまで、指揮系統を明確にする",
             "org": {
                 "nodes": {
-                    "business_owner": {
-                        "name": "事業責任者", "sub": "投資・優先度を決定",
+                    "project_owner": {
+                        "name": "プロジェクト責任者", "sub": "方針・予算を決定",
                         "style": "primary"},
-                    "tech_owner": {
-                        "name": "技術責任者", "sub": "技術方針・品質を決定",
+                    "system_owner": {
+                        "name": "システム責任者", "sub": "システム方針を決定",
                         "style": "primary"},
-                    "program_pm": {
-                        "name": "プログラムPM", "sub": "全体計画と課題を統括",
+                    "project_manager": {
+                        "name": "プロジェクトマネージャー", "sub": "計画・課題・品質を統括",
                         "style": "accent"},
-                    "architecture": {
-                        "name": "アーキテクト", "sub": "方式・非機能を統括",
-                        "style": "accent"},
-                    "advisor": {
-                        "name": "外部アドバイザー", "sub": "専門知見を提供",
-                        "style": "external"},
-                    "business_design": {
-                        "name": "業務設計", "sub": "要件・運用設計",
-                        "members": ["企画", "現場代表"]},
-                    "development": {
-                        "name": "開発", "sub": "実装・試験",
-                        "members": ["アプリ", "基盤", "QA"]},
-                    "rollout": {
-                        "name": "展開", "sub": "教育・移行",
-                        "members": ["PMO", "部門窓口"]},
-                    "operation": {
-                        "name": "運用", "sub": "監視・改善"},
-                    "security": {
-                        "name": "セキュリティ", "sub": "審査・監査"},
+                    "business_team": {
+                        "name": "業務チーム", "sub": "業務要件・受入を担当"},
+                    "application_team": {
+                        "name": "開発チーム", "sub": "設計・開発・試験を担当"},
+                    "platform_team": {
+                        "name": "基盤チーム", "sub": "基盤・ネットワークを担当"},
+                    "operation_team": {
+                        "name": "移行・運用チーム", "sub": "移行・運用設計を担当"},
                 },
                 "levels": [
-                    ["business_owner", "tech_owner"],
-                    ["advisor", "program_pm", "architecture"],
-                    ["business_design", "development", "rollout"],
-                    ["operation", "security"],
+                    ["project_owner", "system_owner"],
+                    ["project_manager"],
+                    ["business_team", "application_team", "platform_team",
+                     "operation_team"],
                 ],
                 "edges": [
-                    {"from": "business_owner", "to": "program_pm"},
-                    {"from": "tech_owner", "to": "program_pm"},
-                    {"from": "tech_owner", "to": "architecture"},
-                    {"from": "advisor", "to": "program_pm",
-                     "kind": "advice", "label": "助言"},
-                    {"from": "program_pm", "to": "business_design"},
-                    {"from": "program_pm", "to": "development"},
-                    {"from": "program_pm", "to": "rollout"},
-                    {"from": "architecture", "to": "development"},
-                    {"from": "development", "to": "operation"},
-                    {"from": "rollout", "to": "operation"},
-                    {"from": "operation", "to": "security",
-                     "kind": "collaboration", "label": "連携"},
+                    {"from": "project_owner", "to": "project_manager"},
+                    {"from": "system_owner", "to": "project_manager"},
+                    {"from": "project_manager", "to": "business_team"},
+                    {"from": "project_manager", "to": "application_team"},
+                    {"from": "project_manager", "to": "platform_team"},
+                    {"from": "project_manager", "to": "operation_team"},
                 ],
             },
         },

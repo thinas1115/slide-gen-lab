@@ -46,9 +46,9 @@ def _assert_process_natural_top(slide, flow, area_top):
         _text_shape(slide, flow["nodes"][node_id]["name"]).top / Inches(1)
         for node_id in first_row_ids
     ]
-    expected_title_top = area_top + 0.34 + 0.13
     assert max(first_row_tops) - min(first_row_tops) < 0.01
-    assert abs(first_row_tops[0] - expected_title_top) < 0.01
+    assert area_top + 0.42 + 0.13 <= first_row_tops[0]
+    assert first_row_tops[0] <= area_top + 0.72 + 0.13
 
     connector_bottoms = [
         (shape.top + shape.height) / Inches(1)

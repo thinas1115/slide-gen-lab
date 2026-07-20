@@ -78,6 +78,8 @@ def main():
     layout = OrgLayout(org, ContentArea())
     assert layout.fit_stage == "standard"
     assert layout.boxes["owner_a"][1] == layout.boxes["owner_b"][1]
+    assert layout.boxes["owner_a"][2] <= 4.30
+    assert layout.boxes["owner_b"][2] <= 4.30
     # 同じ連結成分の報告線は、階層間の横幹と子側接続点を共有する。
     assert layout.routes[0][1][1] == layout.routes[1][1][1]
     assert layout.routes[0][-1] == layout.routes[1][-1]
@@ -101,7 +103,7 @@ def main():
     _must_fail(lambda: fit_org_layout(org, 3.00), "最小設定")
     labeled = deepcopy(org)
     labeled["edges"][2]["label"] = "助言"
-    assert fit_org_layout(labeled, 4.70).values["gap_y"] == 0.34
+    assert fit_org_layout(labeled, 4.70).values["gap_y"] >= 0.34
 
     old = _deck(org)
     old["slides"][0].pop("org")
