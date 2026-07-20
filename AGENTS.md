@@ -87,5 +87,9 @@ git status --short
 新しいrendererまたは収容処理を変更した場合は、通常入力の回帰テストに加え、余白圧縮、要素縮小、
 最小値での明示停止までを通る過密入力テストを実行する。
 
+`check_layout.py`を変更した場合は`python slidegen/test_check_layout.py`を実行し、正常なデッキだけでなく、
+意図的にはみ出す表・グラフ・図形を拒否できることも確認する。入力処理を変更した場合は
+`python slidegen/test_generate_errors.py`を実行し、利用者向けエラーにtracebackや絶対パスを出さない。
+
 `check_layout.py`の合格だけでは完成扱いにしない。文字の視認性、余白、コントラスト、線の見え方、
 内容の正確性はPNGと情報源を使って確認する。

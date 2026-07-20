@@ -28,6 +28,16 @@ def _assert_error(deck, expected):
 def main():
     assert not validate(_deck(_bullets()))
 
+    ignored_bullet_value = _deck(_bullets())
+    ignored_bullet_value["slides"][1]["bullets"][0][1] = "描画されない値"
+    _assert_error(ignored_bullet_value, '["本文", null]')
+
+    legacy_cards = _deck({
+        "type": "cards", "kicker": "比較", "title": "選択肢",
+        "cards": [["見出しA", "本文A"], ["見出しB", "本文B"]],
+    })
+    _assert_error(legacy_cards, "heading / bodyを持つオブジェクト")
+
     no_cover = _deck(_bullets())
     no_cover["slides"].pop(0)
     assert not validate(no_cover)

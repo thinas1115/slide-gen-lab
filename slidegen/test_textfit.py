@@ -27,6 +27,8 @@ for l in lines:
     assert lw <= 3.0 + 0.01, f"行が幅超過: {l}"
 # 行頭禁則: 「。」「、」で始まる行がないこと
 assert not any(l and l[0] in "、。" for l in lines), "行頭禁則違反"
+assert any("15〜30分" in l for l in lines), lines
+assert "15〜3\n0分" not in "\n".join(lines), lines
 
 balanced = balance_last_line(
     ["プライベート接続でハマった落とし穴", "3選"],
@@ -55,6 +57,12 @@ assert title_lines_are_natural(title_lines), title_lines
 size, flines = fit_font_size("社内テンプレート準拠の現実解を検証する", 2.5, 1.0, 20)
 out.append(f"fit -> {size}pt, {len(flines)} lines: {flines}")
 assert fits("社内テンプレート準拠の現実解を検証する", 2.5, 1.0, size)
+assert not any(line.endswith("準") for line in flines), flines
+assert not any(line.startswith("拠") for line in flines), flines
+assert len(flines[-1]) > 1, flines
+
+private = wrap_text("プライベート接続を構成する", 1.7, 16)
+assert not any("プライベー" in line and "ト" not in line for line in private), private
 
 out.append("ALL OK")
 print("\n".join(out))

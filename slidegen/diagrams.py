@@ -80,7 +80,7 @@ def container(slide, x, y, w, h, label, color=LINE, dash=None):
 
 
 def _masked_node_label(slide, cx, y, text, *, max_w, slot_h, size, min_pt,
-                       color, bold=False):
+                       color, bold=False, attach="top"):
     """配線を背後へ通すため、文字の実測外形だけを背景色でマスクする。"""
     weight = "bold" if bold else "regular"
     actual_size, lines = fit_text_or_raise(
@@ -91,8 +91,9 @@ def _masked_node_label(slide, cx, y, text, *, max_w, slot_h, size, min_pt,
                    + NODE_LABEL_PAD_X)
     actual_h = min(slot_h, line_height_in(actual_size, 1.1) * len(lines)
                    + NODE_LABEL_PAD_Y)
+    box_y = y if attach == "top" else y + slot_h - actual_h
     tb = add_text(
-        slide, cx - actual_w / 2, y + (slot_h - actual_h) / 2,
+        slide, cx - actual_w / 2, box_y,
         actual_w, actual_h, rendered, actual_size, bold=bold, color=color,
         align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, spacing=1.1)
     tb.fill.solid()
@@ -117,11 +118,13 @@ def icon_node(slide, cx, cy, img, title, sub=None, size=0.62, *, label_above=Fal
                              Inches(cy - size / 2), Inches(size), Inches(size))
     title_y = cy - size / 2 - 0.59 if label_above else cy + size / 2 + 0.05
     _masked_node_label(slide, cx, title_y, title, max_w=2.1, slot_h=0.28,
-                       size=11, min_pt=9.5, color=NAVY, bold=True)
+                       size=11, min_pt=9.5, color=NAVY, bold=True,
+                       attach="bottom" if label_above else "top")
     if sub:
         sub_y = cy - size / 2 - 0.31 if label_above else cy + size / 2 + 0.33
         _masked_node_label(slide, cx, sub_y, sub, max_w=2.1, slot_h=0.26,
-                           size=9, min_pt=8, color=GRAY)
+                           size=9, min_pt=8, color=GRAY,
+                           attach="bottom" if label_above else "top")
 
 
 def right_of(cx):

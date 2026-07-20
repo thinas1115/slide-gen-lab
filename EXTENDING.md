@@ -219,6 +219,8 @@ render_diagram(slide, spec, note, content_area=None) # 描画一式
 python slidegen/validate_content.py content.json                       # 新typeのschema検証
 python slidegen/test_layout_fit.py                                     # 共通収容契約
 python slidegen/test_ai_content_contract.py                            # AI入力の未知キー・任意表紙・未確定文言
+python slidegen/test_generate_errors.py                                # JSON構文エラーの安全な診断
+python slidegen/test_check_layout.py                                   # 壊れた表・グラフ・可変サイズPPTXの検出
 python slidegen/test_sample_content_guard.py                           # 回帰サンプル文言の通常入力への混入防止
 python slidegen/test_timeline_layout.py                               # roadmap系の期間解決・レーン割当・段階的収容
 python slidegen/test_image_slide.py                                   # 大判画像の比率維持・crop・schema・収容停止
@@ -239,8 +241,10 @@ powershell -ExecutionPolicy Bypass -File render.ps1 -PptxPath out\pattern_galler
 python contact_sheet.py out\png_pg                                      # → sheet.png を目視
 ```
 
-- チェッカーの限界: 白マスクラベルの枠線またぎ・線同士の交差・色/Z順は検知できない。
+- チェッカーの限界: グラフ内部のラベル衝突、白マスクラベルの枠線またぎ、線同士の交差、色/Z順は検知できない。
   **PNG目視は省略不可**。全ページを一覧とフル解像度(`render.ps1` 既定1600px)の両方で確認する。
+- Pull RequestではWindows CIが全テストと主要デッキの生成・機械検査を実行する。CIが失敗した変更は
+  マージせず、PowerPointでのPNG目視結果もPull Requestへ記録する。
 - 出力先pptxをPowerPointで開いたままだと PermissionError。閉じてから実行。
 - コンソールの日本語はcp932で文字化けすることがある。判定に使う出力は
   ファイルにリダイレクトしてから読む(**読めない出力を根拠に成功と報告しない**)。

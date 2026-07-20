@@ -34,8 +34,6 @@ def s_diagram(slide, spec, page):
                    content_area=area if area.shifted else None)
 
 
-# 旧固定構成図typeの aws / aws2 は廃止済み。任意テーマの構成図は
-# diagram type(宣言的レイアウトエンジン)で生成する。
 RENDER = dict(generate.RENDER,
               hub=s_hub, org=s_org,
               process=s_process, roadmap=s_roadmap,
@@ -45,15 +43,27 @@ RENDER = dict(generate.RENDER,
 
 def main(json_path, out_path, cover_footer_config=None):
     source = Path(json_path)
+    display_name = source.name
     if not source.is_file():
         raise SystemExit(
-            f"NG: 入力JSONが見つかりません: {source}\n"
+            f"NG: 入力JSONが見つかりません: {display_name}\n"
             "  AI_DECK_PROMPT.md と CONTENT_SCHEMA.md に従って"
             " content.json を新規作成してください。")
-    deck = json.loads(source.read_text(encoding="utf-8"))
+    try:
+        raw = source.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        raise SystemExit(
+            f"NG: {display_name} はUTF-8で保存してください。") from None
+    try:
+        deck = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise SystemExit(
+            f"NG: {display_name} のJSON構文が不正です "
+            f"(行{error.lineno}, 列{error.colno}): {error.msg}\n"
+            "  指定位置の括弧、カンマ、引用符を修正して再実行してください。") from None
     errors = validate(deck)
     if errors:
-        print(f"NG: {json_path} に {len(errors)} 件の問題 (生成を中止):",
+        print(f"NG: {display_name} に {len(errors)} 件の問題 (生成を中止):",
               file=sys.stderr)
         for e in errors:
             print(f"  - {e}", file=sys.stderr)
@@ -62,7 +72,7 @@ def main(json_path, out_path, cover_footer_config=None):
     try:
         generate.configure_cover_footer(cover_footer_config)
     except ValueError as e:
-        raise SystemExit(f"NG: 表紙・フッター設定: {e}") from e
+        raise SystemExit(f"NG: 表紙・フッター設定: {e}") from None
 
     prs = Presentation()
     prs.slide_width = Inches(generate.SLIDE_W)

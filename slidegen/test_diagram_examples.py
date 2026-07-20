@@ -77,6 +77,19 @@ def main():
                       if shape.has_text_frame
                       and shape.text_frame.text == "名前解決")
     dense_layout = Layout(AWS_MULTIAZ_EXAMPLE)
+    # 下向き接続点はタイトルマスク内から始め、点状の短線を残さない。
+    source_edge = next(
+        edge for edge in AWS_MULTIAZ_EXAMPLE["edges"]
+        if dense_layout._sides(edge)[0] == "bottom")
+    source = source_edge["from"]
+    source_title = AWS_MULTIAZ_EXAMPLE["nodes"][source]["title"]
+    source_label = next(
+        shape for shape in dense_slide.shapes
+        if shape.has_text_frame and shape.text_frame.text == source_title)
+    port_y = dense_layout.port(source, "bottom")[1]
+    assert source_label.top.inches <= port_y <= (
+        source_label.top.inches + source_label.height.inches)
+
     r53_x, _ = dense_layout.node_center("r53")
     _, cf_y = dense_layout.node_center("cf")
     assert name_label.left.inches + name_label.width.inches < r53_x
