@@ -90,3 +90,15 @@ Pull Requestと`main`へのpushでは、Windows CIがPython 3.10・3.13の全テ
 
 `examples/gallery/pattern_gallery.pptx`はclone後に人間が確認する配布用サンプルです。
 新しい資料を作る生成AIには渡さず、内容・文言・ページ順の参考資料にも使用しません。
+
+## ライセンス
+
+本リポジトリのオリジナルコードおよび文書は、[MIT License](LICENSE)で提供します。
+
+`slidegen/assets/`以下には、AWS Architecture Icons、Fluent UI System Icons、商標、ロゴなど、
+第三者が権利を持つ素材が含まれます。これらの素材には本プロジェクトのMIT Licenseを適用せず、
+各素材の利用条件が適用されます。出典と条件は[第三者素材に関する通知](THIRD_PARTY_NOTICES.md)と
+[クレジット](slidegen/assets/CREDITS.md)を参照してください。
+
+本ソフトウェアを使用して利用者が作成した`content.json`やPPTXには、本プロジェクトの
+MIT Licenseを適用しません。ただし、出力へ含まれる第三者素材には各素材の利用条件が適用されます。
