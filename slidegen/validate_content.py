@@ -21,9 +21,6 @@ from asset_paths import resolve_icon_path, resolve_image_path
 from sample_content_guard import sample_reuse_paths
 from timeline_layout import resolve_marker, resolve_program_span, resolve_span
 
-# 旧固定構成図type。互換性のあるエラーを返すため、廃止名だけ保持する。
-RETIRED_TYPES = {"aws", "aws2"}
-
 # noteを実際に描画するtype。それ以外への指定はエラーにする。
 NOTE_TYPES = {"table", "chart", "process", "roadmap", "program_roadmap",
               "matrix", "hub", "org", "diagram"}
@@ -130,7 +127,8 @@ def _v_title(s):
 def _v_bullets(s):
     items = s.req_list("bullets", 1, 6, "[本文, null]")
     for i, b in enumerate(items or []):
-        if not (isinstance(b, list) and len(b) == 2 and _is_str(b[0])):
+        if not (isinstance(b, list) and len(b) == 2
+                and _is_str(b[0]) and b[1] is None):
             s.err(f'bullets[{i}] は ["本文", null] の2要素配列にしてください')
 
 
@@ -140,14 +138,9 @@ def _v_cards(s):
     if style not in {"editorial", "metrics"}:
         s.err('cards.style は "editorial" または "metrics" にしてください')
     for i, c in enumerate(items or []):
-        if isinstance(c, list):
-            if not (len(c) == 2 and _is_str(c[0]) and _is_str(c[1])):
-                s.err(f'cards[{i}] は ["見出し", "本文"] の2要素配列、または'
-                      ' heading / bodyを持つオブジェクトにしてください')
-            continue
         if not (isinstance(c, dict) and _is_str(c.get("heading"))
                 and _is_str(c.get("body"))):
-            s.err(f"cards[{i}] には heading / body (文字列) が必要です")
+            s.err(f"cards[{i}] は heading / bodyを持つオブジェクトにしてください")
             continue
         s.allow_keys(c, {"heading", "body", "value", "emphasis"},
                      f"cards[{i}]")
@@ -827,10 +820,6 @@ def validate(deck, *, allow_sample_content=False):
             continue
         s = _Slide(idx, spec, errors)
         t = spec.get("type")
-        if t in RETIRED_TYPES:
-            s.err('廃止済みtypeです。構成図は type: "diagram" でグリッド仕様'
-                  '(座標なし)を書いてください')
-            continue
         if t not in VALIDATORS:
             s.err(f"未対応のtypeです。使用可能: {', '.join(sorted(VALIDATORS))}")
             continue

@@ -2,7 +2,6 @@
 
 ポイント: プリセットのカギ線コネクタは折れ位置を制御できず他ノードを
 貫通しうるため、ウェイポイント明示のroute()で配線レーンを決める。
-(旧ハンドコード版 s_aws2 は diagram_layout.py + diagram_specs.py に移行済み)
 """
 from pptx.enum.shapes import MSO_CONNECTOR
 from pptx.oxml.ns import qn

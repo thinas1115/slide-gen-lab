@@ -42,8 +42,11 @@ def text_width_in(text: str, size_pt: float, weight: str = "regular") -> float:
 
 _BREAK_BEFORE = "、。，．）」』】”？！・：；"  # 行頭に来てはいけない文字
 _BREAK_AFTER = "（「『【“"  # 行末に来てはいけない文字
-_TITLE_TOKEN = re.compile(
-    r"[A-Za-z0-9]+(?:[-./+_:][A-Za-z0-9]+)*|[ァ-ヶー]+|[ｦ-ﾟ]+|.",
+_TEXT_TOKEN = re.compile(
+    r"[0-9０-９]+(?:[.,，．〜～~\-–—/][0-9０-９]+)*"
+    r"(?:秒|分|時間|日|週|か月|ヶ月|月|年|件|個|枚|回|人|台|社|選|円|万円|億円|%|％)?"
+    r"|[A-Za-z0-9]+(?:[-./+_:][A-Za-z0-9]+)*"
+    r"|[ァ-ヶー]+|[ｦ-ﾟ]+|[一-龯々〆ヵヶ]+|[ぁ-ゖ]+|\s+|.",
     re.DOTALL)
 _LEADING_PARTICLES = "はがをにでへもの"
 
@@ -74,7 +77,9 @@ def wrap_text(text: str, width_in: float, size_pt: float,
     """
     lines: list[str] = []
     for para in text.split("\n"):
-        lines.extend(_wrap_one(para, width_in, size_pt, weight))
+        wrapped = _wrap_one(para, width_in, size_pt, weight)
+        lines.extend(balance_last_line(
+            wrapped, width_in, size_pt, weight, min_ratio=0.18))
     return lines or [""]
 
 
@@ -90,7 +95,14 @@ def balance_last_line(lines: list[str], width_in: float, size_pt: float,
     result = list(lines)
     joined = result[-2] + result[-1]
     original_split = len(result[-2])
+    token_boundaries = set()
+    position = 0
+    for token in _natural_tokens(joined):
+        position += len(token)
+        token_boundaries.add(position)
     for split in range(original_split - 1, 0, -1):
+        if split not in token_boundaries:
+            continue
         left = joined[:split].rstrip()
         right = joined[split:].lstrip()
         if not left or not right:
@@ -126,17 +138,45 @@ def wrap_title(text: str, width_in: float, size_pt: float,
 
 def _wrap_title_one(para: str, width_in: float, size_pt: float,
                     weight: str) -> list[str]:
+    return _wrap_tokens(para, width_in, size_pt, weight)
+
+
+def _natural_tokens(para: str) -> list[str]:
+    """日本語の意味単位を壊しにくい折り返しトークンを作る。"""
+    result: list[str] = []
+    for token in _TEXT_TOKEN.findall(para):
+        if not token:
+            continue
+        # 助詞・活用語尾は直前語へ付け、次行頭へ孤立させない。
+        if (result and all("ぁ" <= ch <= "ゖ" for ch in token)
+                and not result[-1].isspace()):
+            result[-1] += token
+            continue
+        # 句読点や閉じ括弧も直前語と同じトークンにする。
+        if result and token[0] in _BREAK_BEFORE and not result[-1].isspace():
+            result[-1] += token
+            continue
+        # 開き括弧は直後の語と離さない。
+        if result and result[-1] and result[-1][-1] in _BREAK_AFTER:
+            result[-1] += token
+            continue
+        result.append(token)
+    return result
+
+
+def _wrap_tokens(para: str, width_in: float, size_pt: float,
+                 weight: str) -> list[str]:
     if not para:
         return [""]
     lines = []
     cur = ""
-    for token in _TITLE_TOKEN.findall(para):
+    for token in _natural_tokens(para):
         candidate = cur + token
         if text_width_in(candidate, size_pt, weight) <= width_in or not cur:
             cur = candidate
             if text_width_in(cur, size_pt, weight) <= width_in:
                 continue
-            split_token = _wrap_one(cur, width_in, size_pt, weight)
+            split_token = _wrap_chars(cur, width_in, size_pt, weight)
             lines.extend(split_token[:-1])
             cur = split_token[-1]
             continue
@@ -157,7 +197,7 @@ def _wrap_title_one(para: str, width_in: float, size_pt: float,
             lines.append(cur.rstrip())
             cur = token.lstrip()
         if text_width_in(cur, size_pt, weight) > width_in:
-            split_token = _wrap_one(cur, width_in, size_pt, weight)
+            split_token = _wrap_chars(cur, width_in, size_pt, weight)
             lines.extend(split_token[:-1])
             cur = split_token[-1]
     if cur:
@@ -166,6 +206,12 @@ def _wrap_title_one(para: str, width_in: float, size_pt: float,
 
 
 def _wrap_one(para: str, width_in: float, size_pt: float, weight: str) -> list[str]:
+    return _wrap_tokens(para, width_in, size_pt, weight)
+
+
+def _wrap_chars(para: str, width_in: float, size_pt: float,
+                weight: str) -> list[str]:
+    """単一トークンが領域より長い場合だけ文字単位へフォールバックする。"""
     if not para:
         return [""]
     lines = []

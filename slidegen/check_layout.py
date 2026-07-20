@@ -7,20 +7,18 @@
   T-S: テキストグリフ×塗り図形の「部分重なり」(完全内包=意図的デザインは許可)
   T-F: テキストグリフがコンテナ枠線をまたぐ
   L-T: 矢印・線×テキストグリフ(白塗りマスクラベルは除外)
-  OOB: スライド境界からのはみ出し
+  CELL-OOB: 表セルからのテキストはみ出し
+  OOB: スライド境界からの図形・画像・表・グラフのはみ出し
 """
 import sys
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
-from pptx.util import Emu
-
 from cover_footer import COVER_BACKGROUND_NAME
 from textfit import line_height_in, wrap_text
 
 EMU = 914400
-SLIDE_W, SLIDE_H = 13.333, 7.5
 EDGE = 0.03          # 枠線の当たり判定幅
 SEG_TRIM = 0.08      # 線分端はノード接続なので判定から除外する長さ
 EPS = 0.03           # 視認できない接触(スリバー)を無視する許容量
@@ -41,10 +39,8 @@ def contains(outer, inner, eps=EPS):
             and outer[2] + eps >= inner[2] and outer[3] + eps >= inner[3])
 
 
-def glyph_rect(sh):
-    """add_text/セルの実グリフ矩形をtextfitで推定する。"""
-    tf = sh.text_frame
-    box = rect_of(sh)
+def glyph_rect_for_text_frame(tf, box):
+    """指定領域にあるtext frameの実グリフ矩形をtextfitで推定する。"""
     bw = box[2] - box[0]
     lines, sizes = [], []
     align = PP_ALIGN.LEFT
@@ -76,6 +72,46 @@ def glyph_rect(sh):
     else:
         y0 = box[1]
     return (x0, y0, x0 + w, y0 + h)
+
+
+def glyph_rect(sh):
+    """通常図形の実グリフ矩形をtextfitで推定する。"""
+    return glyph_rect_for_text_frame(sh.text_frame, rect_of(sh))
+
+
+def table_cells(sh):
+    """表セルの外形・文字領域とtext frameを返す。"""
+    table = sh.table
+    x0, y0, _, _ = rect_of(sh)
+    col_widths = [col.width / EMU for col in table.columns]
+    row_heights = [row.height / EMU for row in table.rows]
+    y = y0
+    for ri, row in enumerate(table.rows):
+        x = x0
+        row_h = row_heights[ri]
+        for ci, col in enumerate(table.columns):
+            col_w = col_widths[ci]
+            cell = table.cell(ri, ci)
+            if not getattr(cell, "is_spanned", False):
+                span_w = getattr(cell, "span_width", 1)
+                span_h = getattr(cell, "span_height", 1)
+                merged_w = sum(col_widths[ci:ci + span_w])
+                merged_h = sum(row_heights[ri:ri + span_h])
+                outer = (x, y, x + merged_w, y + merged_h)
+                inner = (
+                    x + cell.margin_left / EMU,
+                    y + cell.margin_top / EMU,
+                    x + merged_w - cell.margin_right / EMU,
+                    y + merged_h - cell.margin_bottom / EMU,
+                )
+                yield outer, inner, cell.text_frame, ri, ci
+            x += col_w
+        y += row_h
+
+
+def is_oob(rect, slide_w, slide_h):
+    return (rect[0] < -EPS or rect[1] < -EPS
+            or rect[2] > slide_w + EPS or rect[3] > slide_h + EPS)
 
 
 def seg_of(sh):
@@ -124,20 +160,39 @@ def snippet(t):
 
 def check(path):
     prs = Presentation(path)
+    slide_w = prs.slide_width / EMU
+    slide_h = prs.slide_height / EMU
     findings = []
     for si, slide in enumerate(prs.slides, 1):
         texts, pics, solids, frames, segs = [], [], [], [], []
         for z, sh in enumerate(slide.shapes):  # zは描画順(後勝ち)
             st = sh.shape_type
+            bounds = rect_of(sh)
+            if is_oob(bounds, slide_w, slide_h):
+                findings.append((si, "OOB", sh.name, ""))
             if st == MSO_SHAPE_TYPE.PICTURE:
                 if sh.name != COVER_BACKGROUND_NAME:
-                    pics.append((rect_of(sh), sh.name))
+                    pics.append((bounds, sh.name))
             elif st in (MSO_SHAPE_TYPE.AUTO_SHAPE,):
                 (solids if has_solid_fill(sh) else frames).append(
-                    (rect_of(sh), sh.name, z))
+                    (bounds, sh.name, z))
             elif st == MSO_SHAPE_TYPE.LINE:
                 segs.append((seg_of(sh), sh.name, z))
-            elif sh.has_text_frame and sh.text_frame.text.strip():
+            elif st == MSO_SHAPE_TYPE.CHART:
+                pics.append((bounds, sh.name))
+            elif st == MSO_SHAPE_TYPE.TABLE:
+                for _cell_rect, text_rect, tf, ri, ci in table_cells(sh):
+                    if not tf.text.strip():
+                        continue
+                    g = glyph_rect_for_text_frame(tf, text_rect)
+                    if g:
+                        label = snippet(tf.text)
+                        texts.append((g, label, False))
+                        if not contains(text_rect, g, eps=0.01):
+                            findings.append(
+                                (si, "CELL-OOB", f"{sh.name}[{ri},{ci}]", label))
+            if st != MSO_SHAPE_TYPE.TABLE \
+                    and sh.has_text_frame and sh.text_frame.text.strip():
                 g = glyph_rect(sh)
                 if g:
                     texts.append((g, snippet(sh.text_frame.text),
@@ -180,10 +235,9 @@ def check(path):
             for r, pname in pics:
                 if seg_hits_rect(seg, r):
                     findings.append((si, "L-P", name, pname))
-        # OOB
         for g, t, _ in texts:
-            if g[0] < 0 or g[1] < 0 or g[2] > SLIDE_W or g[3] > SLIDE_H:
-                findings.append((si, "OOB", t, ""))
+            if is_oob(g, slide_w, slide_h):
+                findings.append((si, "OOB-TEXT", t, ""))
     return findings
 
 
