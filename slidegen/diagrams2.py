@@ -213,7 +213,7 @@ def _fit_process_flow(area_h, levels):
 
     def candidates():
         values = [
-            ("standard", 1.02, 0.34, 12.5),
+            ("standard", 1.08, 0.36, 12.5),
             ("gap", 1.02, 0.22, 12.5),
             ("element", 0.88, 0.18, 11.0),
         ]
@@ -248,9 +248,16 @@ def _s_process_flow(slide, spec, page):
             f"process.flow: {level_count}列では箱幅が{node_w:.2f}inとなり"
             "最小1.55inを下回ります。工程階層を減らしてください。")
 
+    max_rows = max(len(level) for level in levels)
+    rows_h = max_rows * node_h + max(0, max_rows - 1) * gap_y
+    feedback_reserve = 0.64 if any(
+        edge.get("kind") == "feedback" for edge in edges) else 0.18
+    free_h = max(0.0, area.height - rows_h - feedback_reserve)
+    top_pad = min(0.72, max(0.42, free_h * 0.30))
+
     rects = {}
     for level_index, level in enumerate(levels):
-        top = area.top + 0.34
+        top = area.top + top_pad
         x = left + level_index * (node_w + gap_x)
         for row_index, node_id in enumerate(level):
             y = top + row_index * (node_h + gap_y)
@@ -273,7 +280,7 @@ def _s_process_flow(slide, spec, page):
             if abs(start[1] - end[1]) < 0.03:
                 points = [start, end]
         else:
-            lane_y = max_node_bottom + 0.48 + feedback_count * 0.16
+            lane_y = max_node_bottom + 0.42 + feedback_count * 0.16
             if lane_y > area.bottom - 0.16:
                 raise FitError(
                     "process.flow: 差戻し線を本文領域へ配置できません。"

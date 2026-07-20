@@ -12,7 +12,7 @@ python slidegen/generate_from_json.py content.json out/deck.pptx --cover-footer-
 python slidegen/check_layout.py out/deck.pptx
 ```
 
-`--cover-footer-config` を省略すると、従来と同じ表紙・フッターで生成する。
+`--cover-footer-config` を省略すると、標準の表紙・フッター設定で生成する。
 個人や部署専用の設定をリポジトリへ登録しない場合は、リポジトリ直下の
 `cover_footer.local.json` を使用できる。このファイルは `.gitignore` 対象だが、
 自動読込はしないためCLIで明示する。

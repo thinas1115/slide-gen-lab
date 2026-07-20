@@ -1,8 +1,8 @@
 """階層・ノード・関係だけから体制図を配置する専用レイアウタ。"""
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 
-from diagrams import arrow_label
-from diagrams3 import route
+from diagrams import add_arrow, arrow_label
+from diagrams3 import plain_line, route
 from generate import (ACCENT, BODY_W, GRAY, LIGHT, MARGIN, NAVY,
                       RULE, TEXT, WHITE, ZEBRA, ContentArea, add_rect, add_text,
                       header, note_line)
@@ -11,6 +11,7 @@ from layout_fit import FitError, fit_text_or_raise, select_fit
 FRAME_X = MARGIN + 0.10
 FRAME_W = BODY_W - 0.20
 MIN_NODE_W = 1.82
+MAX_NODE_W = {1: 4.10, 2: 4.30, 3: 3.65, 4: 2.82, 5: 2.24}
 
 
 def fit_org_layout(org, available):
@@ -56,6 +57,17 @@ def fit_org_layout(org, available):
         }
         used = (top_gap + bottom_gap + sum(level_heights)
                 + gap_y * max(0, len(levels) - 1))
+        if used <= available:
+            # 少ない階層を上端へ貼り付けず、余白の一部を上側と階層間へ戻す。
+            surplus = available - used
+            top_bonus = min(0.34, surplus * 0.28)
+            remaining = surplus - top_bonus
+            gap_count = max(0, len(levels) - 1)
+            gap_bonus = min(
+                0.28, remaining * 0.42 / gap_count) if gap_count else 0.0
+            values["top_gap"] += top_bonus
+            values["gap_y"] += gap_bonus
+            used += top_bonus + gap_bonus * gap_count
         candidates.append((stage, values, used))
     return select_fit(
         "org", available, candidates,
@@ -101,13 +113,15 @@ class OrgLayout:
             )
             if has_same_level_edge:
                 gap_x = max(gap_x, 0.60 if count == 2 else 0.50)
-            node_w = (FRAME_W - gap_x * (count - 1)) / count
-            if node_w < MIN_NODE_W:
+            available_node_w = (FRAME_W - gap_x * (count - 1)) / count
+            if available_node_w < MIN_NODE_W:
                 raise FitError(
                     f"org: 階層{level_index + 1}の{count}ノードを配置できません"
-                    f"(箱幅{node_w:.2f}in / 最小{MIN_NODE_W:.2f}in)。"
+                    f"(箱幅{available_node_w:.2f}in / 最小{MIN_NODE_W:.2f}in)。"
                     "同じ階層を分割するかノード数を減らしてください。"
                 )
+            # 1〜2ノードの階層を横幅いっぱいに引き伸ばさない。
+            node_w = min(available_node_w, MAX_NODE_W[count])
             total_w = node_w * count + gap_x * (count - 1)
             x0 = FRAME_X + (FRAME_W - total_w) / 2
             node_h = values["level_heights"][level_index]
@@ -295,6 +309,49 @@ class OrgLayout:
                             f"{node_id}を貫通します。levelsの階層を分けてください。"
                         )
 
+    def _reporting_bus_groups(self):
+        """複数の報告線を、親子間の共有幹として描く単位へまとめる。"""
+        adjacent_groups = {}
+        for edge_index, edge in enumerate(self.edges):
+            source_level = self.level_of[edge["from"]]
+            target_level = self.level_of[edge["to"]]
+            if (edge.get("kind", "reporting") == "reporting"
+                    and target_level - source_level == 1):
+                adjacent_groups.setdefault(
+                    (source_level, target_level), []).append(edge_index)
+        groups = []
+        for edge_indexes in adjacent_groups.values():
+            groups.extend(
+                component for component in self._reporting_components(edge_indexes)
+                if len(component) > 1)
+        return groups
+
+    def _draw_reporting_bus(self, slide, edge_indexes):
+        """親側スタブ、横幹、子側矢印を重複させずに描画する。"""
+        edges = [self.edges[index] for index in edge_indexes]
+        bus_y = self.routes[edge_indexes[0]][1][1]
+        source_ids = list(dict.fromkeys(edge["from"] for edge in edges))
+        target_ids = list(dict.fromkeys(edge["to"] for edge in edges))
+        source_xs = [
+            self.boxes[node_id][0] + self.boxes[node_id][2] / 2
+            for node_id in source_ids
+        ]
+        target_xs = [
+            self.boxes[node_id][0] + self.boxes[node_id][2] / 2
+            for node_id in target_ids
+        ]
+        all_xs = source_xs + target_xs
+        if max(all_xs) - min(all_xs) > 0.01:
+            plain_line(slide, min(all_xs), bus_y, max(all_xs), bus_y,
+                       width=1.10)
+        for node_id, cx in zip(source_ids, source_xs):
+            _x, y, _w, h = self.boxes[node_id]
+            if abs(y + h - bus_y) > 0.01:
+                plain_line(slide, cx, y + h, cx, bus_y, width=1.10)
+        for node_id, cx in zip(target_ids, target_xs):
+            _x, y, _w, _h = self.boxes[node_id]
+            add_arrow(slide, cx, bus_y, cx, y, width=1.10)
+
     @staticmethod
     def _label_anchor(points):
         segments = list(zip(points[:-1], points[1:]))
@@ -371,18 +428,24 @@ class OrgLayout:
                 spacing=1.05)
 
     def render(self, slide):
+        reporting_groups = self._reporting_bus_groups()
+        shared_reporting = {
+            edge_index for group in reporting_groups for edge_index in group
+        }
         direct_same_level = {
             edge_index for edge_index, (edge, points)
             in enumerate(zip(self.edges, self.routes))
             if self.level_of[edge["from"]] == self.level_of[edge["to"]]
             and len(points) == 2
         }
+        for edge_indexes in reporting_groups:
+            self._draw_reporting_bus(slide, edge_indexes)
         for edge_index, (edge, points) in enumerate(zip(self.edges, self.routes)):
-            if edge_index in direct_same_level:
+            if edge_index in direct_same_level or edge_index in shared_reporting:
                 continue
             kind = edge.get("kind", "reporting")
             dash = "dash" if kind != "reporting" else None
-            route(slide, points, dash=dash, width=1.25,
+            route(slide, points, dash=dash, width=1.10,
                   both=kind == "collaboration")
         for level in self.levels:
             for node_id in level:
@@ -394,10 +457,10 @@ class OrgLayout:
             if kind == "collaboration":
                 center = ((points[0][0] + points[1][0]) / 2,
                           (points[0][1] + points[1][1]) / 2)
-                route(slide, [center, points[0]], dash="dash", width=1.25)
-                route(slide, [center, points[1]], dash="dash", width=1.25)
+                route(slide, [center, points[0]], dash="dash", width=1.10)
+                route(slide, [center, points[1]], dash="dash", width=1.10)
             else:
-                route(slide, points, dash="dash", width=1.25)
+                route(slide, points, dash="dash", width=1.10)
         for edge_index, (edge, points) in enumerate(zip(self.edges, self.routes)):
             if edge.get("label"):
                 cx, cy = self._label_anchor(points)

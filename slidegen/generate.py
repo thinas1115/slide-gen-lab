@@ -511,55 +511,71 @@ def _cell(cell, text, size, *, bold=False, color=TEXT, fill=WHITE, center=False)
 def s_twocol(slide, spec, page):
     """Render a purposeful before/after comparison, not generic cards."""
     area = header(slide, spec["kicker"], spec["title"], spec.get("lead"))
-    gap = 0.46
+    gap = 0.42
     left = 0.76
     cw = (11.82 - gap) / 2
-    max_ch = area.height - 0.15
     panels = [spec["left"], spec["right"]]
-    tw = cw - 0.76
-    def measure(size, bgap):
-        cont = [sum(len(wrap_text(b, tw, size)) * line_height_in(size, 1.2) + bgap
-                    for b in p["bullets"]) - bgap for p in panels]
-        return cont, max(cont)
+    text_w = cw - 1.10
+
+    def measure(size, row_gap):
+        rows = []
+        for panel in panels:
+            heights = [
+                max(0.42, len(wrap_text(b, text_w, size))
+                    * line_height_in(size, 1.18) + 0.06)
+                for b in panel["bullets"]
+            ]
+            rows.append(heights)
+        used = max(
+            1.35 + sum(heights) + row_gap * max(0, len(heights) - 1)
+            + 0.28
+            for heights in rows
+        )
+        return rows, used
 
     def candidates():
-        for bgap in stepped(0.32, 0.22, 0.02):
-            _cont, used = measure(14, bgap)
-            yield ("standard" if bgap == 0.32 else "gap",
-                   {"size": 14, "gap": bgap}, used)
+        for row_gap in stepped(0.18, 0.10, 0.02):
+            _rows, used = measure(14, row_gap)
+            yield ("standard" if row_gap == 0.18 else "gap",
+                   {"size": 14, "gap": row_gap}, used)
         for size in stepped(13.5, 11, 0.5):
-            _cont, used = measure(size, 0.22)
-            yield "font", {"size": size, "gap": 0.22}, used
+            _rows, used = measure(size, 0.10)
+            yield "font", {"size": size, "gap": 0.10}, used
 
     fitted = select_fit(
-        "twocol", max_ch - 1.38, candidates(),
+        "twocol", area.height - 0.42, candidates(),
         guidance="左右の箇条書きを減らすか文言を短くしてください。",
     )
-    size, bgap = fitted.values["size"], fitted.values["gap"]
-    cont, _used = measure(size, bgap)
-    body_h = max(cont) + 0.28
-    top = area.top + 0.34
+    size, row_gap = fitted.values["size"], fitted.values["gap"]
+    rows, natural_h = measure(size, row_gap)
+    panel_h = max(2.72, natural_h)
+    top = area.top + 0.30
     for i, p in enumerate(panels):
         x = left + i * (cw + gap)
         fill = ZEBRA if i == 0 else LIGHT
-        add_rect(slide, x, top, cw, min(max_ch - 0.14, body_h + 1.38), fill)
-        add_text(slide, x + 0.36, top + 0.28, cw - 0.72, 0.25,
+        marker = GRAY if i == 0 else ACCENT
+        add_rect(slide, x, top, cw, panel_h, fill)
+        add_text(slide, x + 0.38, top + 0.29, cw - 0.76, 0.22,
                  p.get("label", "BEFORE" if i == 0 else "AFTER"), 9.5,
-                 bold=True, color=GRAY if i == 0 else ACCENT)
+                 bold=True, color=marker)
         heading_size, _ = fit_text_or_raise(
             "twocol", f"{'left' if i == 0 else 'right'}.heading",
-            p["heading"], cw - 0.72, 0.48, 18,
+            p["heading"], cw - 0.76, 0.42, 18,
             min_pt=14, weight="bold", spacing=1.1)
-        add_text(slide, x + 0.36, top + 0.67, cw - 0.72, 0.48,
+        add_text(slide, x + 0.38, top + 0.64, cw - 0.76, 0.42,
                  p["heading"], heading_size, bold=True, color=NAVY)
-        y = top + 1.42
-        for b in p["bullets"]:
-            bh = len(wrap_text(b, tw, size)) * line_height_in(size, 1.2)
-            add_text(slide, x + 0.36, y - 0.01, 0.24, 0.3, "—", 12,
-                     bold=True, color=GRAY if i == 0 else ACCENT)
-            add_text(slide, x + 0.7, y, tw, bh + 0.08, b, size,
-                     color=TEXT, spacing=1.2)
-            y += bh + bgap
+        add_rect(slide, x + 0.38, top + 1.16, cw - 0.76, 0.01, RULE)
+        y = top + 1.34
+        for row_index, (bullet, row_h) in enumerate(zip(p["bullets"], rows[i])):
+            add_text(slide, x + 0.38, y + 0.01, 0.34, 0.24,
+                     f"{row_index + 1:02d}", 9.5, bold=True, color=marker)
+            add_text(slide, x + 0.82, y, text_w, row_h, bullet, size,
+                     color=TEXT, spacing=1.18)
+            y += row_h
+            if row_index < len(rows[i]) - 1:
+                add_rect(slide, x + 0.82, y + row_gap / 2,
+                         text_w, 0.008, RULE)
+                y += row_gap
 
 
 def s_chart(slide, spec, page):
