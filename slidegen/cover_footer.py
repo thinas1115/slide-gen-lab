@@ -28,6 +28,10 @@ _TEMPLATE_FIELDS = {
     "title", "footer", "date", "organization", "author", "page", "total",
 }
 COVER_BACKGROUND_NAME = "Cover Background"
+_DEFAULT_BACKGROUND_IMAGE = (
+    Path(__file__).resolve().parent / "assets" / "cover" /
+    "cover-background.png"
+)
 _COVER_KEYS = {
     "eyebrow", "show_date", "show_author", "show_rail", "rail",
     "background_image", "background_color", "title_color", "secondary_color",
@@ -86,7 +90,7 @@ _DEFAULT_DATA = {
             {"label": "ORGANIZATION", "value": "{organization}"},
             {"label": "AUTHOR", "value": "{author}"},
         ],
-        "background_image": None,
+        "background_image": str(_DEFAULT_BACKGROUND_IMAGE),
         "background_color": "182C43",
         "title_color": "FFFFFC",
         "secondary_color": "DFEBE8",
