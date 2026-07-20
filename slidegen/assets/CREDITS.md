@@ -7,6 +7,11 @@
 
 - 出典: [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/)
   (AWS公式アイコンデッキから `extract_aws_icons.py` で無改変抽出)
+- ライセンス: [Creative Commons Attribution-NoDerivs 2.0](https://creativecommons.org/licenses/by-nd/2.0/legalcode)
+- AWSによる同ライセンスでの公開配布例:
+  [awslabs/aws-icons-for-plantuml](https://github.com/awslabs/aws-icons-for-plantuml)
+- AWS公式ブログでの利用例:
+  [Sequence Diagrams enrich your understanding of distributed architectures](https://aws.amazon.com/blogs/architecture/sequence-diagrams-enrich-your-understanding-of-distributed-architectures/)
 - © Amazon Web Services, Inc. or its affiliates. AWS および関連アイコンは
   Amazon Web Services, Inc. の商標です
 - アイコンデッキの利用ガイダンスに基づき、アーキテクチャ図の作成および技術資料への
@@ -14,6 +19,7 @@
 - 準拠: [AWS商標ガイドラインおよびライセンス条項](https://d1.awsstatic.com/onedam/marketing-channels/website/public/legal/trademark-guidelines/AWS_Trademark_Guidelines_and_License_Terms_(2024-07-18)_JA-JP.pdf)
 - 本リポジトリは AWS による後援・承認・提携を受けたものではありません
 - 最新版・追加アイコンが必要な場合は公式デッキを入手して `extract_aws_icons.py` を実行する
+- 同梱時の帰属表示と条件: [`icons/aws/NOTICE.md`](icons/aws/NOTICE.md)
 
 ## Fluent UI System Icons (`icons/fluent/*.png`)
 
@@ -21,6 +27,7 @@
 - © Microsoft Corporation — [MIT License](https://github.com/microsoft/fluentui-system-icons/blob/main/LICENSE)
 - `fetch_fluent_icons.py` でSVGを取得し、塗り色をスライド配色(#1F3864)に変更のうえ
   PNG化したもの(MITライセンスは改変・再配布を許諾)
+- 同梱するライセンス全文: [`icons/fluent/LICENSE`](icons/fluent/LICENSE)
 - 追加アイコンが必要な場合は `fetch_fluent_icons.py` の `ICONS` に追記して実行する
 
 ## 本文画像 (`images/*`)
@@ -31,3 +38,12 @@
 
 - `pptxdsl-repository.png`: 公開中のpptxdslリポジトリ画面のスクリーンショット。
   画像加工なし。GitHubおよびGitHubロゴはGitHub, Inc.の商標であり、本リポジトリとの提携・承認を示さない。
+
+## 表紙背景画像 (`cover/*`)
+
+- `cover-background.png`: プロジェクト所有者がOpenAIのgpt-imageで生成した背景画像。
+  外部から取得した画像ではなく、プロジェクト本体と同じMIT Licenseで提供する。
+- OpenAIの[利用規約](https://openai.com/policies/terms-of-use/)では、適用法で認められる範囲で
+  利用者がOutputを所有し、OpenAIがOutputについて持つ権利を利用者へ譲渡すると定めている。
+- OpenAIおよびgpt-imageへの言及は生成元を示すものであり、OpenAIによる本プロジェクトの
+  後援、承認、提携を示すものではない。
