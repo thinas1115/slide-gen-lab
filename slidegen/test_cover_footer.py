@@ -39,18 +39,25 @@ def main():
     assert [item.value for item in default.cover.rail] == [
         "{date}", "{organization}", "{author}",
     ]
-    assert default.cover.background_image is None
+    repo_root = Path(__file__).resolve().parents[1]
+    default_background = (
+        repo_root / "slidegen" / "assets" / "cover" /
+        "cover-background.png"
+    ).resolve()
+    assert default.cover.background_image == default_background
+    with Image.open(default.cover.background_image) as image:
+        assert image.format == "PNG"
+        assert image.width / image.height > 1.7
     assert default.footer.text == "{footer}"
     assert default.footer.show_total is True
 
-    repo_root = Path(__file__).resolve().parents[1]
+    fixture_prs = Presentation()
+    fixture_prs.slide_width = Inches(13.333)
+    fixture_prs.slide_height = Inches(7.5)
+    fixture_slide = fixture_prs.slides.add_slide(fixture_prs.slide_layouts[6])
+
     example = load_cover_footer_config(repo_root / "examples" / "cover_footer.json")
-    assert example.cover.background_image == (
-        repo_root / "slidegen" / "assets" / "cover" /
-        "cover-background.png").resolve()
-    with Image.open(example.cover.background_image) as image:
-        assert image.format == "PNG"
-        assert image.width / image.height > 1.7
+    assert example.cover.background_image == default_background
     assert example.cover.eyebrow == ""
     assert example.cover.show_date is False
     assert example.cover.show_author is False
@@ -59,6 +66,11 @@ def main():
         "DATE", "ORGANIZATION", "AUTHOR",
     ]
     assert example.footer.text == "{footer}"
+
+    solid_background = parse_cover_footer_config({
+        "cover": {"background_image": None},
+    })
+    assert solid_background.cover.background_image is None
 
     minimal_deck = {
         "meta": {"title": "最小資料"},
@@ -78,10 +90,12 @@ def main():
                for error in validate(placeholder_deck))
     optional_text_calls = []
     render_cover(
-        None, minimal_deck["slides"][0], minimal_deck["meta"], 1, default,
+        fixture_slide, minimal_deck["slides"][0], minimal_deck["meta"], 1,
+        default,
         add_text=lambda *args, **kwargs: optional_text_calls.append(args),
         add_rect=lambda *args, **kwargs: None,
     )
+    assert fixture_slide.shapes[0].name == COVER_BACKGROUND_NAME
     rendered = {args[5] for args in optional_text_calls}
     assert rendered == {"表紙", "概要"}
 
@@ -93,8 +107,8 @@ def main():
         "author": "企画支援チーム",
     }
     render_cover(
-        None, {"title": "標準表紙", "subtitle": "概要"}, full_meta, 10,
-        default,
+        fixture_slide, {"title": "標準表紙", "subtitle": "概要"},
+        full_meta, 10, default,
         add_text=lambda *args, **kwargs: default_rail_text_calls.append(args),
         add_rect=lambda *args, **kwargs: default_rail_rect_calls.append(args),
     )
@@ -117,7 +131,7 @@ def main():
 
     balanced_title_calls = []
     render_cover(
-        None,
+        fixture_slide,
         {"title": "プライベート接続でハマった落とし穴\n3選",
          "subtitle": "設計と運用の要点"},
         minimal_deck["meta"], 1, default,
@@ -140,7 +154,7 @@ def main():
     }})
     empty_rail_text_calls = []
     render_cover(
-        None, minimal_deck["slides"][0], minimal_deck["meta"], 1,
+        fixture_slide, minimal_deck["slides"][0], minimal_deck["meta"], 1,
         empty_dynamic_rail,
         add_text=lambda *args, **kwargs: empty_rail_text_calls.append(args),
         add_rect=lambda *args, **kwargs: None,
@@ -198,7 +212,7 @@ def main():
     text_calls = []
     rect_calls = []
     render_cover(
-        None, {"title": "Title", "subtitle": "Subtitle"},
+        fixture_slide, {"title": "Title", "subtitle": "Subtitle"},
         {"title": "T", "footer": "F", "date": "2026年7月",
          "author": "A"},
         10, multiline,
@@ -224,7 +238,7 @@ def main():
     }})
     try:
         render_cover(
-            None, {"title": "Title", "subtitle": "Subtitle"},
+            fixture_slide, {"title": "Title", "subtitle": "Subtitle"},
             {"title": "T", "footer": "F", "date": "D", "author": "A"},
             10, too_many_owner_lines,
             add_text=lambda *args, **kwargs: None,
@@ -242,7 +256,8 @@ def main():
     }})
     legacy_calls = []
     render_cover(
-        None, {"title": "Title", "subtitle": "Subtitle"}, full_meta, 10,
+        fixture_slide, {"title": "Title", "subtitle": "Subtitle"},
+        full_meta, 10,
         legacy,
         add_text=lambda *args, **kwargs: legacy_calls.append(args),
         add_rect=lambda *args, **kwargs: None,
