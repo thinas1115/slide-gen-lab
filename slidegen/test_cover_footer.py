@@ -30,8 +30,15 @@ def _must_fail(data, expected, **kwargs):
 def main():
     default = parse_cover_footer_config({})
     assert default.cover.eyebrow == ""
-    assert default.cover.show_rail is False
-    assert default.cover.rail == ()
+    assert default.cover.show_date is False
+    assert default.cover.show_author is False
+    assert default.cover.show_rail is True
+    assert [item.label for item in default.cover.rail] == [
+        "DATE", "ORGANIZATION", "AUTHOR",
+    ]
+    assert [item.value for item in default.cover.rail] == [
+        "{date}", "{organization}", "{author}",
+    ]
     assert default.cover.background_image is None
     assert default.footer.text == "{footer}"
     assert default.footer.show_total is True
@@ -45,10 +52,12 @@ def main():
         assert image.format == "PNG"
         assert image.width / image.height > 1.7
     assert example.cover.eyebrow == ""
-    assert example.cover.show_date is True
-    assert example.cover.show_author is True
-    assert example.cover.show_rail is False
-    assert example.cover.rail == ()
+    assert example.cover.show_date is False
+    assert example.cover.show_author is False
+    assert example.cover.show_rail is True
+    assert [item.label for item in example.cover.rail] == [
+        "DATE", "ORGANIZATION", "AUTHOR",
+    ]
     assert example.footer.text == "{footer}"
 
     minimal_deck = {
@@ -56,6 +65,11 @@ def main():
         "slides": [{"type": "title", "title": "表紙", "subtitle": "概要"}],
     }
     assert not validate(minimal_deck)
+    organization_deck = {
+        "meta": {"title": "組織資料", "organization": "企画本部"},
+        "slides": [{"type": "title", "title": "表紙", "subtitle": "概要"}],
+    }
+    assert not validate(organization_deck)
     placeholder_deck = {
         "meta": {"title": "<資料名>"},
         "slides": [{"type": "title", "title": "表紙", "subtitle": "概要"}],
@@ -70,6 +84,36 @@ def main():
     )
     rendered = {args[5] for args in optional_text_calls}
     assert rendered == {"表紙", "概要"}
+
+    default_rail_text_calls = []
+    default_rail_rect_calls = []
+    full_meta = {
+        "title": "提案資料", "footer": "提案資料", "date": "2026年7月",
+        "organization": "業務企画本部\n業務改善推進部",
+        "author": "企画支援チーム",
+    }
+    render_cover(
+        None, {"title": "標準表紙", "subtitle": "概要"}, full_meta, 10,
+        default,
+        add_text=lambda *args, **kwargs: default_rail_text_calls.append(args),
+        add_rect=lambda *args, **kwargs: default_rail_rect_calls.append(args),
+    )
+    by_text = {args[5]: args for args in default_rail_text_calls}
+    for text in (
+        "DATE", "2026年7月", "ORGANIZATION",
+        "業務企画本部\n業務改善推進部", "AUTHOR", "企画支援チーム",
+    ):
+        assert text in by_text
+        assert by_text[text][1] == 9.82
+    assert not any(
+        args[5] == "2026年7月" and args[2] == 0.68
+        for args in default_rail_text_calls
+    )
+    assert not any(
+        args[5] == "企画支援チーム" and args[1] == 0.9
+        for args in default_rail_text_calls
+    )
+    assert any(args[3] == 0.012 for args in default_rail_rect_calls)
 
     balanced_title_calls = []
     render_cover(
@@ -90,7 +134,8 @@ def main():
         "show_rail": True,
         "rail": [
             {"label": "DATE", "value": "{date}"},
-            {"label": "OWNER", "value": "{author}"},
+            {"label": "ORGANIZATION", "value": "{organization}"},
+            {"label": "AUTHOR", "value": "{author}"},
         ],
     }})
     empty_rail_text_calls = []
@@ -129,12 +174,14 @@ def main():
     _must_fail({"cover": {"rail": [{"label": "A", "value": "B"}] * 4}},
                "0〜3件")
     _must_fail({"cover": {
+        "show_date": True,
         "show_rail": True,
         "rail": [{"label": "DATE", "value": "{date}"}],
     }}, "show_date を false")
     _must_fail({"cover": {
+        "show_author": True,
         "show_rail": True,
-        "rail": [{"label": "OWNER", "value": "{author}"}],
+        "rail": [{"label": "AUTHOR", "value": "{author}"}],
     }}, "show_author を false")
 
     multiline = parse_cover_footer_config({"cover": {
@@ -145,7 +192,7 @@ def main():
             {"label": "DATE", "value": "{date}"},
             {"label": "ORGANIZATION",
              "value": "組織A\n部門B\nチームC"},
-            {"label": "OWNER", "value": "担当A\n役割B"},
+            {"label": "AUTHOR", "value": "担当A\n役割B"},
         ],
     }})
     text_calls = []
@@ -171,7 +218,7 @@ def main():
         "show_author": False,
         "show_rail": True,
         "rail": [{
-            "label": "OWNER",
+            "label": "AUTHOR",
             "value": "1行目\n2行目\n3行目\n4行目",
         }],
     }})
@@ -186,7 +233,23 @@ def main():
     except ValueError as e:
         assert "3行以内" in str(e), str(e)
     else:
-        raise AssertionError("OWNERの4行入力を拒否しませんでした")
+        raise AssertionError("AUTHORの4行入力を拒否しませんでした")
+
+    legacy = parse_cover_footer_config({"cover": {
+        "show_date": True,
+        "show_author": True,
+        "show_rail": False,
+    }})
+    legacy_calls = []
+    render_cover(
+        None, {"title": "Title", "subtitle": "Subtitle"}, full_meta, 10,
+        legacy,
+        add_text=lambda *args, **kwargs: legacy_calls.append(args),
+        add_rect=lambda *args, **kwargs: None,
+    )
+    legacy_by_text = {args[5]: args for args in legacy_calls}
+    assert legacy_by_text["2026年7月"][1:3] == (9.78, 0.68)
+    assert legacy_by_text["企画支援チーム"][1:3] == (0.9, 6.5)
 
     too_long = parse_cover_footer_config({
         "footer": {"text": "W" * 100},

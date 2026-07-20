@@ -249,6 +249,7 @@ STRESS_PATTERN_DECK = {
         "title": "段階的縮小ストレス検証",
         "footer": "段階的縮小ストレス検証",
         "date": "2026年7月",
+        "organization": "業務企画本部\n業務改善推進部",
         "author": "業務改善検討チーム",
     },
     "slides": [

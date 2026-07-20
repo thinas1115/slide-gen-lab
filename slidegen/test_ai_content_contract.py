@@ -54,9 +54,13 @@ def main():
     unknown_top["layout"] = "wide"
     _assert_error(unknown_top, "未対応のトップレベルフィールド")
 
+    organization_meta = _deck(_bullets())
+    organization_meta["meta"]["organization"] = "組織名"
+    assert not validate(organization_meta)
+
     unknown_meta = _deck(_bullets())
-    unknown_meta["meta"]["organization"] = "組織名"
-    _assert_error(unknown_meta, "meta.organization")
+    unknown_meta["meta"]["company"] = "会社名"
+    _assert_error(unknown_meta, "meta.company")
 
     unknown_slide = _deck(_bullets())
     unknown_slide["slides"][1]["caption"] = "説明"

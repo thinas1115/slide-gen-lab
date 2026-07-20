@@ -41,8 +41,9 @@ python slidegen/validate_content.py content.json
 任意:
 
 - `meta.footer`: フッターへ表示する資料固有の文言
-- `meta.date`: 表紙または表紙補足欄へ表示する日付
-- `meta.author`: 表紙または表紙補足欄へ表示する作成者・責任者
+- `meta.date`: 表紙右側railの`DATE`へ表示する日付
+- `meta.organization`: 表紙右側railの`ORGANIZATION`へ表示する会社・組織・部門名
+- `meta.author`: 表紙右側railの`AUTHOR`へ表示する作成者・責任者
 
 値が不明または表示不要な任意項目は、空文字や仮文言を入れずキー自体を省略する。
 

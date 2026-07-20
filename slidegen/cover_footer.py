@@ -24,7 +24,9 @@ from textfit import (
 
 
 _HEX_COLOR = re.compile(r"^[0-9A-Fa-f]{6}$")
-_TEMPLATE_FIELDS = {"title", "footer", "date", "author", "page", "total"}
+_TEMPLATE_FIELDS = {
+    "title", "footer", "date", "organization", "author", "page", "total",
+}
 COVER_BACKGROUND_NAME = "Cover Background"
 _COVER_KEYS = {
     "eyebrow", "show_date", "show_author", "show_rail", "rail",
@@ -76,10 +78,14 @@ class CoverFooterConfig:
 _DEFAULT_DATA = {
     "cover": {
         "eyebrow": "",
-        "show_date": True,
-        "show_author": True,
-        "show_rail": False,
-        "rail": [],
+        "show_date": False,
+        "show_author": False,
+        "show_rail": True,
+        "rail": [
+            {"label": "DATE", "value": "{date}"},
+            {"label": "ORGANIZATION", "value": "{organization}"},
+            {"label": "AUTHOR", "value": "{author}"},
+        ],
         "background_image": None,
         "background_color": "182C43",
         "title_color": "FFFFFC",
@@ -151,8 +157,10 @@ def _validate_template(value, path, *, max_length):
             allowed = ", ".join(sorted(_TEMPLATE_FIELDS))
             raise ValueError(f"{path} の {{{name}}} は使用できません (使用可能: {allowed})")
     try:
-        value.format(title="title", footer="footer", date="date", author="author",
-                     page=1, total=10)
+        value.format(
+            title="title", footer="footer", date="date",
+            organization="organization", author="author", page=1, total=10,
+        )
     except (KeyError, ValueError) as e:
         raise ValueError(f"{path} のプレースホルダー書式が不正です: {e}") from e
     return value
@@ -210,9 +218,10 @@ def parse_cover_footer_config(data, *, base_dir=None):
         raise ValueError(
             "cover.rail に DATE を表示する場合は cover.show_date を false "
             "にしてください")
-    if show_rail and show_author and "OWNER" in rail_labels:
+    if show_rail and show_author and rail_labels & {"AUTHOR", "OWNER"}:
         raise ValueError(
-            "cover.rail に OWNER を表示する場合は cover.show_author を false "
+            "cover.rail に AUTHOR / OWNER を表示する場合は "
+            "cover.show_author を false "
             "にしてください")
 
     return CoverFooterConfig(
@@ -249,7 +258,7 @@ def parse_cover_footer_config(data, *, base_dir=None):
 
 
 def load_cover_footer_config(path=None):
-    """設定JSONを読み込む。pathが未指定なら現行互換の標準設定を返す。"""
+    """設定JSONを読み込む。pathが未指定なら標準設定を返す。"""
     if path is None:
         return parse_cover_footer_config({})
     source = Path(path)
@@ -268,7 +277,9 @@ def load_cover_footer_config(path=None):
 def _format(value, meta, *, page, total):
     return value.format(
         title=meta.get("title", ""), footer=meta.get("footer", ""),
-        date=meta.get("date", ""), author=meta.get("author", ""),
+        date=meta.get("date", ""),
+        organization=meta.get("organization", ""),
+        author=meta.get("author", ""),
         page=page, total=total,
     )
 
@@ -349,7 +360,7 @@ def render_cover(slide, spec, meta, total, config, *, add_text, add_rect):
                 label, 2.25, 8.8, 7,
                 field=f"cover.rail[{idx}].label", weight="bold")
             max_lines = 3 if label.strip().upper() in {
-                "ORG", "ORGANIZATION", "OWNER"
+                "ORG", "ORGANIZATION", "AUTHOR", "OWNER"
             } else 1
             value_size, value_lines, value_h = _rail_value_layout(
                 value, field=f"cover.rail[{idx}].value",

@@ -1,11 +1,15 @@
 {
   "cover": {
     "eyebrow": "",
-    "show_date": true,
-    "show_author": true,
-    "show_rail": false,
+    "show_date": false,
+    "show_author": false,
+    "show_rail": true,
     "background_image": "../slidegen/assets/cover/cover-background.png",
-    "rail": [],
+    "rail": [
+      {"label": "DATE", "value": "{date}"},
+      {"label": "ORGANIZATION", "value": "{organization}"},
+      {"label": "AUTHOR", "value": "{author}"}
+    ],
     "background_color": "16324F",
     "title_color": "FFFDF7",
     "secondary_color": "BFD7D2"
