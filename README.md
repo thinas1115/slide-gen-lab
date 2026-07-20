@@ -65,6 +65,7 @@ PowerPointを利用できる場合は、`out\png\sheet.png`の一覧と各ペー
 | `content.json`のフィールドと制約を確認する | [CONTENT_SCHEMA.md](CONTENT_SCHEMA.md) |
 | 内容に合うtypeを選ぶ | [docs/type-selection-guide.md](docs/type-selection-guide.md) |
 | 生成AIへの依頼文を作る | [AI_DECK_PROMPT.md](AI_DECK_PROMPT.md) |
+| 対応レイアウトを人間が見て確認する | [サンプルスライドギャラリー](examples/gallery/pattern_gallery.pptx) |
 | 新しいtypeやレイアウタを追加する | [EXTENDING.md](EXTENDING.md) |
 | 配色・フォント・表紙デザインを変更する | [DESIGN_CUSTOMIZATION.md](DESIGN_CUSTOMIZATION.md) |
 | 表紙・フッターだけを利用者別に変更する | [docs/cover-footer-customization.md](docs/cover-footer-customization.md) |
@@ -82,3 +83,6 @@ PowerPointを利用できる場合は、`out\png\sheet.png`の一覧と各ペー
 
 実行時の生成物はすべて`out/`へ保存します。`docs/`には保守対象の説明文書と、
 その文書から参照する掲載素材だけを置きます。
+
+`examples/gallery/pattern_gallery.pptx`はclone後に人間が確認する配布用サンプルです。
+新しい資料を作る生成AIには渡さず、内容・文言・ページ順の参考資料にも使用しません。
