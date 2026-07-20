@@ -9,6 +9,7 @@ PATTERN_DECK = {
         "title": "社内スライドパターン検証ギャラリー",
         "footer": "社内スライドパターン検証ギャラリー",
         "date": "2026年7月",
+        "organization": "業務企画本部\n業務改善推進部",
         "author": "業務改善検討チーム",
     },
     "slides": [

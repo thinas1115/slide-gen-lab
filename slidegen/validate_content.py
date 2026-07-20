@@ -28,7 +28,7 @@ _PLACEHOLDER = re.compile(r"^<[^<>]+>$")
 _UNRESOLVED = re.compile(r"^(?:TBD|TODO|要確認|未定|仮入力|仮文言)$", re.IGNORECASE)
 
 _TOP_LEVEL_KEYS = {"meta", "slides"}
-_META_KEYS = {"title", "footer", "date", "author"}
+_META_KEYS = {"title", "footer", "date", "organization", "author"}
 _BASE_SLIDE_KEYS = {"type", "kicker", "title", "lead"}
 _TYPE_KEYS = {
     "title": {"type", "title", "subtitle"},
@@ -806,7 +806,7 @@ def validate(deck, *, allow_sample_content=False):
                 "CONTENT_SCHEMA.mdに記載されたフィールドだけを使用してください")
         if not _is_str(meta.get("title")):
             errors.append('meta.title (文字列) が必要です')
-        for key in ("footer", "date", "author"):
+        for key in ("footer", "date", "organization", "author"):
             if key in meta and not _is_str(meta[key]):
                 errors.append(
                     f'meta.{key} は指定する場合、空でない文字列にしてください')
