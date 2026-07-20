@@ -248,16 +248,9 @@ def _s_process_flow(slide, spec, page):
             f"process.flow: {level_count}列では箱幅が{node_w:.2f}inとなり"
             "最小1.55inを下回ります。工程階層を減らしてください。")
 
-    max_rows = max(len(level) for level in levels)
-    rows_h = max_rows * node_h + max(0, max_rows - 1) * gap_y
-    has_feedback = any(edge.get("kind") == "feedback" for edge in edges)
-    feedback_reserve = 0.64 if has_feedback else 0.18
-    free_h = max(0, area.height - rows_h - feedback_reserve)
-    top_pad = min(0.72, max(0.46, free_h * 0.28))
-
     rects = {}
     for level_index, level in enumerate(levels):
-        top = area.top + top_pad
+        top = area.top + 0.34
         x = left + level_index * (node_w + gap_x)
         for row_index, node_id in enumerate(level):
             y = top + row_index * (node_h + gap_y)
@@ -280,7 +273,7 @@ def _s_process_flow(slide, spec, page):
             if abs(start[1] - end[1]) < 0.03:
                 points = [start, end]
         else:
-            lane_y = max_node_bottom + 0.44 + feedback_count * 0.16
+            lane_y = max_node_bottom + 0.48 + feedback_count * 0.16
             if lane_y > area.bottom - 0.16:
                 raise FitError(
                     "process.flow: 差戻し線を本文領域へ配置できません。"
@@ -296,18 +289,14 @@ def _s_process_flow(slide, spec, page):
     for node_id, (x, y, w, h) in rects.items():
         node = nodes[node_id]
         style = node.get("style", "standard")
-        fill = NAVY if style == "decision" else (LIGHT if style == "accent" else WHITE)
-        line = NAVY if style == "decision" else (
-            ACCENT if style == "accent" else RULE)
-        title_color = WHITE if style == "decision" else NAVY
-        desc_color = LIGHT if style == "decision" else TEXT
-        actor_color = WHITE if style == "decision" else ACCENT
+        fill = LIGHT if style == "decision" else WHITE
+        line = ACCENT if style in {"accent", "decision"} else RULE
         add_rect(slide, x, y, w, h, fill, line=line)
         title_size, _ = fit_text_or_raise(
             "process.flow", f"nodes.{node_id}.name", node["name"],
             w - 0.28, 0.32, 14, min_pt=11.5, weight="bold", spacing=1.1)
         add_text(slide, x + 0.14, y + 0.13, w - 0.28, 0.32, node["name"],
-                 title_size, bold=True, color=title_color, align=PP_ALIGN.CENTER)
+                 title_size, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
         desc = node.get("desc")
         if desc:
             desc_h = 0.34 if node.get("actor") else h - 0.52
@@ -315,14 +304,14 @@ def _s_process_flow(slide, spec, page):
                 "process.flow", f"nodes.{node_id}.desc", desc,
                 w - 0.30, desc_h, body_size, min_pt=9.5, spacing=1.12)
             add_text(slide, x + 0.15, y + 0.50, w - 0.30, desc_h,
-                     "\n".join(lines), desc_size, color=desc_color,
+                     "\n".join(lines), desc_size, color=TEXT,
                      align=PP_ALIGN.CENTER, spacing=1.12)
         if node.get("actor"):
             actor_size, _ = fit_text_or_raise(
                 "process.flow", f"nodes.{node_id}.actor", node["actor"],
                 w - 0.30, 0.24, 9.5, min_pt=8.0, weight="bold", spacing=1.05)
             add_text(slide, x + 0.15, y + h - 0.27, w - 0.30, 0.22,
-                     node["actor"], actor_size, bold=True, color=actor_color,
+                     node["actor"], actor_size, bold=True, color=ACCENT,
                      align=PP_ALIGN.CENTER)
 
     for edge, points in routed:

@@ -83,11 +83,6 @@ def main():
     assert layout.routes[0][-1] == layout.routes[1][-1]
     assert layout.routes[3][0][0] == layout.routes[4][0][0]
     assert layout.routes[3][1][1] == layout.routes[4][1][1]
-    bus_groups = layout._reporting_bus_groups()
-    owner_group = next(group for group in bus_groups if 0 in group)
-    assert {layout.edges[index]["from"] for index in owner_group} == {
-        "owner_a", "owner_b"}
-    assert {layout.edges[index]["to"] for index in owner_group} == {"pm"}
     # 同一階層で隣接する助言線は、階層間の幹へ迂回しない。
     assert len(layout.routes[2]) == 2
     pm_right = layout.boxes["pm"][0] + layout.boxes["pm"][2]

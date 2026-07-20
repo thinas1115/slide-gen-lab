@@ -11,7 +11,7 @@ from pptx.util import Inches, Pt
 from diagrams import LINE, add_arrow
 
 
-def plain_line(slide, x1, y1, x2, y2, *, color=LINE, width=1.25, dash=None):
+def _plain_line(slide, x1, y1, x2, y2, *, color=LINE, width=1.25, dash=None):
     conn = slide.shapes.add_connector(
         MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x2), Inches(y2))
     conn.line.color.rgb = color
@@ -34,7 +34,7 @@ def route(slide, pts, *, dash=None, width=1.25, both=False):
         add_arrow(slide, *pts[1], *pts[0], dash=dash, width=width)
         start = 1
     for (x1, y1), (x2, y2) in zip(pts[start:-2], pts[start + 1:-1]):
-        plain_line(slide, x1, y1, x2, y2, dash=dash, width=width)
+        _plain_line(slide, x1, y1, x2, y2, dash=dash, width=width)
     (x1, y1), (x2, y2) = pts[-2], pts[-1]
     add_arrow(slide, x1, y1, x2, y2, dash=dash, width=width)
 

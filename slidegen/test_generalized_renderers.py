@@ -46,16 +46,7 @@ def _assert_process_natural_top(slide, flow, area_top):
         _text_shape(slide, flow["nodes"][node_id]["name"]).top / Inches(1)
         for node_id in first_row_ids
     ]
-    max_rows = max(len(level) for level in flow["levels"])
-    fitted = _fit_process_flow(generate.BODY_BOTTOM - area_top, flow["levels"])
-    rows_h = (max_rows * fitted.values["node_h"]
-              + max(0, max_rows - 1) * fitted.values["gap_y"])
-    has_feedback = any(edge.get("kind") == "feedback"
-                       for edge in flow["edges"])
-    reserve = 0.64 if has_feedback else 0.18
-    free_h = max(0, generate.BODY_BOTTOM - area_top - rows_h - reserve)
-    top_pad = min(0.72, max(0.46, free_h * 0.28))
-    expected_title_top = area_top + top_pad + 0.13
+    expected_title_top = area_top + 0.34 + 0.13
     assert max(first_row_tops) - min(first_row_tops) < 0.01
     assert abs(first_row_tops[0] - expected_title_top) < 0.01
 

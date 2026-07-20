@@ -555,7 +555,6 @@ def s_twocol(slide, spec, page):
         fill = ZEBRA if i == 0 else LIGHT
         marker = GRAY if i == 0 else ACCENT
         add_rect(slide, x, top, cw, panel_h, fill)
-        add_rect(slide, x, top, cw, 0.045, marker)
         add_text(slide, x + 0.38, top + 0.29, cw - 0.76, 0.22,
                  p.get("label", "BEFORE" if i == 0 else "AFTER"), 9.5,
                  bold=True, color=marker)
@@ -577,10 +576,6 @@ def s_twocol(slide, spec, page):
                 add_rect(slide, x + 0.82, y + row_gap / 2,
                          text_w, 0.008, RULE)
                 y += row_gap
-
-    add_text(slide, left + cw + 0.03, top + panel_h / 2 - 0.15,
-             gap - 0.06, 0.30, "→", 15, bold=True, color=ACCENT,
-             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
 
 def s_chart(slide, spec, page):
