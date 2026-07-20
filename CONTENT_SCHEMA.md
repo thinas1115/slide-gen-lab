@@ -74,7 +74,6 @@ python slidegen/validate_content.py content.json
 - JSONなので、Pythonのタプルではなく配列を使う。
 - `note` (右下の注記) が描画されるのは `table` / `chart` / `process` / `roadmap` / `program_roadmap` / `matrix` / `hub` / `org` / `diagram` のみ。それ以外のtypeに書いても無視される(validatorがエラーにする)。
 - 構成図は `diagram` type で書く(グリッド仕様のみ、座標の数値は書かない)。
-- `aws` / `aws2` は廃止済みの旧type名であり、`generate_from_json.py` は受け付けない(validatorが拒否する)。
 
 ```json
 {
@@ -130,8 +129,8 @@ python slidegen/validate_content.py content.json
 制約:
 
 - `bullets` は3〜5件程度が安全(validatorの上限は6件)。
-- 各要素は `["本文", null]` の2要素配列。2要素目は互換用の予約フィールドで現状未使用。
-  `null` 固定にする(文字列だけを直接並べるとエラーになる)。
+- 各要素は `["本文", null]` の2要素配列。2要素目は描画されないため`null`固定にする。
+  文字列だけを直接並べるとエラーになる。
 
 ```json
 {
@@ -170,7 +169,6 @@ python slidegen/validate_content.py content.json
 - 各項目が独立して比較できる場合に使う。フェーズ名や図のノードなど、別の構造に属する要素には使わない。
 - `editorial`: サマリ・選択肢・事例向け。4件で`emphasis: true`が1件なら、その項目を主項目として描画する。
 - `metrics`: KPI向け。`heading`と`value`を分けて書き、rendererが文字列から数値を推測しないようにする。
-- 旧`[heading, body]`形式も既存資料との互換性のため読めるが、新規入力ではobject形式を使う。
 
 ```json
 {
@@ -361,8 +359,7 @@ python slidegen/validate_content.py content.json
 
 - `steps[*].attribute`: 工程下部へ補足属性を出す場合の`{label, value}`。
   `label`は`OWNER`、`OUTPUT`、`TOOL`、`STATUS`など、値の意味に合わせる
-- `steps[*].actor`: 担当者を示す旧入力との互換フィールド。`OWNER`ラベルで表示する。
-  新規入力では`attribute: {"label": "OWNER", "value": "担当"}`を使う
+- `steps[*].actor`: 担当者を示すstring。`OWNER`ラベルで表示する
 - `emph`: 強調するstepの0始まりindex配列
 - `note`: string
 
@@ -384,7 +381,7 @@ python slidegen/validate_content.py content.json
 制約:
 
 - `steps` は4〜5件が安全(validatorの範囲は3〜6件)。
-- 下部属性が不要な工程は`attribute`自体を省略する。`actor`と`attribute`は同時に指定しない。
+- 下部属性が不要な工程は`actor`と`attribute`の両方を省略する。両者は同時に指定しない。
 - `flow`は2〜12ノード、2〜6列、各列1〜3ノード、接続1〜20件。
 - 戻り接続は`kind: "feedback"`を指定する。座標や配線経路はrendererが決める。
 - `steps`と`flow`は同時に指定しない。
@@ -503,7 +500,7 @@ python slidegen/validate_content.py content.json
 - 数値の`start` / `end`は0.25刻みの期間境界index。12か月なら`0`から`12`の範囲。
   `0`は最初の月の開始、`0.25`は最初の月の1/4経過、`0.5`は月半ば、
   `0.75`は3/4経過、`1`は次月の開始を表す。
-- 期間ラベルの`start`は該当月の開始、`end`は該当月を含む終了として従来どおり扱う。
+- 期間ラベルの`start`は該当期間の開始、`end`は該当期間を含む終了として扱う。
 - 0.25刻み以外の数値はvalidatorが拒否する。
 - 同じテーマ内で重なる作業は入力順や座標指定ではなく、期間の重なりから自動レーン配置する。
 - 最小設定でも収まらない場合は、テーマまたは同時並行作業を減らしてスライドを分割する。
@@ -767,14 +764,3 @@ python slidegen/validate_content.py content.json
 - 行間に収まるか・配線がコンテナを貫通しないか等は、生成時にエンジン自身が対処方法つきのエラーで検出する(収まらない場合は行数・sub・ラベルを減らす)。
 - ノードは10個程度・4行程度までが安全(それ以上は縦に収まらずエラーになる)。
 - 名前付きテンプレート参照はない。仕様は必ず `diagram` にインラインで書く。
-
-## 廃止済みtype名
-
-### aws / aws2
-
-`aws` と `aws2` は、固定構成図rendererで使われていた廃止済みtype名。renderer一覧には登録されていない。
-
-**`generate_from_json.py` はこの2つのtypeを受け付けない**(validate_content.py が生成前に拒否する)。ドキュメント上の禁止ではなく機械的に通らない。
-
-構成図が必要な場合は `diagram` type でグリッド仕様を新規に書く。回帰検証用のサンプル図も
-`diagram_specs.py` または `content_patterns.py` のインライン仕様から生成する。

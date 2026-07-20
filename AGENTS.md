@@ -61,8 +61,9 @@ git status --short
 ## 実装原則
 
 - `content.json`には文言、type、要素間の関係などの構造だけを書き、座標・余白・フォント値を入れない。
-- `slidegen/content*.py`と`slidegen/diagram_specs.py`は回帰試験用fixtureであり、新規資料の情報源・
-  文言例として使わない。新規資料は利用者が示した要件と情報源だけから作る。
+- `slidegen/content*.py`と`slidegen/diagram_specs.py`は回帰検証専用とし、新規資料の題材・文言・数値・
+  ページ順へ流用しない。ギャラリーを検証するときだけ`validate(..., allow_sample_content=True)`を
+  明示し、通常入力では許可しない。新規資料は利用者が示した要件と情報源だけから作る。
 - 座標、文字実測、配線、描画順はrendererまたはレイアウトエンジンで決める。
 - 新しいtypeを追加するときは、renderer、登録、validator、schema、AI向けtype一覧、ギャラリー、品質検証を同時に更新する。
 - renderer、テーマ、ギャラリー内容を変更したときは、配布用の
@@ -70,8 +71,6 @@ git status --short
 - 新しいrendererは、標準配置、裁量余白の圧縮、ジャンル固有要素の縮小、`FitError`による明示停止を
   この順で実装する。提出品質を保つ最小値と、最小値でも収まらない過密入力のテストを必ず追加する。
 - カードは独立項目の比較、選択、事例、KPIに使い、情報量が少ないという理由だけで反復パネルを並べない。
-- `slidegen/content*.py`と`slidegen/diagram_specs.py`は回帰検証専用とし、新規資料の題材・文言・数値・ページ順へ流用しない。
-  ギャラリーを検証するときだけ`validate(..., allow_sample_content=True)`を明示し、通常入力では許可しない。
 - AWSアイコンは無改変で扱い、追加素材の出典とライセンスを`slidegen/assets/CREDITS.md`へ記録する。
 
 ## 品質ゲート
