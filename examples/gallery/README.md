@@ -3,6 +3,11 @@
 [pattern_gallery.pptx](pattern_gallery.pptx)は、cloneした利用者が対応レイアウトの見た目を
 PowerPointで確認するための配布用ギャラリーです。
 
+![TYPE別パターンギャラリー](../../docs/pattern-gallery-by-type.png)
+
+14種類のtypeを、21枚の出力例で比較できます。画像は全体確認用で、各スライドの文言、
+図形、表、グラフ、配線は`pattern_gallery.pptx`で確認してください。
+
 ## 扱い
 
 - 人間がレイアウト選定とデザイン確認に使う。
