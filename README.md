@@ -7,6 +7,15 @@
 生成AIまたは人間が、スライドの内容と構造を`content.json`へ記述します。
 座標・余白・文字サイズ・配線はrendererが決定し、PPTXを毎回同じ結果で生成します。
 
+## 出力例
+
+対応する14種類のtypeを、21枚の出力例で確認できます。
+
+![TYPE別パターンギャラリー](docs/pattern-gallery-by-type.png)
+
+PowerPointで確認・編集できる実物は
+[パターンギャラリー](examples/gallery/pattern_gallery.pptx)に収録しています。
+
 ## セットアップ
 
 ```powershell
